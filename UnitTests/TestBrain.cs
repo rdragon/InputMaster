@@ -5,6 +5,7 @@ using System;
 using System.Text;
 using InputMaster;
 using InputMaster.Properties;
+using System.IO;
 
 namespace UnitTests
 {
@@ -54,7 +55,8 @@ namespace UnitTests
         InputRelay = new InputRelay(inputHook);
         var actor = new Actor();
         commandCollection.AddActors(this, flagManager, ForegroundManager, modeHook, comboHook, inputHook, InputRelay, actor);
-        parser.Parse(Resources.Tests.Replace("\r\n", "\n"));
+        parser.UpdateHotkeyFile(new HotkeyFile(nameof(TestBrain), Resources.Tests.Replace("\r\n", "\n")));
+        parser.Parse();
       }
       catch (Exception ex) when (Helper.HasAssertFailed(ex))
       {

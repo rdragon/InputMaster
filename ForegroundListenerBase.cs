@@ -12,10 +12,7 @@ namespace InputMaster
       FlagViewer.FlagsChanged += () => { Counter++; FlagsChanged(); };
       parserOutputProvider.NewParserOutput += (parserOutput) =>
       {
-        if (!parserOutput.AdditionalModesOutput)
-        {
-          DynamicHotkeyCollection = parserOutput.DynamicHotkeyCollection;
-        }
+        DynamicHotkeyCollection = parserOutput.DynamicHotkeyCollection;
       };
     }
 

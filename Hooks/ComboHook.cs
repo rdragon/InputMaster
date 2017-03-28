@@ -15,10 +15,7 @@ namespace InputMaster.Hooks
     {
       Helper.ForbidNull(parserOutputProvider, nameof(parserOutputProvider)).NewParserOutput += (parserOutput) =>
       {
-        if (!parserOutput.AdditionalModesOutput)
-        {
-          HotkeyCollection = parserOutput.HotkeyCollection;
-        }
+        HotkeyCollection = parserOutput.HotkeyCollection;
       };
     }
 

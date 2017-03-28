@@ -69,7 +69,7 @@ namespace InputMaster.Forms
         DataDir.Create();
         NamesDir.Create();
         State.Load();
-        await CompileModeAsync();
+        await CompileTextEditorModeAsync(true);
       };
 
       KeyDown += (s, e) =>
@@ -114,6 +114,8 @@ namespace InputMaster.Forms
         }
       };
     }
+
+    public FileInfo PasswordFile { get; private set; }
 
     public void Start()
     {
@@ -223,10 +225,14 @@ namespace InputMaster.Forms
       base.Dispose();
     }
 
-    private async Task CompileModeAsync()
+    private async Task CompileTextEditorModeAsync(bool updateHotkeyFile = false)
     {
       var failCount = 0;
-      var mode = new Mode(Config.TextEditorModeName, true);
+      HotkeyFile hotkeyFile = null;
+      var multipleHotkeyFilesFound = false;
+      PasswordFile = null;
+      var multiplePasswordsFilesFound = false;
+      List<FileLink> links = new List<FileLink>();
       await Task.Run(() =>
       {
         foreach (var file in NamesDir.GetFiles())
@@ -237,6 +243,52 @@ namespace InputMaster.Forms
             failCount++;
             continue;
           }
+          links.Add(new FileLink { Title = title, File = file });
+          if (updateHotkeyFile && title.Contains("[hotkeys]"))
+          {
+            if (hotkeyFile != null)
+            {
+              multipleHotkeyFilesFound = true;
+            }
+            else
+            {
+              var text = Decrypt(GetDataFile(file));
+              hotkeyFile = new HotkeyFile(nameof(TextEditorForm), text);
+            }
+          }
+          if (title.Contains("[passwords]"))
+          {
+            if (PasswordFile != null)
+            {
+              multiplePasswordsFilesFound = true;
+            }
+            else
+            {
+              PasswordFile = GetDataFile(file);
+            }
+          }
+        }
+      });
+      if (failCount > 0)
+      {
+        Env.Notifier.WriteWarning($"Password incorrect. Failed to decrypt {failCount} files.");
+        WrongPassPhrase = true;
+      }
+      if (multiplePasswordsFilesFound)
+      {
+        Env.Notifier.WriteWarning("Multiple passwords files found. Only one is supported.");
+      }
+      if (multipleHotkeyFilesFound)
+      {
+        Env.Notifier.WriteWarning("Multiple hotkey files found. Only one is supported.");
+      }
+      Parser.UpdateParseAction(nameof(TextEditorForm), (parserOutput) =>
+      {
+        var mode = parserOutput.AddMode(new Mode(Config.TextEditorModeName, true));
+        foreach (var link in links)
+        {
+          var file = link.File;
+          var title = link.Title;
           var chordText = Helper.GetChordText(title);
           if (chordText == null)
           {
@@ -255,12 +307,11 @@ namespace InputMaster.Forms
           mode.AddHotkey(hotkey);
         }
       });
-      if (failCount > 0)
+      if (hotkeyFile != null)
       {
-        Env.Notifier.WriteWarning($"Password incorrect. Failed to decrypt {failCount} files.");
-        WrongPassPhrase = true;
+        Parser.UpdateHotkeyFile(hotkeyFile);
       }
-      Parser.AddAdditionalMode(mode);
+      Parser.Parse();
     }
 
     private async Task ImportFromDirectoryAsync()
@@ -304,7 +355,7 @@ namespace InputMaster.Forms
           }
         }
         Env.Notifier.Write($"Imported {count} files from '{path}'.");
-        await CompileModeAsync();
+        await CompileTextEditorModeAsync(true);
       }
     }
 
@@ -383,7 +434,7 @@ namespace InputMaster.Forms
         var file = CreateNewFile(title.Trim(), "");
         OpenFile(file);
       }
-      await CompileModeAsync();
+      await CompileTextEditorModeAsync(false);
     }
 
     private FileInfo CreateNewFile(string title, string text)
@@ -455,7 +506,7 @@ namespace InputMaster.Forms
       }
     }
 
-    private string Decrypt(FileInfo file)
+    public string Decrypt(FileInfo file)
     {
       if (Config.UseCipher)
       {
@@ -607,6 +658,9 @@ namespace InputMaster.Forms
               break;
             case Keys.F2:
               Rename();
+              break;
+            case Keys.F5:
+              Compile();
               break;
             default:
               handled = false;
@@ -808,7 +862,7 @@ namespace InputMaster.Forms
           Title = newTitle;
           TabPage.Text = Title;
           Form.Encrypt(File, Title);
-          Form.Run(Form.CompileModeAsync);
+          Form.Run(async () => { await Form.CompileTextEditorModeAsync(false); });
         }
       }
 
@@ -832,6 +886,21 @@ namespace InputMaster.Forms
           Panel.Text = text;
         }
       }
+
+      private void Compile()
+      {
+        if (Title.Contains("[hotkeys]"))
+        {
+          Form.Parser.UpdateHotkeyFile(new HotkeyFile(nameof(TextEditorForm), Rtb.Text));
+          Form.Parser.Parse();
+        }
+      }
+    }
+
+    private class FileLink
+    {
+      public FileInfo File { get; set; }
+      public string Title { get; set; }
     }
   }
 }

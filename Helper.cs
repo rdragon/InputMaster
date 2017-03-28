@@ -231,7 +231,12 @@ namespace InputMaster
 
 
 
-
+    public static void Swap<T>(ref T val1, ref T val2)
+    {
+      T swap = val1;
+      val1 = val2;
+      val2 = swap;
+    }
 
     public static async Task<T> TryAsync<T>(Func<T> action, int count = 10, int pauseInterval = 100)
     {
@@ -347,7 +352,14 @@ namespace InputMaster
     {
       if (!fsi.Exists)
       {
-        throw new DirectoryNotFoundException($"{Capitalize(GetFileSystemInfoType(fsi))} '{fsi.FullName}' not found.");
+        if (fsi is FileInfo)
+        {
+          throw new FileNotFoundException($"File '{fsi.FullName}' not found.");
+        }
+        else
+        {
+          throw new DirectoryNotFoundException($"Directory '{fsi.FullName}' not found.");
+        }
       }
     }
 
@@ -355,23 +367,14 @@ namespace InputMaster
     {
       if (fsi.Exists)
       {
-        throw new DirectoryNotFoundException($"{Capitalize(GetFileSystemInfoType(fsi))} '{fsi.FullName}' already exists.");
-      }
-    }
-
-    public static string GetFileSystemInfoType(FileSystemInfo info)
-    {
-      if (info is DirectoryInfo)
-      {
-        return "directory";
-      }
-      else if (info is FileInfo)
-      {
-        return "file";
-      }
-      else
-      {
-        throw new NotImplementedException();
+        if (fsi is FileInfo)
+        {
+          throw new FileNotFoundException($"File '{fsi.FullName}' already exists.");
+        }
+        else
+        {
+          throw new DirectoryNotFoundException($"Directory '{fsi.FullName}' already exists.");
+        }
       }
     }
 
@@ -638,36 +641,6 @@ namespace InputMaster
           i--;
         }
         return text.Substring(0, i) + "...";
-      }
-    }
-
-    /// <summary>
-    /// Capitalizes the first character.
-    /// </summary>
-    public static string Capitalize(string text)
-    {
-      if (string.IsNullOrEmpty(text))
-      {
-        return text;
-      }
-      else
-      {
-        return char.ToUpper(text[0]) + text.Substring(1);
-      }
-    }
-
-    /// <summary>
-    /// Uncapitalizes the first character.
-    /// </summary>
-    public static string Uncapitalize(string text)
-    {
-      if (string.IsNullOrEmpty(text))
-      {
-        return text;
-      }
-      else
-      {
-        return char.ToLower(text[0]) + text.Substring(1);
       }
     }
 

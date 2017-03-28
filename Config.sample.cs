@@ -72,7 +72,7 @@ namespace InputMaster
     public const string TextEditorModeName = "TextEditor";
     public static readonly Combo TextEditorDesktopHotkey = Combo.None;
     public static readonly bool UseCipher = false;
-    public const int CipherDerivationIterations = 1000;
+    public const int CipherDerivationIterations = 100;
     public static readonly FileInfo KeyFile = null;
     public static readonly bool AskForPassword = false;
 

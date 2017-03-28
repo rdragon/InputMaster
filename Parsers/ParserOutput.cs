@@ -13,16 +13,9 @@ namespace InputMaster.Parsers
       DynamicHotkeyCollection = new DynamicHotkeyCollection();
     }
 
-    public ParserOutput(IEnumerable<Mode> modes)
-    {
-      Modes = new List<Mode>(modes);
-      AdditionalModesOutput = true;
-    }
-
     public HotkeyCollection HotkeyCollection { get; }
     public List<Mode> Modes { get; }
     public DynamicHotkeyCollection DynamicHotkeyCollection { get; }
-    public bool AdditionalModesOutput { get; }
 
     public void Clear()
     {
@@ -50,6 +43,24 @@ namespace InputMaster.Parsers
       {
         HotkeyCollection.AddHotkey(chord, action, section.AsStandardSection);
       }
+    }
+
+    public Mode AddMode(Mode mode)
+    {
+      var otherMode = Modes.FirstOrDefault(z => z.Name == mode.Name);
+      if (otherMode != null && otherMode.IsComposeMode != mode.IsComposeMode)
+      {
+        throw new ParseException($"Incompatible definitions of mode '{mode.Name}' found.");
+      }
+      if (otherMode != null)
+      {
+        mode = otherMode;
+      }
+      else
+      {
+        Modes.Add(mode);
+      }
+      return mode;
     }
   }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 
@@ -182,7 +183,22 @@ namespace InputMaster.Parsers
     private object ReadArgument(ParameterInfo parameterInfo)
     {
       var type = parameterInfo.ParameterType;
-      if (type == typeof(int) || type == typeof(int?))
+      if (type == typeof(bool) || type == typeof(bool?))
+      {
+        if (Value == "true")
+        {
+          return true;
+        }
+        else if (Value == "false")
+        {
+          return false;
+        }
+        else
+        {
+          throw CreateException("Failed to parse as bool.");
+        }
+      }
+      else if (type == typeof(int) || type == typeof(int?))
       {
         int x;
         if (int.TryParse(Value, out x))

@@ -22,6 +22,7 @@ namespace InputMaster.Hooks
     /// The number of inputs already in the buffer (for multi-key modes).
     /// </summary>
     private int InputCount;
+    private bool Hidden;
 
     public ModeHook(IParserOutputProvider parserOutputProvider)
     {
@@ -30,16 +31,9 @@ namespace InputMaster.Hooks
 
       parserOutputProvider.NewParserOutput += (parserOutput) =>
       {
-        if (!parserOutput.AdditionalModesOutput)
-        {
-          Modes.Clear();
-        }
+        Modes.Clear();
         foreach (var mode in parserOutput.Modes)
         {
-          if (!parserOutput.AdditionalModesOutput && Modes.ContainsKey(mode.Name))
-          {
-            Env.Notifier.WriteError($"Ambiguous mode '{mode.Name}' found.");
-          }
           Modes[mode.Name] = mode;
         }
       };
@@ -51,9 +45,10 @@ namespace InputMaster.Hooks
     public bool Active { get { return ActiveMode != null; } }
 
     [CommandTypes(CommandTypes.Visible)]
-    public void EnterMode(string name)
+    public void EnterMode(string name, [ValidFlags("h")]string flags = "")
     {
       EnterMode(name, Input.None);
+      Hidden = flags.Contains('h');
     }
 
     [CommandTypes(CommandTypes.Visible)]
@@ -66,7 +61,7 @@ namespace InputMaster.Hooks
     public void LeaveMode()
     {
       ModeViewer.Hide();
-      ActiveMode = null;
+      ClearActiveMode();
     }
 
     public void EnterMode(string name, Input input = Input.None)
@@ -84,6 +79,7 @@ namespace InputMaster.Hooks
 
     public void EnterMode(Mode mode, Input input = Input.None)
     {
+      ClearActiveMode();
       ActiveMode = mode;
       ClearInput();
       if (input != Input.None)
@@ -121,12 +117,6 @@ namespace InputMaster.Hooks
       }
     }
 
-    private void ClearInput()
-    {
-      InputCount = 0;
-      ModeHotkeys = ActiveMode.GetHotkeys();
-    }
-
     public void Handle(ComboArgs e)
     {
       if (e.Combo.Input.IsMouseInput())
@@ -151,13 +141,28 @@ namespace InputMaster.Hooks
         }
         if (e.Combo == Config.ShowModeCombo)
         {
-          ModeViewer.ToggleVisibility(GetDisplayText());
+          ToggleViewerVisibility();
         }
         else if (Config.ClearModeCombos.Contains(e.Combo))
         {
           LeaveMode();
         }
       }
+    }
+
+    private void ClearActiveMode()
+    {
+      if (ActiveMode != null)
+      {
+        ActiveMode = null;
+        Hidden = false;
+      }
+    }
+
+    private void ClearInput()
+    {
+      InputCount = 0;
+      ModeHotkeys = ActiveMode.GetHotkeys();
     }
 
     private void HandleComposeMode(ComboArgs e)
@@ -210,7 +215,7 @@ namespace InputMaster.Hooks
         {
           ModeHotkeys = oldModeHotkeys;
           InputCount = oldCount;
-          ModeViewer.ToggleVisibility(GetDisplayText());
+          ToggleViewerVisibility();
         }
         else if (Config.ClearModeCombos.Contains(e.Combo))
         {
@@ -225,9 +230,17 @@ namespace InputMaster.Hooks
       ModeViewer.UpdateText(GetDisplayText());
     }
 
+    private void ToggleViewerVisibility()
+    {
+      if (!Hidden)
+      {
+        ModeViewer.ToggleVisibility(GetDisplayText());
+      }
+    }
+
     private string GetDisplayText()
     {
-      var modeHotkeys = new List<ModeHotkey>(ModeHotkeys).Where(z => z.Description != null).ToList();
+      var modeHotkeys = new List<ModeHotkey>(ModeHotkeys).Where(z => z.Description != null && !z.Description.Contains("[hidden]")).ToList();
       modeHotkeys.Sort((a, b) => { return a.Description.CompareTo(b.Description); });
       return string.Join("\n", modeHotkeys.Select(z => z.Description));
     }

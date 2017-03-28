@@ -12,7 +12,8 @@ namespace InputMaster.Parsers
   class Parser : IParserOutputProvider
   {
     private readonly CommandCollection CommandCollection;
-    private readonly Dictionary<string, Mode> AdditionalModes = new Dictionary<string, Mode>();
+    private readonly Dictionary<string, HotkeyFile> HotkeyFiles = new Dictionary<string, HotkeyFile>();
+    private readonly Dictionary<string, ParseAction> ParseActions = new Dictionary<string, ParseAction>();
 
     public Parser(CommandCollection commandCollection, FileChangedWatcher hotkeyFileWatcher = null)
     {
@@ -21,36 +22,44 @@ namespace InputMaster.Parsers
       {
         hotkeyFileWatcher.TextChanged += (text) =>
         {
-          Parse(text);
+          UpdateHotkeyFile(new HotkeyFile("default", text));
+          Parse();
         };
       }
     }
 
     public event Action<ParserOutput> NewParserOutput = delegate { };
 
-    public void Parse(string text)
+    public void UpdateHotkeyFile(HotkeyFile hotkeyFile)
     {
-      ParserOutput parserOutput;
+      HotkeyFiles[hotkeyFile.Name] = hotkeyFile;
+    }
+
+    public void UpdateParseAction(string name, ParseAction action)
+    {
+      ParseActions[name] = action;
+    }
+
+    public void Parse()
+    {
+      var parserOutput = new ParserOutput();
       try
       {
-        parserOutput = new MyCharReader(new LocatedString(StripComments(text), new Location(1, 1)), this).Run();
+        foreach (var hotkeyFile in HotkeyFiles)
+        {
+          new MyCharReader(new LocatedString(StripComments(hotkeyFile.Value.Text), new Location(1, 1)), this, parserOutput).Run();
+        }
+        foreach (var action in ParseActions)
+        {
+          action.Value(parserOutput);
+        }
       }
       catch (Exception ex) when (!Helper.IsCriticalException(ex))
       {
-        Env.Notifier.WriteError(ex, $"Error while parsing '{Config.HotkeysFile.FullName}'.");
+        Env.Notifier.WriteError(ex, $"Error during parsing.");
         return;
       }
-      foreach (var mode in AdditionalModes.Values)
-      {
-        parserOutput.Modes.Add(mode);
-      }
       NewParserOutput(parserOutput);
-    }
-
-    public void AddAdditionalMode(Mode mode)
-    {
-      AdditionalModes[mode.Name] = mode;
-      NewParserOutput(new ParserOutput(AdditionalModes.Values));
     }
 
     private string StripComments(string text)
@@ -76,15 +85,16 @@ namespace InputMaster.Parsers
     private class MyCharReader : CharReader
     {
       private readonly Stack<Section> Sections = new Stack<Section>();
-      private readonly ParserOutput ParserOutput = new ParserOutput();
+      private readonly ParserOutput ParserOutput;
       private readonly Parser Parser;
       private readonly InputReader ChordReader = Config.DefaultChordReader;
       private readonly InputReader ModeChordReader = Config.DefaultModeChordReader;
       private Chord Chord;
 
-      public MyCharReader(LocatedString text, Parser parser) : base(text)
+      public MyCharReader(LocatedString text, Parser parser, ParserOutput parserOutput) : base(text)
       {
         Parser = parser;
+        ParserOutput = parserOutput;
       }
 
       public ParserOutput Run()
@@ -170,12 +180,7 @@ namespace InputMaster.Parsers
           {
             throw new ParseException(sectionType.Location, "A mode is only valid at the top level.");
           }
-          var mode = section.AsMode;
-          if (ParserOutput.Modes.Any(z => z.Name == mode.Name))
-          {
-            throw new ParseException(argument.Location, $"A mode named '{mode.Name}' already exists.");
-          }
-          ParserOutput.Modes.Add(mode);
+          section = ParserOutput.AddMode(section.AsMode);
         }
         Sections.Push(section);
       }
@@ -439,4 +444,6 @@ namespace InputMaster.Parsers
       }
     }
   }
+
+  delegate void ParseAction(ParserOutput parserOutput);
 }
