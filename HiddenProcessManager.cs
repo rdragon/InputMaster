@@ -78,7 +78,7 @@ namespace InputMaster
         TimeoutDate = timeoutDate;
       }
 
-      public bool HasExited { get { return Process.HasExited; } }
+      public bool HasExited => Process.HasExited;
 
       public void Update()
       {

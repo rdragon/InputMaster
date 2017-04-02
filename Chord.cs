@@ -9,7 +9,7 @@ namespace InputMaster
   {
     private readonly List<Combo> CombosReversed;
     private int HashCode;
-    public int Length { get { return CombosReversed.Count; } }
+    public int Length => CombosReversed.Count;
 
     public Chord(IEnumerable<Combo> combos)
     {

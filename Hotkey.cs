@@ -9,7 +9,7 @@ namespace InputMaster
 
     public Action<Combo> Action { get; }
     public StandardSection Section { get; }
-    public bool Enabled { get { return Section.IsEnabled; } }
+    public bool Enabled => Section.IsEnabled;
 
     public Hotkey(Action<Combo> action, StandardSection section)
     {

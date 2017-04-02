@@ -13,7 +13,7 @@ namespace InputMaster.Hooks
     private IComboHook CurrentHook;
 
     public Combo CurrentCombo { get; private set; }
-    public bool Active { get { return true; } }
+    public bool Active => true;
 
     public ComboRelay(params IComboHook[] targetHooks)
     {

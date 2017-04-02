@@ -38,13 +38,13 @@ namespace InputMaster
       notifier.RequestingExit += Exit;
       Disposables.Add(notifier);
       File.WriteAllText(Config.WindowHandleFile.FullName, notifier.WindowHandle.ToString());
-      if (!Config.HotkeysFile.Exists)
+      if (!Config.HotkeyFile.Exists)
       {
-        File.WriteAllText(Config.HotkeysFile.FullName, "");
+        File.WriteAllText(Config.HotkeyFile.FullName, "");
       }
 
       var commandCollection = new CommandCollection();
-      var hotkeyFileWatcher = new FileChangedWatcher(Config.HotkeysFile);
+      var hotkeyFileWatcher = new FileChangedWatcher(Config.HotkeyFile);
       Disposables.Add(hotkeyFileWatcher);
       var flagManager = new FlagManager(this);
       var parser = new Parser(commandCollection, hotkeyFileWatcher);

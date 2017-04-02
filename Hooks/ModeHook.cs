@@ -42,7 +42,7 @@ namespace InputMaster.Hooks
     /// <summary>
     /// Returns whether a mode is active.
     /// </summary>
-    public bool Active { get { return ActiveMode != null; } }
+    public bool Active => ActiveMode != null;
 
     [CommandTypes(CommandTypes.Visible)]
     public void EnterMode(string name, [ValidFlags("h")]string flags = "")

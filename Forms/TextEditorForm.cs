@@ -26,8 +26,8 @@ namespace InputMaster.Forms
     private readonly IContainer Components;
     private readonly Parser Parser;
     private bool Alive = true;
-    private string PassPhrase;
-    private bool WrongPassPhrase;
+    private string Password;
+    private bool WrongPassword;
 
     public TextEditorForm(Brain brain, ModeHook modeHook, Parser parser)
     {
@@ -117,24 +117,79 @@ namespace InputMaster.Forms
 
     public FileInfo PasswordFile { get; private set; }
 
+    private DirectoryInfo DataDir => GetDataDir(Config.TextEditorDir);
+
+    private DirectoryInfo NamesDir => GetNamesDir(Config.TextEditorDir);
+
+    private FileTab CurrentFileTab
+    {
+      get
+      {
+        var i = TabControl.SelectedIndex;
+        if (TabControl.TabCount == 0 || i == -1)
+        {
+          return null;
+        }
+        else
+        {
+          return FileTabs[i];
+        }
+      }
+    }
+
     public void Start()
     {
       Run(() =>
       {
         if (Config.UseCipher)
         {
-          CreatePassPhrase();
+          CreatePassword();
         }
         Show();
       });
     }
 
-    private void CreatePassPhrase()
+    public string Decrypt(FileInfo file)
     {
-      PassPhrase = Config.KeyFile == null ? "" : File.ReadAllText(Config.KeyFile.FullName);
-      if (Config.AskForPassword || PassPhrase == "")
+      if (Config.UseCipher)
       {
-        PassPhrase += Helper.GetStringLine("Password", isPassword: true) ?? "";
+        return Cipher.Decrypt(file, Password);
+      }
+      else
+      {
+        return File.ReadAllText(file.FullName);
+      }
+    }
+
+    public int ExportToDirectory(DirectoryInfo sourceDir, DirectoryInfo targetDir)
+    {
+      var fromNamesDir = GetNamesDir(sourceDir);
+      var count = 0;
+      targetDir.Create();
+      foreach (var file in fromNamesDir.GetFiles())
+      {
+        var title = Decrypt(file);
+        var text = Decrypt(GetDataFile(file));
+        var name = Helper.GetValidFileName(title, '_');
+        var targetFile = new FileInfo(Path.Combine(targetDir.FullName, name + ".txt"));
+        File.WriteAllText(targetFile.FullName, title + Environment.NewLine + text.Replace("\n", Environment.NewLine));
+        count++;
+      }
+      return count;
+    }
+
+    public new void Dispose()
+    {
+      Components.Dispose();
+      base.Dispose();
+    }
+
+    private void CreatePassword()
+    {
+      Password = Config.KeyFile == null ? "" : File.ReadAllText(Config.KeyFile.FullName);
+      if (Config.AskForPassword || Password == "")
+      {
+        Password += Helper.GetStringLine("Password", isPassword: true) ?? "";
       }
     }
 
@@ -162,26 +217,6 @@ namespace InputMaster.Forms
       };
     }
 
-    private FileTab CurrentFileTab
-    {
-      get
-      {
-        var i = TabControl.SelectedIndex;
-        if (TabControl.TabCount == 0 || i == -1)
-        {
-          return null;
-        }
-        else
-        {
-          return FileTabs[i];
-        }
-      }
-    }
-
-    private DirectoryInfo DataDir { get { return GetDataDir(Config.TextEditorDir); } }
-
-    private DirectoryInfo NamesDir { get { return GetNamesDir(Config.TextEditorDir); } }
-
     private static FileInfo GetDataFile(FileInfo file)
     {
       return new FileInfo(Path.Combine(GetDataDir(file.Directory.Parent).FullName, file.Name));
@@ -200,29 +235,6 @@ namespace InputMaster.Forms
     private static DirectoryInfo GetNamesDir(DirectoryInfo parentDir)
     {
       return new DirectoryInfo(Path.Combine(parentDir.FullName, "names"));
-    }
-
-    public int ExportToDirectory(DirectoryInfo sourceDir, DirectoryInfo targetDir)
-    {
-      var fromNamesDir = GetNamesDir(sourceDir);
-      var count = 0;
-      targetDir.Create();
-      foreach (var file in fromNamesDir.GetFiles())
-      {
-        var title = Decrypt(file);
-        var text = Decrypt(GetDataFile(file));
-        var name = Helper.GetValidFileName(title, '_');
-        var targetFile = new FileInfo(Path.Combine(targetDir.FullName, name + ".txt"));
-        File.WriteAllText(targetFile.FullName, title + Environment.NewLine + text.Replace("\n", Environment.NewLine));
-        count++;
-      }
-      return count;
-    }
-
-    public new void Dispose()
-    {
-      Components.Dispose();
-      base.Dispose();
     }
 
     private async Task CompileTextEditorModeAsync(bool updateHotkeyFile = false)
@@ -272,7 +284,7 @@ namespace InputMaster.Forms
       if (failCount > 0)
       {
         Env.Notifier.WriteWarning($"Password incorrect. Failed to decrypt {failCount} files.");
-        WrongPassPhrase = true;
+        WrongPassword = true;
       }
       if (multiplePasswordsFilesFound)
       {
@@ -316,7 +328,7 @@ namespace InputMaster.Forms
 
     private async Task ImportFromDirectoryAsync()
     {
-      if (WrongPassPhrase)
+      if (WrongPassword)
       {
         ShowWrongPasswordError();
         return;
@@ -423,7 +435,7 @@ namespace InputMaster.Forms
 
     private async Task CreateNewFileAsync()
     {
-      if (WrongPassPhrase)
+      if (WrongPassword)
       {
         ShowWrongPasswordError();
         return;
@@ -498,23 +510,11 @@ namespace InputMaster.Forms
     {
       if (Config.UseCipher)
       {
-        Cipher.Encrypt(file, text, PassPhrase);
+        Cipher.Encrypt(file, text, Password);
       }
       else
       {
         File.WriteAllText(file.FullName, text);
-      }
-    }
-
-    public string Decrypt(FileInfo file)
-    {
-      if (Config.UseCipher)
-      {
-        return Cipher.Decrypt(file, PassPhrase);
-      }
-      else
-      {
-        return File.ReadAllText(file.FullName);
       }
     }
 

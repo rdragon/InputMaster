@@ -11,7 +11,7 @@
     public Input Input { get; }
     public bool Down { get; }
     public bool Capture { get; set; }
-    public bool Up { get { return !Down; } }
+    public bool Up => !Down;
 
     public override string ToString()
     {

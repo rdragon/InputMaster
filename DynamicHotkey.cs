@@ -6,7 +6,7 @@ namespace InputMaster
   {
     public Action<IInjectorStream<object>> Action { get; }
     public StandardSection Section { get; }
-    public bool Enabled { get { return Section.IsEnabled; } }
+    public bool Enabled => Section.IsEnabled;
 
     public DynamicHotkey(Action<IInjectorStream<object>> action, StandardSection section)
     {

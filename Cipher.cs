@@ -11,13 +11,13 @@ namespace InputMaster
     private const int Keysize = 256;
     private const string Identifier = "TextEditor\n";
 
-    public static void Encrypt(FileInfo file, string plainText, string passPhrase)
+    public static void Encrypt(FileInfo file, string plainText, string password)
     {
       var saltStringBytes = Generate256BitsOfRandomEntropy();
       var ivStringBytes = Generate256BitsOfRandomEntropy();
-      using (var password = new Rfc2898DeriveBytes(passPhrase, saltStringBytes, Config.CipherDerivationIterations))
+      using (var key = new Rfc2898DeriveBytes(password, saltStringBytes, Config.CipherDerivationIterations))
       {
-        var keyBytes = password.GetBytes(Keysize / 8);
+        var keyBytes = key.GetBytes(Keysize / 8);
         using (var symmetricKey = new RijndaelManaged())
         {
           symmetricKey.BlockSize = 256;
@@ -42,7 +42,7 @@ namespace InputMaster
       }
     }
 
-    public static string Decrypt(FileInfo file, string passPhrase)
+    public static string Decrypt(FileInfo file, string password)
     {
       var saltStringBytes = new byte[32];
       var ivStringBytes = new byte[32];
@@ -54,9 +54,9 @@ namespace InputMaster
           Helper.RequireEqual(fileStream.Read(saltStringBytes, 0, 32), "read bytes", 32);
           Helper.RequireEqual(fileStream.Read(ivStringBytes, 0, 32), "read bytes", 32);
           Helper.RequireEqual(fileStream.Read(lengthBytes, 0, 4), "read bytes", 4);
-          using (var password = new Rfc2898DeriveBytes(passPhrase, saltStringBytes, Config.CipherDerivationIterations))
+          using (var key = new Rfc2898DeriveBytes(password, saltStringBytes, Config.CipherDerivationIterations))
           {
-            var keyBytes = password.GetBytes(Keysize / 8);
+            var keyBytes = key.GetBytes(Keysize / 8);
             using (var symmetricKey = new RijndaelManaged())
             {
               symmetricKey.BlockSize = 256;

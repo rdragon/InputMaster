@@ -25,7 +25,7 @@ namespace InputMaster
       Id = Interlocked.Increment(ref IdCounter);
     }
 
-    public bool IsTopLevel { get { return Parent == null; } }
+    public bool IsTopLevel => Parent == null;
 
     public bool IsEnabled
     {

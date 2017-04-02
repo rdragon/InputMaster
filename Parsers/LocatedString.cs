@@ -8,8 +8,8 @@ namespace InputMaster.Parsers
 {
   struct LocatedString
   {
-    public static LocatedString None = new LocatedString();
-    public static LocatedString Empty = new LocatedString("");
+    public static readonly LocatedString None = new LocatedString();
+    public static readonly LocatedString Empty = new LocatedString("");
 
     public LocatedString(string text) : this(text, Location.Unknown) { }
 
@@ -22,7 +22,7 @@ namespace InputMaster.Parsers
 
     public string Value { get; }
     public Location Location { get; }
-    public int Length { get { return Value.Length; } }
+    public int Length => Value.Length;
 
     public static bool operator ==(LocatedString a, LocatedString b)
     {
@@ -32,18 +32,6 @@ namespace InputMaster.Parsers
     public static bool operator !=(LocatedString a, LocatedString b)
     {
       return !a.Equals(b);
-    }
-
-    public override string ToString()
-    {
-      if (Location == Location.Unknown)
-      {
-        return $"\"{Value}\"";
-      }
-      else
-      {
-        return $"\"{Value}\", {Location}";
-      }
     }
 
     public LocatedString TrimStart()
@@ -127,6 +115,33 @@ namespace InputMaster.Parsers
     {
       var newValue = Value.Replace(str, replacement);
       return new LocatedString(newValue, newValue.Length != Value.Length ? Location.WithoutColumnInfo : Location);
+    }
+
+    public override string ToString()
+    {
+      if (Location == Location.Unknown)
+      {
+        return $"\"{Value}\"";
+      }
+      else
+      {
+        return $"\"{Value}\", {Location}";
+      }
+    }
+
+    public override bool Equals(object obj)
+    {
+      return obj is LocatedString && Equals((LocatedString)obj);
+    }
+
+    public bool Equals(LocatedString other)
+    {
+      return Value == other.Value && Location == other.Location;
+    }
+
+    public override int GetHashCode()
+    {
+      return Value.GetHashCode() * 1000000007 + Location.GetHashCode();
     }
 
     public IEnumerable<object> ReadArguments(IEnumerable<ParameterInfo> parameterInfos)
@@ -282,21 +297,6 @@ namespace InputMaster.Parsers
     private ParseException CreateException(string text)
     {
       return new ParseException(this, text);
-    }
-
-    public override bool Equals(object obj)
-    {
-      return obj is LocatedString && Equals((LocatedString)obj);
-    }
-
-    public bool Equals(LocatedString other)
-    {
-      return Value == other.Value && Location == other.Location;
-    }
-
-    public override int GetHashCode()
-    {
-      return Value.GetHashCode() * 1000000007 + Location.GetHashCode();
     }
   }
 }

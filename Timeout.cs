@@ -29,7 +29,7 @@ namespace InputMaster
       };
     }
 
-    public bool IsRunning { get { return Timer.Enabled; } }
+    public bool IsRunning => Timer.Enabled;
 
     public event Action Elapsed = delegate { };
 

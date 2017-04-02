@@ -7,7 +7,7 @@ namespace UnitTests
   {
     private StringBuilder Log = new StringBuilder();
 
-    public int LogLength { get { return Log.Length; } }
+    public int LogLength => Log.Length;
 
     public string GetLog()
     {
@@ -18,12 +18,12 @@ namespace UnitTests
 
     public void WriteWarning(string text)
     {
-      Log.AppendLine("Warning: " + text);
+      Log.Append($"Warning: {text}\n");
     }
 
     public void WriteError(string text)
     {
-      Log.AppendLine("Error: " + text);
+      Log.Append($"Error: {text}\n");
     }
 
     public void ShowLog() { }

@@ -9,39 +9,6 @@ namespace InputMaster.Parsers
     private readonly int LineField;
     private readonly int ColumnField;
 
-    public bool HasLine { get { return LineField > 0; } }
-    public bool HasColumn { get { return HasLine && ColumnField > 0; } }
-
-    public int Line
-    {
-      get
-      {
-        if (HasLine)
-        {
-          return LineField;
-        }
-        else
-        {
-          throw new InvalidOperationException();
-        }
-      }
-    }
-
-    public int Column
-    {
-      get
-      {
-        if (HasColumn)
-        {
-          return ColumnField;
-        }
-        else
-        {
-          throw new InvalidOperationException();
-        }
-      }
-    }
-
     public Location(int line)
     {
       if (line < 1)
@@ -72,19 +39,37 @@ namespace InputMaster.Parsers
       }
     }
 
-    public Location AddColumns(int count)
+    public bool HasLine => LineField > 0;
+
+    public bool HasColumn => HasLine && ColumnField > 0;
+
+    public int Line
     {
-      if (count < 0)
+      get
       {
-        throw new ArgumentOutOfRangeException(nameof(count));
+        if (HasLine)
+        {
+          return LineField;
+        }
+        else
+        {
+          throw new InvalidOperationException();
+        }
       }
-      else if (HasColumn)
+    }
+
+    public int Column
+    {
+      get
       {
-        return new Location(LineField, ColumnField + count);
-      }
-      else
-      {
-        return this;
+        if (HasColumn)
+        {
+          return ColumnField;
+        }
+        else
+        {
+          throw new InvalidOperationException();
+        }
       }
     }
 
@@ -133,6 +118,32 @@ namespace InputMaster.Parsers
       }
     }
 
+    public static bool operator ==(Location a, Location b)
+    {
+      return a.Equals(b);
+    }
+
+    public static bool operator !=(Location a, Location b)
+    {
+      return !a.Equals(b);
+    }
+
+    public Location AddColumns(int count)
+    {
+      if (count < 0)
+      {
+        throw new ArgumentOutOfRangeException(nameof(count));
+      }
+      else if (HasColumn)
+      {
+        return new Location(LineField, ColumnField + count);
+      }
+      else
+      {
+        return this;
+      }
+    }
+
     public override string ToString()
     {
       if (HasColumn)
@@ -149,6 +160,11 @@ namespace InputMaster.Parsers
       }
     }
 
+    public override int GetHashCode()
+    {
+      return LineField * 1000000007 + ColumnField;
+    }
+
     public override bool Equals(object obj)
     {
       return obj is Location && Equals((Location)obj);
@@ -157,21 +173,6 @@ namespace InputMaster.Parsers
     public bool Equals(Location other)
     {
       return LineField == other.LineField && ColumnField == other.ColumnField;
-    }
-
-    public static bool operator ==(Location a, Location b)
-    {
-      return a.Equals(b);
-    }
-
-    public static bool operator !=(Location a, Location b)
-    {
-      return !a.Equals(b);
-    }
-
-    public override int GetHashCode()
-    {
-      return LineField * 1000000007 + ColumnField;
     }
   }
 }

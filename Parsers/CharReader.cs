@@ -27,8 +27,8 @@ namespace InputMaster.Parsers
       Location = StartLocation;
     }
 
-    protected bool EndOfStream { get { return Index == Text.Length; } }
-    protected bool EndOfLine { get { return Current == '\n'; } }
+    protected bool EndOfStream => Index == Text.Length;
+    protected bool EndOfLine => Current == '\n';
     protected char Current
     {
       get

@@ -9,7 +9,7 @@ namespace InputMaster.Hooks
     private int Length;
     private HotkeyCollection HotkeyCollection = new HotkeyCollection();
 
-    public bool Active { get { return HotkeyCollection != null; } }
+    public bool Active => HotkeyCollection != null;
 
     public ComboHook(IParserOutputProvider parserOutputProvider)
     {

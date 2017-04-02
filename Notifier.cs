@@ -33,8 +33,8 @@ namespace InputMaster
       Form.Show();
     }
 
-    public IntPtr WindowHandle { get { return Form.Handle; } }
-    public ISynchronizeInvoke SynchronizingObject { get { return Form; } }
+    public IntPtr WindowHandle => Form.Handle;
+    public ISynchronizeInvoke SynchronizingObject => Form;
 
     public event Action RequestingExit = delegate { };
 
@@ -61,7 +61,7 @@ namespace InputMaster
       if (text != null)
       {
         var date = DateTime.Now.ToString(Config.LogDateTimeFormat);
-        Log.AppendLine($"{date} {text}");
+        Log.Append($"{date} {text}\n");
         if (Alive) Form.Write(text);
       }
     }
