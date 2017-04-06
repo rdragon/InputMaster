@@ -77,7 +77,7 @@ namespace InputMaster
       Env.Notifier.ShowLog();
     }
 
-    public static void Nothing() { }
+    public static void Nothing(string dummy = "") { }
 
     public void PutComputerToSleep()
     {

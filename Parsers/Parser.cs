@@ -115,7 +115,7 @@ namespace InputMaster.Parsers
             {
               ReadSectionHeader();
             }
-            else if (At(Config.NoChordCommandPrefix))
+            else if (At(Config.SpecialCommandPrefix))
             {
               ReadSpecialCommand();
             }
@@ -168,7 +168,7 @@ namespace InputMaster.Parsers
           throw new ParseException(Location, $"Cannot start section inside mode.");
         }
         Read(Config.SectionChar);
-        ReadMany(' ');
+        ReadSome(' ');
         var sectionType = ReadIdentifier();
         ReadSome(' ');
         var argument = ReadArguments().Require(targetCount: 1, delimiter: Config.ArgumentDelimiter);
@@ -220,7 +220,7 @@ namespace InputMaster.Parsers
 
       private void ReadSpecialCommand()
       {
-        Read(Config.NoChordCommandPrefix);
+        Read(Config.SpecialCommandPrefix);
         Chord = null;
         BeginReadCommands();
       }
