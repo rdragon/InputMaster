@@ -85,7 +85,10 @@ namespace InputMaster.Hooks
     {
       if (SimulatedInput != null)
       {
-        Env.Notifier.WriteError("Already simulating a key.");
+        if (SimulatedInput.Item2 != input)
+        {
+          Env.Notifier.WriteError("Already simulating a key.");
+        }
       }
       else if (input.IsStandardModifierKey())
       {

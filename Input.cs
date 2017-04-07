@@ -76,7 +76,7 @@
     Z = 90,
     LWin = 91,
     RWin = 92,
-    Mode = 93,
+    Menu = 93,
     Sleep = 95,
     Num0 = 96,
     Num1 = 97,

@@ -14,7 +14,7 @@ namespace InputMaster
     // Paths
     public static readonly DirectoryInfo DataDir = new DirectoryInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "InputMaster"));
     public static readonly DirectoryInfo CacheDir = new DirectoryInfo(Path.Combine(DataDir.FullName, "Cache"));
-    public static readonly FileInfo HotkeysFile = new FileInfo(Path.Combine(DataDir.FullName, "Hotkeys.txt"));
+    public static readonly FileInfo HotkeyFile = new FileInfo(Path.Combine(DataDir.FullName, "Hotkeys.txt"));
     public static readonly FileInfo WindowHandleFile = new FileInfo(Path.Combine(CacheDir.FullName, "WindowHandle"));
     public static readonly FileInfo ErrorLogFile = new FileInfo(Path.Combine(CacheDir.FullName, "ErrorLog.txt"));
     public static DirectoryInfo TextEditorDir = new DirectoryInfo(Path.Combine(DataDir.FullName, "TextEditor"));
@@ -23,7 +23,7 @@ namespace InputMaster
     public const char TokenStart = '{';
     public const char TokenEnd = '}';
     public const char SectionChar = '¶';
-    public const string NoChordCommandPrefix = "::";
+    public const string SpecialCommandPrefix = "::";
     public const char CommentStart = '→';
     public const char ArgumentDelimiter = '·';
     public const string FlagSectionIdentifier = "Flag";
@@ -61,6 +61,7 @@ namespace InputMaster
     public static readonly bool InsertSpaceAfterComma = true;
     public const int MaxChordLength = 10;
     public const string NotifierWindowTitle = "Notifier - InputMaster";
+    public const bool CaptureLmb = false;
 
     // Text Editor
     public static bool EnableTextEditor = false;

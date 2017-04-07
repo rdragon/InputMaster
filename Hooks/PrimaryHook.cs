@@ -170,8 +170,15 @@ namespace InputMaster.Hooks
           var e = ReadMessage((WindowMessage)wParam, lParam);
           if (e != null)
           {
-            TargetHook.Handle(e);
-            captured = e.Capture;
+            if (Config.CaptureLmb && e.Input == Input.Lmb)
+            {
+              captured = true;
+            }
+            else
+            {
+              TargetHook.Handle(e);
+              captured = e.Capture;
+            }
           }
         }
         catch (Exception ex)
