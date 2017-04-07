@@ -42,6 +42,8 @@ namespace InputMaster.Parsers
 
     private class MyCharReader : CharReader
     {
+      private static readonly Regex TokenRegex = new Regex("^" + Config.TokenPattern);
+      private static readonly Regex UnicodeRegex = new Regex($@"^UNICODE\[[0-9a-fA-F]+\]");
       private readonly InputReader InputReader;
       private readonly bool CreateChord;
       private readonly bool ParseLiteral;
@@ -76,12 +78,10 @@ namespace InputMaster.Parsers
 
       private void RunInner()
       {
-        var tokenRegex = new Regex("^" + Config.TokenPattern);
-        var unicodeRegex = new Regex($@"^UNICODE\[[0-9a-fA-F]+\]");
         while (!EndOfStream)
         {
           LocatedString = new LocatedString(Current.ToString(), Location);
-          if (!ParseLiteral && At(tokenRegex))
+          if (!ParseLiteral && At(TokenRegex))
           {
             string text;
             var token = ReadToken(out text);
@@ -131,6 +131,7 @@ namespace InputMaster.Parsers
                 throw CreateException("Unexpected token.");
               }
               PressType = pressType;
+              CheckConflict();
             }
             else if (Enum.TryParse(text, out dynamicHotkey) && dynamicHotkey != DynamicHotkeyEnum.None)
             {
@@ -138,14 +139,19 @@ namespace InputMaster.Parsers
               {
                 throw CreateException($"Cannot use a dynamic hotkey token at this location (use '{nameof(Actor.SendDynamic)}' instead).");
               }
-              Env.ForegroundListener.DynamicHotkeyCollection.GetAction(text)?.Invoke(InputReader.InjectorStream);
+              ForbidModifierHoldRelease();
+              for (int i = 0; i < Multiplier; i++)
+              {
+                Env.ForegroundListener.DynamicHotkeyCollection.GetAction(text)?.Invoke(InputReader.InjectorStream);
+              }
+              Multiplier = 1;
             }
             else
             {
               throw CreateException($"Unrecognized token.");
             }
           }
-          else if (!ParseLiteral && At(unicodeRegex))
+          else if (!ParseLiteral && At(UnicodeRegex))
           {
             string text;
             LocatedString = ReadUnicodeToken(out text);
@@ -179,9 +185,17 @@ namespace InputMaster.Parsers
         }
       }
 
+      private void ForbidModifierHoldRelease()
+      {
+        if (PressType != PressType.None || Modifiers != Modifiers.None)
+        {
+          throw CreateException($"No modifiers allowed before this token.");
+        }
+      }
+
       private void CheckConflict()
       {
-        if (PressType != PressType.None && ((Modifiers != Modifiers.None || Multiplier != 1)))
+        if (PressType != PressType.None && (Modifiers != Modifiers.None || Multiplier != 1))
         {
           throw CreateException($"Cannot combine hold/release with modifier or multiplier.");
         }

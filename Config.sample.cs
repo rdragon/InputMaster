@@ -22,10 +22,11 @@ namespace InputMaster
     // Parsing
     public const char TokenStart = '{';
     public const char TokenEnd = '}';
-    public const char SectionChar = '¶';
-    public const string SpecialCommandPrefix = "::";
-    public const char CommentStart = '→';
-    public const char ArgumentDelimiter = '·';
+    public const string SectionIdentifier = "√>";
+    public const string SpecialCommandIdentifier = "√:";
+    public const string MultipleCommandsIdentifier = "√+";
+    public const string CommentIdentifier = "√#";
+    public const string ArgumentDelimiter = "√,";
     public const string FlagSectionIdentifier = "Flag";
     public const string InputModeSectionIdentifier = "InputMode";
     public const string ComposeModeSectionIdentifier = "ComposeMode";
@@ -65,6 +66,7 @@ namespace InputMaster
 
     // Text Editor
     public static bool EnableTextEditor = false;
+    public const string TextEditorSectionIdentifier = "¶";
     public static readonly TimeSpan SaveTimerInterval = TimeSpan.FromSeconds(30);
     public static readonly TimeSpan UpdatePanelDelay = TimeSpan.FromSeconds(1);
     public const int SplitterDistance = 300;

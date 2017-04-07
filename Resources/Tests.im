@@ -1,0 +1,131 @@
+﻿√: Test a a  √# Typing a should output a.
+√: Test abc abc  √# Typing the three letters a, b and c should output abc.
+√: Test {Hold}a{Release}a a  √# Check if {Hold} and {Release} are correctly being parsed. The token {Hold} specifies that only the key down event should be simulated. The token {Release} specifies that only the key up event should be simulated.
+√: Test {Hold}{LShift}a{Release}{LShift} A
+√: Test {Hold}{RShift}ab{Release}{RShift}c ABc
+√: Test {Shift}a A  √# Check if the modifier {Shift} is correctly being parsed. {Shift}a is another way to write {Hold}{LShift}a{Release}{LShift}.
+√: Test A A  √# Yet another way to write {Hold}{LShift}a{Release}{LShift}.
+√: Test {Ctrl}A {Ctrl}A  √# Test multiple modifiers.
+√: Test {Shift}{Ctrl}a {Ctrl}A  √# Order of modifiers should not matter.
+√: Test a{Shift}bc aBc
+√: Test {3x}a aaa  √# Test the multiplier token.
+√: Test {3x}{Shift}a AAA
+√: Test {LShift}a A  √# Test if {LShift} is being handled as a sticky modifier key. Note that {LShift}a means {Hold}{LShift}{Release}{LShift}a (the token {LShift} denotes the left shift key which is not the same as the modifier {Shift}).
+√: Test {LShift}{LCtrl}a {Ctrl}A  √# Sticky modifier keys can be stacked.
+√: Test {LShift}{LShift}a A  √# Pressing a sticky modifier key multiple times has the same effect as pressing it once.
+√: Test {LShift}{Esc}a a  √# The key {Esc} clears the stuck modifiers.
+
+a Send x  √# Create a hotkey that simulates the X key when the A key is pressed.
+√: Test a x  √# Typing a should now output x.
+√: Test A A  √# The hotkey should not be triggered when a modifier is active.
+A Send y  √# Create a hotkey that simulates the Y key when the A key is pressed while {Shift} is active.
+√: Test A y
+√: Test {Ctrl}A {Ctrl}A
+{Ctrl}A Send z
+√: Test aA{Ctrl}A xyz
+√: Test {Ctrl}a {Ctrl}a
+{Ctrl}a Send UNICODE[0021]
+√: Test {Ctrl}a !
+
+√: Reset
+a Replace xyz  √# The command Replace is like Send except for two differences: 
+√: Test a xyz
+√: Test a{Bs} xyz{Bs}{Bs}{Bs}  √# Difference 1: if backspace is the first key after Replace is called, all inserted text will be removed.
+b Replace xy{Left}
+√: Test b{Bs} xy{Left}{Bs}{Del}
+cde Replace x
+√: Test cde cd{Bs}{Bs}x  √# Difference 2: if the chord that triggers the call to Replace consists of multiple keys, all inserted characters are removed.
+
+√: Reset
+√# Multiple commands are supported. Each command should be placed on a new line with prefix "√+ "
+a
+  √+ Send uvw
+  √+ Send xyz
+√: Test a uvwxyz
+b ReplaceOp x
+√: Test b {Space}x{Space}
+{LShift} Send r  √# It is also possible to bind a hotkey to a modifier key.
+√: Test {LShift} r
+√: Test C rc  √# However, that key is no longer a modifier.
+√: Test {Hold}{RShift}c{Release}{RShift} C
+
+√: Reset
+√: Test , ,{Space}  √# Check if Config.InsertSpaceAfterComma is working.
+,a Replace x
+√: Test ,a ,{Space}{Bs}{Bs}x  √# The command Replace should take into account the inserted space.
+
+√: Reset
+√> Process foo
+  a Send x  √# This hotkey only works when the foreground process is foo.
+√: Test a a
+√: Test a x foo  √# The optional third argument to √: Test determines the name of a pretended foreground process.
+√: Test a x Foo
+√: Test a a bar
+a Send u
+√> Process bar
+  a Send v
+  √> Window baz
+    a Send w  √# This hotkey only works when the foreground process is bar and the foreground window title is baz.
+√: Test a u
+√: Test a v bar
+√: Test a w bar baz  √# The fourth argument determines a window title.
+√: Test a v bar Baz
+√> Flag foo
+  a Send r  √# This hotkey only works when the flag foo is enabled.
+√: Test a u
+√: Test a r baz baz foo
+√> Window /^(?i)baz$/  √# An argument of the form /.../ is parsed as a regex.
+  a Send s
+√: Test a s bar BAZ
+
+√: Reset
+a EnterMode foo
+√> InputMode foo
+  b Send x
+√: Test ab{Esc} x
+√: Test abb{Esc} xx
+√: Test acbcb{Esc} xx
+b EnterModeHot foo
+√: Test b{Esc} x
+√: Test bb{Esc} xx
+c EnterMode bar
+√> ComposeMode bar
+  abc Send x
+√: Test cabc x
+√: Test cbc{Bs}abc x
+d EnterMode baz
+√> InputMode baz
+  a Send x
+  {Any}
+    √+ Send y
+    √+ LeaveMode
+√: Test dab xy
+
+√: Reset
+a EnterMode foo
+√> ComposeMode foo
+  {Any} PrintInput
+√: Test ab b
+√: Test aB B
+√: Test a{Up} {Up}
+√: Test a{Ctrl}b {Ctrl}b
+√: Test a{Space} {Space}
+b EnterMode bar
+√> ComposeMode bar
+  √: ComposeHelper ax Ay {Ctrl}az bcdu
+√: Test ba x
+√: Test bA y
+√: Test b{Ctrl}a z
+√: Test bbcd u
+√> InputMode baz  √# An empty mode.
+c Send x
+√: Test c x
+
+√: Reset
+√: Define {Cut} x
+a SendDynamic {Cut}
+√: Test a x
+√> Process foo
+  √: Define {Cut} y
+√: Test a x
+√: Test a y foo

@@ -11,6 +11,7 @@ namespace InputMaster.Parsers
 {
   class Parser : IParserOutputProvider
   {
+    private static readonly Regex CommentRegex = new Regex($"{Regex.Escape(Config.CommentIdentifier)}.*$", RegexOptions.Multiline);
     private readonly CommandCollection CommandCollection;
     private readonly Dictionary<string, HotkeyFile> HotkeyFiles = new Dictionary<string, HotkeyFile>();
     private readonly Dictionary<string, ParseAction> ParseActions = new Dictionary<string, ParseAction>();
@@ -64,22 +65,7 @@ namespace InputMaster.Parsers
 
     private string StripComments(string text)
     {
-      var sb = new StringBuilder(text.Length);
-      for (int i = 0; i < text.Length; i++)
-      {
-        if (text[i] == Config.CommentStart)
-        {
-          while (i + 1 < text.Length && text[i + 1] != '\n')
-          {
-            i++;
-          }
-        }
-        else
-        {
-          sb.Append(text[i]);
-        }
-      }
-      return sb.ToString();
+      return CommentRegex.Replace(text, "");
     }
 
     private class MyCharReader : CharReader
@@ -111,11 +97,11 @@ namespace InputMaster.Parsers
           else
           {
             HandleColumn(Location.Column);
-            if (Current == Config.SectionChar)
+            if (TryRead(Config.SectionIdentifier))
             {
               ReadSectionHeader();
             }
-            else if (At(Config.SpecialCommandPrefix))
+            else if (TryRead(Config.SpecialCommandIdentifier))
             {
               ReadSpecialCommand();
             }
@@ -167,7 +153,6 @@ namespace InputMaster.Parsers
         {
           throw new ParseException(Location, $"Cannot start section inside mode.");
         }
-        Read(Config.SectionChar);
         ReadSome(' ');
         var sectionType = ReadIdentifier();
         ReadSome(' ');
@@ -213,14 +198,13 @@ namespace InputMaster.Parsers
       private void ReadHotkey()
       {
         Chord = ReadChord();
-        Forbid(Config.ArgumentDelimiter);
         ReadMany(' ');
         BeginReadCommands();
       }
 
       private void ReadSpecialCommand()
       {
-        Read(Config.SpecialCommandPrefix);
+        ReadSome(' ');
         Chord = null;
         BeginReadCommands();
       }
@@ -332,7 +316,7 @@ namespace InputMaster.Parsers
             {
               if (Location.Column <= Sections.Peek().Column)
               {
-                break;
+                throw new ParseException(Location, "Incorrect indentation.");
               }
               else
               {
@@ -347,6 +331,8 @@ namespace InputMaster.Parsers
             {
               break;
             }
+            Read(Config.MultipleCommandsIdentifier);
+            ReadSome(' ');
             commandTokens.Add(ReadCommand());
           }
         }
@@ -439,7 +425,7 @@ namespace InputMaster.Parsers
 
       private Chord ReadChord()
       {
-        var locatedString = ReadUntil(' ', '\n', Config.ArgumentDelimiter);
+        var locatedString = ReadUntil(' ', '\n');
         return (Sections.Peek().IsMode ? ModeChordReader : ChordReader).CreateChord(locatedString);
       }
     }

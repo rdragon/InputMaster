@@ -7,7 +7,6 @@ namespace InputMaster
   [CommandTypes(CommandTypes.Visible)]
   class Actor
   {
-
     public void ExitInputMaster()
     {
       Env.Notifier.RequestExit();
@@ -94,7 +93,7 @@ namespace InputMaster
     [CommandTypes(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime)]
     public static void ComposeHelper(ExecuteAtParseTimeData data, [AllowSpaces] LocatedString locatedArgument)
     {
-      foreach (var s in locatedArgument.Split(' '))
+      foreach (var s in locatedArgument.Split(" "))
       {
         if (s.Length == 1)
         {

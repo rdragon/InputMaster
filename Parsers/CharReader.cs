@@ -119,6 +119,19 @@ namespace InputMaster.Parsers
       }
     }
 
+    protected bool TryRead(string text)
+    {
+      if (At(text))
+      {
+        Read(text);
+        return true;
+      }
+      else
+      {
+        return false;
+      }
+    }
+
     protected bool At(string text)
     {
       Helper.ForbidNull(text, nameof(text));

@@ -34,22 +34,22 @@ Finally we create hotkeys to open a webpage, insert a special character, and ins
 
 ```
 {Caps}d  Run http://www.dictionary.com/
-{Caps}p  Send ¶
+{Caps}s  Send âˆš
 {Caps};  Send This message is inserted when the ";" key is pressed while Caps is active.
 ```
 
-More examples can be found in `Resources/Tests.txt`.
+More examples can be found in `Resources/Tests.im`.
 
 ## Key sequences
 In the previous section we created hotkeys that required you to press a modifier key and another key. Using different modifier keys and combinations of modifiers it is possible to create a large number of hotkeys. However, these can be hard to remember.
 
-[Compose keys](https://en.wikipedia.org/wiki/Compose_key) enable you to define easy to remember key sequences to insert special characters. InputMaster has a similar feature, but does not limit you to only insert special characters. 
+[Compose keys](https://en.wikipedia.org/wiki/Compose_key) enable you to define easy to remember key sequences to insert special characters. InputMaster has a similar feature, but does not limit you to only insert special characters.
 
 The following example defines four key sequences to open four different web pages. All sequences start with the Right Windows Key. The first sequence enables you to press the keys Right Windows Key, T, E, D to start translating from English to Dutch.
 
 ```
 {RWin}  EnterMode MyMode
-¶ ComposeMode MyMode
+âˆš> ComposeMode MyMode
   ted  Run http://translate.google.nl/#en/nl
   tde  Run http://translate.google.nl/#nl/en
   tes  Run http://translate.google.nl/#en/es
@@ -57,7 +57,7 @@ The following example defines four key sequences to open four different web page
 ```
 
 ## Sticky Keys
-Windows comes with an accessibility feature called [Sticky Keys](https://en.wikipedia.org/wiki/Sticky_keys) (Linux and OS X have a similar feature) which enables you to press and release one or more modifier keys (Shift, Ctrl, Alt, Windows) and then press a non-modifier key to make the chosen modifiers be active during the latter key press. More precisely, pressing a modifier key has the effect of making the modifier become virtually "stuck" (or "unstuck", if it was already stuck). Then, when a non-modifier key is pressed any stuck modifiers are applied to this key press and become unstuck in the process. 
+Windows comes with an accessibility feature called [Sticky Keys](https://en.wikipedia.org/wiki/Sticky_keys) (Linux and OS X have a similar feature) which enables you to press and release one or more modifier keys (Shift, Ctrl, Alt, Windows) and then press a non-modifier key to make the chosen modifiers be active during the latter key press. More precisely, pressing a modifier key has the effect of making the modifier become virtually "stuck" (or "unstuck", if it was already stuck). Then, when a non-modifier key is pressed any stuck modifiers are applied to this key press and become unstuck in the process.
 
 This program mimics the Sticky Keys feature found in Windows, but with one difference. Pressing a modifier key cannot unstuck the modifier. When it was already stuck, it simply stays that way. This solves the problem of accidentally hitting a modifier key twice. It also makes it easier to keep track of which modifiers are stuck. To release all stuck modifiers you can press Escape.
 

@@ -1,0 +1,35 @@
+%YAML 1.2
+---
+name: InputMaster
+file_extensions:
+  - im
+scope: source.im
+variables:
+  ident: '[A-Z][A-Za-z_0-9]*'
+  comment: '√#'
+contexts:
+  prototype:
+    - include: comments
+  comments:
+    - match: ' *{{comment}}.*$'
+      scope: comment.line.im
+  main:
+    - match: '^ *√> +(Process|Window|Flag|InputMode|ComposeMode) '
+      scope: keyword.other.section.im
+      push: arguments
+    - match: '^ *√(:|\+) +'
+      scope: keyword.operator.other.im
+      push: command_prefix
+    - match: '^ *([^ ](?!{{comment}}))+ +'
+      push: command_prefix
+  arguments:
+    - match: '√,'
+      scope: keyword.operator.argument-delimiter.im
+    - match: '$'
+      pop: true
+  command_prefix:
+    - match: '{{ident}}(?= |$|{{comment}})'
+      scope: entity.name.function.im
+      set: arguments
+    - match: '(?=)'
+      pop: true

@@ -683,7 +683,7 @@ namespace InputMaster.Forms
       /// </summary>
       private static int GetStartOfSection(string padded, string section)
       {
-        var s = $"\n{Config.SectionChar} {section}\n";
+        var s = $"\n{Config.TextEditorSectionIdentifier} {section}\n";
         var i = padded.IndexOf(s);
         return i == -1 ? -1 : i + 1;
       }
@@ -702,7 +702,7 @@ namespace InputMaster.Forms
       /// </summary>
       private static int GetAppendIndex(string padded, int index)
       {
-        var i = padded.IndexOf($"\n{Config.SectionChar} ", index);
+        var i = padded.IndexOf($"\n{Config.TextEditorSectionIdentifier} ", index);
         i = i == -1 ? padded.Length : i;
         for (; i >= 2; i--)
         {
@@ -819,7 +819,7 @@ namespace InputMaster.Forms
       private void MoveCaretToTopOfSection()
       {
         var padded = GetPaddedText(Rtb.Text);
-        var i = padded.LastIndexOf($"\n{Config.SectionChar} ", Rtb.SelectionStart + 1);
+        var i = padded.LastIndexOf($"\n{Config.TextEditorSectionIdentifier} ", Rtb.SelectionStart + 1);
         if (i == -1)
         {
           Rtb.Select(0, 0);
@@ -871,7 +871,7 @@ namespace InputMaster.Forms
         var sb = new StringBuilder();
         foreach (var line in Rtb.Lines)
         {
-          if (line.Length >= 3 && line.StartsWith(Config.SectionChar + " "))
+          if (line.Length >= 3 && line.StartsWith(Config.TextEditorSectionIdentifier + " "))
           {
             var s = line.Substring(2);
             if (!string.IsNullOrWhiteSpace(s))

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace InputMaster.Parsers
 {
@@ -10,6 +11,9 @@ namespace InputMaster.Parsers
   {
     public static readonly LocatedString None = new LocatedString();
     public static readonly LocatedString Empty = new LocatedString("");
+    private static readonly string DelimiterPattern = $" *{Regex.Escape(Config.ArgumentDelimiter)} *";
+    private static readonly Regex DelimiterRegex = new Regex($"{DelimiterPattern}| +");
+    private static readonly Regex DelimiterRegexAllowSpace = new Regex(DelimiterPattern);
 
     public LocatedString(string text) : this(text, Location.Unknown) { }
 
@@ -50,8 +54,9 @@ namespace InputMaster.Parsers
       return TrimStart().TrimEnd();
     }
 
-    public LocatedString Require(char delimiter, int targetCount = -1, int minCount = -1, int maxCount = -1)
+    public LocatedString Require(string delimiter, int targetCount = -1, int minCount = -1, int maxCount = -1)
     {
+      Helper.ForbidNullOrEmpty(delimiter, nameof(delimiter));
       var count = Split(delimiter).Length;
       if (targetCount != -1 && count != targetCount)
       {
@@ -88,15 +93,16 @@ namespace InputMaster.Parsers
       }
     }
 
-    public LocatedString[] Split(char c = ' ')
+    public LocatedString[] Split(string s)
     {
-      var parts = Value.Length == 0 ? new string[0] : Value.Split(c);
+      Helper.ForbidNullOrEmpty(s, nameof(s));
+      var parts = Value.Length == 0 ? new string[0] : Value.Split(new string[] { s }, StringSplitOptions.None);
       var column = 0;
       var ar = new LocatedString[parts.Length];
       for (int i = 0; i < parts.Length; i++)
       {
         ar[i] = new LocatedString(parts[i], Location.AddColumns(column)).Trim();
-        column += parts[i].Length + 1;
+        column += parts[i].Length + s.Length;
       }
       return ar;
     }
@@ -146,12 +152,6 @@ namespace InputMaster.Parsers
 
     public IEnumerable<object> ReadArguments(IEnumerable<ParameterInfo> parameterInfos)
     {
-      var delimiter = Value.Contains(Config.ArgumentDelimiter) ? Config.ArgumentDelimiter : ' ';
-      return ReadArguments(parameterInfos.ToArray(), delimiter);
-    }
-
-    private IEnumerable<object> ReadArguments(ParameterInfo[] parameterInfos, char delimiter)
-    {
       var arguments = new List<object>();
       var current = Trim();
       foreach (var parameterInfo in parameterInfos)
@@ -169,29 +169,29 @@ namespace InputMaster.Parsers
         }
         else
         {
-          var c = (parameterInfo.IsDefined(typeof(AllowSpacesAttribute)) && delimiter == ' ') ? Config.ArgumentDelimiter : delimiter;
-          var j = current.Value.IndexOf(c);
+          var regex = parameterInfo.IsDefined(typeof(AllowSpacesAttribute)) ? DelimiterRegexAllowSpace : DelimiterRegex;
+          var match = regex.Match(current.Value);
           LocatedString argument;
-          if (j == -1)
+          if (match.Success)
           {
-            argument = current;
-            current = Empty;
+            argument = current.Substring(0, match.Index);
+            current = current.Substring(match.Index + match.Length);
           }
           else
           {
-            argument = current.Substring(0, j).TrimEnd();
-            current = current.Substring(j + 1).TrimStart();
+            argument = current;
+            current = Empty;
           }
           arguments.Add(argument.ReadArgument(parameterInfo));
         }
       }
       if (current.Length > 0)
       {
-        throw GetException(maxCount: parameterInfos.Length);
+        throw GetException(maxCount: parameterInfos.Count());
       }
       else
       {
-        return arguments.Concat(Enumerable.Repeat(Type.Missing, parameterInfos.Length - arguments.Count));
+        return arguments.Concat(Enumerable.Repeat(Type.Missing, parameterInfos.Count() - arguments.Count));
       }
     }
 
