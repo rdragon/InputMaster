@@ -24,8 +24,6 @@ A Send y  √# Create a hotkey that simulates the Y key when the A key is presse
 {Ctrl}A Send z
 √: Test aA{Ctrl}A xyz
 √: Test {Ctrl}a {Ctrl}a
-{Ctrl}a Send UNICODE[0021]
-√: Test {Ctrl}a !
 
 √: Reset
 a Replace xyz  √# The command Replace is like Send except for two differences: 

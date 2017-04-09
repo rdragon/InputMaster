@@ -6,6 +6,7 @@ using InputMaster.Parsers;
 using System.Linq;
 using System.Text.RegularExpressions;
 using InputMaster.Win32;
+using System.Collections.Generic;
 
 namespace InputMaster
 {
@@ -14,7 +15,7 @@ namespace InputMaster
     // Paths
     public static readonly DirectoryInfo DataDir = new DirectoryInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "InputMaster"));
     public static readonly DirectoryInfo CacheDir = new DirectoryInfo(Path.Combine(DataDir.FullName, "Cache"));
-    public static readonly FileInfo HotkeyFile = new FileInfo(Path.Combine(DataDir.FullName, "Hotkeys.txt"));
+    public static readonly FileInfo HotkeyFile = new FileInfo(Path.Combine(DataDir.FullName, "Hotkeys.im"));
     public static readonly FileInfo WindowHandleFile = new FileInfo(Path.Combine(CacheDir.FullName, "WindowHandle"));
     public static readonly FileInfo ErrorLogFile = new FileInfo(Path.Combine(CacheDir.FullName, "ErrorLog.txt"));
     public static DirectoryInfo TextEditorDir = new DirectoryInfo(Path.Combine(DataDir.FullName, "TextEditor"));
@@ -31,12 +32,12 @@ namespace InputMaster
     public const string InputModeSectionIdentifier = "InputMode";
     public const string ComposeModeSectionIdentifier = "ComposeMode";
     private const string InnerIdentifierTokenPattern = "[A-Z][a-zA-Z0-9_]+";
-    public static string TokenPattern = CreateTokenPattern($@"({InnerIdentifierTokenPattern}|(0|[1-9][0-9]*)x)");
-    public static string IdentifierTokenPattern = CreateTokenPattern(InnerIdentifierTokenPattern);
-    public static InputReader DefaultInputReader = new InputReader(InputReaderFlags.AllowCustomCharacter | InputReaderFlags.AllowHoldRelease | InputReaderFlags.AllowMultiplier);
-    public static InputReader DefaultChordReader = new InputReader(InputReaderFlags.AllowCustomModifier);
-    public static InputReader DefaultModeChordReader = new InputReader(InputReaderFlags.AllowCustomModifier | InputReaderFlags.AllowKeywordAny);
-    public static InputReader LiteralInputReader = new InputReader(InputReaderFlags.ParseLiteral);
+    public static readonly string TokenPattern = CreateTokenPattern($@"({InnerIdentifierTokenPattern}|(0|[1-9][0-9]*)x)");
+    public static readonly string IdentifierTokenPattern = CreateTokenPattern(InnerIdentifierTokenPattern);
+    public static readonly InputReader DefaultInputReader = new InputReader(InputReaderFlags.AllowCustomCharacter | InputReaderFlags.AllowHoldRelease | InputReaderFlags.AllowMultiplier | InputReaderFlags.AllowCustomToken);
+    public static readonly InputReader DefaultChordReader = new InputReader(InputReaderFlags.AllowCustomModifier);
+    public static readonly InputReader DefaultModeChordReader = new InputReader(InputReaderFlags.AllowCustomModifier | InputReaderFlags.AllowKeywordAny);
+    public static readonly InputReader LiteralInputReader = new InputReader(InputReaderFlags.ParseLiteral);
 
     // English US keyboard layout
     public const string Keyboard = "`-=[];'\\,./0123456789abcdefghijklmnopqrstuvwxyz";
@@ -49,6 +50,8 @@ namespace InputMaster
     public static readonly Combo ClearModeCombo = new Combo(Input.Bs);
     public static readonly Combo ShowModeCombo = new Combo(Input.Space);
     public static readonly Combo[] ClearModeCombos = new Combo[] { new Combo(CloseKey), new Combo(Input.Comma) };
+    public static readonly Dictionary<string, Input> CustomInputs = new Dictionary<string, Input>();
+    public static readonly Dictionary<string, Combo> CustomCombos = new Dictionary<string, Combo>();
     public static readonly TimeSpan ExitRunningInputMasterTimeout = TimeSpan.FromSeconds(1);
     public static readonly TimeSpan NotifierTextLifetime = TimeSpan.FromSeconds(1.5);
     public static readonly TimeSpan SchedulerInterval = TimeSpan.FromMinutes(1);
@@ -107,15 +110,15 @@ namespace InputMaster
 
     public static readonly Input[] LeftModifierKeys = new Input[] { Input.LShift, Input.LCtrl, Input.LAlt, Input.LWin };
 
-    public static void Initialize(InstanceCollection instances)
+    public static void Initialize(InstanceCollection instanceCollection)
     {
-      var colorTracker = new ColorTracker(instances.FlagManager);
-      instances.Brain.AddDisposable(colorTracker);
-      var processManager = new HiddenProcessManager(instances.Brain);
-      instances.Brain.AddDisposable(processManager);
-      var scheduler = new Scheduler(instances.Brain, processManager);
-      instances.Brain.AddDisposable(scheduler);
-      instances.CommandCollection.AddActors(new SecondClipboard(instances.ForegroundInteractor), new CustomActor(), colorTracker);
+      var colorTracker = new ColorTracker(instanceCollection.FlagManager);
+      instanceCollection.Brain.AddDisposable(colorTracker);
+      var processManager = new HiddenProcessManager(instanceCollection.Brain);
+      instanceCollection.Brain.AddDisposable(processManager);
+      var scheduler = new Scheduler(instanceCollection.Brain, processManager);
+      instanceCollection.Brain.AddDisposable(scheduler);
+      instanceCollection.CommandCollection.AddActors(new SecondClipboard(instanceCollection.ForegroundInteractor), new CustomActor(), colorTracker);
 
     }
 
@@ -125,6 +128,11 @@ namespace InputMaster
       {
         Env.CreateInjector().Add(Input.NumLock).Run();
       }
+    }
+
+    public static bool HandleCustomToken(string text, IInjectorStream<object> injectorStream)
+    {
+      return false;
     }
 
     private static string CreateTokenPattern(string text)

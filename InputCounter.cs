@@ -32,6 +32,14 @@
           LeftCount++;
           RightCount--;
         }
+        else if (input == Input.Bs)
+        {
+          LeftCount--;
+        }
+        else if (input == Input.Del)
+        {
+          RightCount--;
+        }
         else if (Config.InsertSpaceAfterComma && input == Input.Comma && !IsInjectedInput)
         {
           LeftCount += 2;

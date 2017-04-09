@@ -192,16 +192,6 @@ namespace InputMaster.Parsers
       return new LocatedString(Helper.CreateTokenString(text), location);
     }
 
-    protected LocatedString ReadUnicodeToken(out string text)
-    {
-      var location = Location;
-      var s = "UNICODE[";
-      Read(s);
-      text = ReadUntil(']').Value;
-      Read(']');
-      return new LocatedString(s + text + ']', location);
-    }
-
     protected LocatedString ReadIdentifier()
     {
       return ReadIdentifier(true);
