@@ -9,10 +9,15 @@ variables:
   comment: '√#'
 contexts:
   prototype:
-    - include: comments
-  comments:
     - match: ' *{{comment}}.*$'
       scope: comment.line.im
+    - match: ' *√\((?={{ident}}\))'
+      push: preprocessor
+      scope: keyword.operator.preprocessor.im
+  preprocessor:
+    - match: '\)'
+      scope: keyword.operator.preprocessor.im
+      pop: true
   main:
     - match: '^ *√> +(Process|Window|Flag|InputMode|ComposeMode) '
       scope: keyword.other.section.im

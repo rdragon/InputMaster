@@ -13,8 +13,8 @@ namespace InputMaster
   static class Config
   {
     // Paths
-    public static readonly DirectoryInfo DataDir = new DirectoryInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "InputMaster"));
-    public static readonly DirectoryInfo CacheDir = new DirectoryInfo(Path.Combine(DataDir.FullName, "Cache"));
+    public static readonly DirectoryInfo DataDir = new DirectoryInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "InputMaster", "Data"));
+    public static readonly DirectoryInfo CacheDir = new DirectoryInfo(Path.Combine(DataDir.Parent.FullName, "Cache"));
     public static readonly FileInfo HotkeyFile = new FileInfo(Path.Combine(DataDir.FullName, "Hotkeys.im"));
     public static readonly FileInfo WindowHandleFile = new FileInfo(Path.Combine(CacheDir.FullName, "WindowHandle"));
     public static readonly FileInfo ErrorLogFile = new FileInfo(Path.Combine(CacheDir.FullName, "ErrorLog.txt"));
@@ -23,21 +23,23 @@ namespace InputMaster
     // Parsing
     public const char TokenStart = '{';
     public const char TokenEnd = '}';
-    public const string SectionIdentifier = "√>";
-    public const string SpecialCommandIdentifier = "√:";
-    public const string MultipleCommandsIdentifier = "√+";
-    public const string CommentIdentifier = "√#";
-    public const string ArgumentDelimiter = "√,";
+    public const char SpecialChar = '√';
+    public static readonly string SectionIdentifier = $"{SpecialChar}>";
+    public static readonly string SpecialCommandIdentifier = $"{SpecialChar}:";
+    public static readonly string MultipleCommandsIdentifier = $"{SpecialChar}+";
+    public static readonly string CommentIdentifier = $"{SpecialChar}#";
+    public static readonly string ArgumentDelimiter = $"{SpecialChar},";
     public const string FlagSectionIdentifier = "Flag";
     public const string InputModeSectionIdentifier = "InputMode";
     public const string ComposeModeSectionIdentifier = "ComposeMode";
-    private const string InnerIdentifierTokenPattern = "[A-Z][a-zA-Z0-9_]+";
+    public const string InnerIdentifierTokenPattern = "[A-Z][a-zA-Z0-9_]+";
     public static readonly string TokenPattern = CreateTokenPattern($@"({InnerIdentifierTokenPattern}|(0|[1-9][0-9]*)x)");
     public static readonly string IdentifierTokenPattern = CreateTokenPattern(InnerIdentifierTokenPattern);
     public static readonly InputReader DefaultInputReader = new InputReader(InputReaderFlags.AllowCustomCharacter | InputReaderFlags.AllowHoldRelease | InputReaderFlags.AllowMultiplier | InputReaderFlags.AllowCustomToken);
     public static readonly InputReader DefaultChordReader = new InputReader(InputReaderFlags.AllowCustomModifier);
     public static readonly InputReader DefaultModeChordReader = new InputReader(InputReaderFlags.AllowCustomModifier | InputReaderFlags.AllowKeywordAny);
     public static readonly InputReader LiteralInputReader = new InputReader(InputReaderFlags.ParseLiteral);
+    public static readonly Dictionary<string, string> PreprocessorReplaces = new Dictionary<string, string>();
 
     // English US keyboard layout
     public const string Keyboard = "`-=[];'\\,./0123456789abcdefghijklmnopqrstuvwxyz";
@@ -112,6 +114,13 @@ namespace InputMaster
 
     public static void Initialize(InstanceCollection instanceCollection)
     {
+      PreprocessorReplaces.Add(nameof(DataDir), DataDir.FullName);
+      PreprocessorReplaces.Add(nameof(CacheDir), CacheDir.FullName);
+      PreprocessorReplaces.Add(nameof(HotkeyFile), HotkeyFile.FullName);
+      PreprocessorReplaces.Add(nameof(WindowHandleFile), WindowHandleFile.FullName);
+      PreprocessorReplaces.Add(nameof(ErrorLogFile), ErrorLogFile.FullName);
+      PreprocessorReplaces.Add(nameof(TextEditorDir), TextEditorDir.FullName);
+
       var colorTracker = new ColorTracker(instanceCollection.FlagManager);
       instanceCollection.Brain.AddDisposable(colorTracker);
       var processManager = new HiddenProcessManager(instanceCollection.Brain);

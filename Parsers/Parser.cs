@@ -12,6 +12,7 @@ namespace InputMaster.Parsers
   class Parser : IParserOutputProvider
   {
     private static readonly Regex CommentRegex = new Regex($"{Regex.Escape(Config.CommentIdentifier)}.*$", RegexOptions.Multiline);
+    private static readonly Regex PreprocessorReplaceRegex = new Regex($@"{Config.SpecialChar}\((?<ident>{Config.InnerIdentifierTokenPattern})\)");
     private readonly CommandCollection CommandCollection;
     private readonly Dictionary<string, HotkeyFile> HotkeyFiles = new Dictionary<string, HotkeyFile>();
     private readonly Dictionary<string, ParseAction> ParseActions = new Dictionary<string, ParseAction>();
@@ -48,7 +49,7 @@ namespace InputMaster.Parsers
       {
         foreach (var hotkeyFile in HotkeyFiles)
         {
-          new MyCharReader(new LocatedString(StripComments(hotkeyFile.Value.Text), new Location(1, 1)), this, parserOutput).Run();
+          new MyCharReader(new LocatedString(Preprocessor(hotkeyFile.Value.Text), new Location(1, 1)), this, parserOutput).Run();
         }
         foreach (var action in ParseActions)
         {
@@ -63,9 +64,34 @@ namespace InputMaster.Parsers
       NewParserOutput(parserOutput);
     }
 
-    private string StripComments(string text)
+    private string Preprocessor(string text)
     {
-      return CommentRegex.Replace(text, "");
+      text = CommentRegex.Replace(text, "");
+      var sb = new StringBuilder(text.Length * 2);
+      int i = 0;
+      while (true)
+      {
+        var match = PreprocessorReplaceRegex.Match(text, i);
+        if (match.Success)
+        {
+          sb.Append(text.Substring(i, match.Index - i));
+          i = match.Index + match.Length;
+          string s;
+          var name = match.Groups["ident"].Value;
+          if (!Config.PreprocessorReplaces.TryGetValue(name, out s))
+          {
+            Env.Notifier.WriteWarning($"Use of undefined preprocessor variable '{name}'.");
+            s = "(undefined)";
+          }
+          sb.Append(s);
+        }
+        else
+        {
+          break;
+        }
+      }
+      sb.Append(text.Substring(i));
+      return sb.ToString();
     }
 
     private class MyCharReader : CharReader
