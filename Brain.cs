@@ -55,7 +55,7 @@ namespace InputMaster
       var comboRelay = new ComboRelay(modeHook, comboHook);
       var inputHook = new InputHook(comboRelay);
       var inputRelay = new InputRelay(inputHook);
-      var primaryHook = new PrimaryHook(inputRelay);
+      var primaryHook = new PrimaryHook(this, inputRelay);
       Disposables.Add(primaryHook);
       var foregroundInteractor = new ForegroundInteractor();
       var actor = new Actor();

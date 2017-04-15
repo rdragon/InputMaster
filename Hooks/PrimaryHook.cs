@@ -20,11 +20,13 @@ namespace InputMaster.Hooks
     private HookHandle HookHandle;
     private HookHandle MouseHookHandle;
 
-    public PrimaryHook(IInputHook targetHook)
+    public PrimaryHook(Brain brain, IInputHook targetHook)
     {
       HookProcedureFunction = HookProcedure; // So the garbage collector does not free the procedure.
       TargetHook = targetHook;
       Instance = this;
+
+      brain.Exiting += Reset;
     }
 
     public static void Unhook()
