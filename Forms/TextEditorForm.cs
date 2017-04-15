@@ -76,13 +76,13 @@ namespace InputMaster.Forms
       {
         if (e.KeyData == (Keys.Control | Keys.N))
         {
-          Run(CreateNewFileAsync);
           e.Handled = true;
+          Run(CreateNewFileAsync);
         }
         else if (e.KeyData == (Keys.Control | Keys.Shift | Keys.F))
         {
-          Run(FindAllAsync);
           e.Handled = true;
+          Run(FindAllAsync);
         }
         else if (e.KeyData == (Keys.Control | Keys.Shift | Keys.I))
         {
@@ -93,6 +93,11 @@ namespace InputMaster.Forms
         {
           e.Handled = true;
           Run(ExportToDirectoryAsync);
+        }
+        else if (e.KeyData == (Keys.Control | Keys.O))
+        {
+          e.Handled = true;
+          Run(OpenCustomFileAsync);
         }
       };
 
@@ -135,6 +140,26 @@ namespace InputMaster.Forms
           return FileTabs[i];
         }
       }
+    }
+
+    private static FileInfo GetDataFile(FileInfo file)
+    {
+      return new FileInfo(Path.Combine(GetDataDir(file.Directory.Parent).FullName, file.Name));
+    }
+
+    private static FileInfo GetNameFile(FileInfo file)
+    {
+      return new FileInfo(Path.Combine(GetNamesDir(file.Directory.Parent).FullName, file.Name));
+    }
+
+    private static DirectoryInfo GetDataDir(DirectoryInfo parentDir)
+    {
+      return new DirectoryInfo(Path.Combine(parentDir.FullName, "data"));
+    }
+
+    private static DirectoryInfo GetNamesDir(DirectoryInfo parentDir)
+    {
+      return new DirectoryInfo(Path.Combine(parentDir.FullName, "names"));
     }
 
     public void Start()
@@ -217,24 +242,16 @@ namespace InputMaster.Forms
       };
     }
 
-    private static FileInfo GetDataFile(FileInfo file)
+    private async Task OpenCustomFileAsync()
     {
-      return new FileInfo(Path.Combine(GetDataDir(file.Directory.Parent).FullName, file.Name));
-    }
-
-    private static FileInfo GetNameFile(FileInfo file)
-    {
-      return new FileInfo(Path.Combine(GetNamesDir(file.Directory.Parent).FullName, file.Name));
-    }
-
-    private static DirectoryInfo GetDataDir(DirectoryInfo parentDir)
-    {
-      return new DirectoryInfo(Path.Combine(parentDir.FullName, "data"));
-    }
-
-    private static DirectoryInfo GetNamesDir(DirectoryInfo parentDir)
-    {
-      return new DirectoryInfo(Path.Combine(parentDir.FullName, "names"));
+      await Task.Yield();
+      var s = Helper.GetString("File path");
+      if (!string.IsNullOrWhiteSpace(s))
+      {
+        var file = new FileInfo(s);
+        Helper.RequireExists(file);
+        OpenFile(file);
+      }
     }
 
     private async Task CompileTextEditorModeAsync(bool updateHotkeyFile = false)

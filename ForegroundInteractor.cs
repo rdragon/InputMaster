@@ -64,7 +64,7 @@ namespace InputMaster
     [CommandTypes(CommandTypes.Visible)]
     public async Task ReplicateSelectedText()
     {
-      await Task.Delay(1);
+      await Task.Yield();
       var s = Helper.GetString("Count");
       var i = int.Parse(s);
       await ModifySelectedText(t => { return string.Concat(Enumerable.Repeat(t, i)); });
