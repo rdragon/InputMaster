@@ -1,10 +1,12 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace InputMaster
 {
+  [JsonConverter(typeof(ChordJsonConverter))]
   class Chord : IEquatable<Chord>, IEnumerable<Combo>
   {
     private readonly List<Combo> CombosReversed;
@@ -143,6 +145,24 @@ namespace InputMaster
     {
       var anys = CombosReversed.Where(z => z.Input == Input.Any);
       return anys.Select(z => Helper.CountOnes((int)z.Modifiers)).Sum() - 999 * anys.Count();
+    }
+  }
+
+  class ChordJsonConverter : JsonConverter
+  {
+    public override bool CanConvert(Type objectType)
+    {
+      return objectType == typeof(Chord);
+    }
+
+    public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+    {
+      return Config.DefaultChordReader.CreateChord(new Parsers.LocatedString(reader.Value.ToString()));
+    }
+
+    public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+    {
+      writer.WriteValue(value.ToString());
     }
   }
 }

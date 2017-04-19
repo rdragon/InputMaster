@@ -62,21 +62,6 @@ namespace InputMaster
       }
     }
 
-    //public static void RunTask(Action action)
-    //{
-    //  Task.Run(() =>
-    //  {
-    //    try
-    //    {
-    //      action();
-    //    }
-    //    catch (Exception ex) when (!IsCriticalException(ex))
-    //    {
-    //      HandleFatalException(ex, "execution of a (thread) task");
-    //    }
-    //  });
-    //}
-
     public static void StartProcess(string fileName, string arguments = "", bool captureForeground = false)
     {
       if (captureForeground)
@@ -109,7 +94,7 @@ namespace InputMaster
       {
         suffix = " " + suffix;
       }
-      return $"Unhandled exception thrown{suffix}. This may cause unexpected behaviour. A program restart is recommended.";
+      return $"Unhandled exception thrown{suffix}.";
     }
 
     public static string GetUnhandledExceptionFatalErrorMessage(string suffix = "")
@@ -142,9 +127,9 @@ namespace InputMaster
       return oldValue;
     }
 
-    public static string GetString(string title, string defaultValue = null)
+    public static string GetString(string title, string defaultValue = null, bool selectAll = true)
     {
-      using (var form = new GetStringForm(ForbidNull(title, nameof(title)), defaultValue))
+      using (var form = new GetStringForm(ForbidNull(title, nameof(title)), defaultValue, selectAll))
       {
         form.ShowDialog();
         return form.GetValue();
@@ -227,6 +212,36 @@ namespace InputMaster
       {
         Env.Notifier.WriteError(ex);
       }
+    }
+
+    public static void Run(Func<Task> action)
+    {
+      Task.Factory.StartNew(async () =>
+      {
+        try
+        {
+          await action();
+        }
+        catch (Exception ex)
+        {
+          HandleFatalException(ex);
+        }
+      }, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
+    public static void Run(Action action)
+    {
+      Task.Factory.StartNew(() =>
+      {
+        try
+        {
+          action();
+        }
+        catch (Exception ex)
+        {
+          HandleFatalException(ex);
+        }
+      }, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
 
@@ -651,6 +666,7 @@ namespace InputMaster
     public static Regex GetRegex(string text, RegexOptions options = RegexOptions.None, bool fullMatchIfLiteral = false)
     {
       ForbidNull(text, nameof(text));
+      text = Parser.RunPreprocessor(text);
       if (text.Length > 1 && text[0] == '/' && text[text.Length - 1] == '/')
       {
         text = text.Substring(1, text.Length - 2);

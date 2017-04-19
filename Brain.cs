@@ -61,15 +61,17 @@ namespace InputMaster
       var actor = new Actor();
 
       TextEditorForm textEditorForm = null;
+      AccountManager accountManager = null;
       if (Config.EnableTextEditor)
       {
         textEditorForm = new TextEditorForm(this, modeHook, parser);
         Disposables.Add(textEditorForm);
-        commandCollection.AddActors(textEditorForm);
+        accountManager = new AccountManager(textEditorForm, parser, modeHook);
+        commandCollection.AddActors(textEditorForm, accountManager);
       }
 
       commandCollection.AddActors(this, notifier, commandCollection, foregroundInteractor, flagManager, foregroundListener, parser, primaryHook, inputRelay, inputHook, comboRelay, comboHook, modeHook, actor);
-      var instances = new InstanceCollection(this, notifier, commandCollection, foregroundInteractor, flagManager, foregroundListener, parser, textEditorForm, primaryHook, inputRelay, inputHook, comboRelay, comboHook, modeHook, actor);
+      var instances = new InstanceCollection(this, notifier, commandCollection, foregroundInteractor, flagManager, foregroundListener, parser, textEditorForm, primaryHook, inputRelay, inputHook, comboRelay, comboHook, modeHook, actor, accountManager);
 
       Config.Initialize(instances);
       CreateNotifyIcon();

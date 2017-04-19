@@ -45,11 +45,6 @@ namespace InputMaster.Parsers
     }
     protected Location Location { get; private set; }
 
-    private static bool IsIdentifierCharacter(char c)
-    {
-      return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
-    }
-
     protected void Reset()
     {
       Index = 0;
@@ -225,7 +220,7 @@ namespace InputMaster.Parsers
       }
       else
       {
-        return ReadWhile(IsIdentifierCharacter);
+        return ReadWhile(Config.IsIdentifierCharacter);
       }
     }
   }

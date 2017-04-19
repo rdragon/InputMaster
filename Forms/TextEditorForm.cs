@@ -70,6 +70,7 @@ namespace InputMaster.Forms
         NamesDir.Create();
         State.Load();
         await CompileTextEditorModeAsync(true);
+        Started();
       };
 
       KeyDown += (s, e) =>
@@ -77,27 +78,27 @@ namespace InputMaster.Forms
         if (e.KeyData == (Keys.Control | Keys.N))
         {
           e.Handled = true;
-          Run(CreateNewFileAsync);
+          Helper.Run(CreateNewFileAsync);
         }
         else if (e.KeyData == (Keys.Control | Keys.Shift | Keys.F))
         {
           e.Handled = true;
-          Run(FindAllAsync);
+          Helper.Run(FindAllAsync);
         }
         else if (e.KeyData == (Keys.Control | Keys.Shift | Keys.I))
         {
           e.Handled = true;
-          Run(ImportFromDirectoryAsync);
+          Helper.Run(ImportFromDirectoryAsync);
         }
         else if (e.KeyData == (Keys.Control | Keys.Shift | Keys.E))
         {
           e.Handled = true;
-          Run(ExportToDirectoryAsync);
+          Helper.Run(ExportToDirectoryAsync);
         }
         else if (e.KeyData == (Keys.Control | Keys.O))
         {
           e.Handled = true;
-          Run(OpenCustomFileAsync);
+          Helper.Run(OpenCustomFileAsync);
         }
       };
 
@@ -120,7 +121,7 @@ namespace InputMaster.Forms
       };
     }
 
-    public FileInfo PasswordFile { get; private set; }
+    public FileInfo AccountFile { get; private set; }
 
     private DirectoryInfo DataDir => GetDataDir(Config.TextEditorDir);
 
@@ -141,6 +142,10 @@ namespace InputMaster.Forms
         }
       }
     }
+
+    public event Action Started = delegate { };
+
+    public event Action Saving = delegate { };
 
     private static FileInfo GetDataFile(FileInfo file)
     {
@@ -164,7 +169,7 @@ namespace InputMaster.Forms
 
     public void Start()
     {
-      Run(() =>
+      Helper.Run(() =>
       {
         if (Config.UseCipher)
         {
@@ -183,6 +188,18 @@ namespace InputMaster.Forms
       else
       {
         return File.ReadAllText(file.FullName);
+      }
+    }
+
+    public void Encrypt(FileInfo file, string text)
+    {
+      if (Config.UseCipher)
+      {
+        Cipher.Encrypt(file, text, Password);
+      }
+      else
+      {
+        File.WriteAllText(file.FullName, text);
       }
     }
 
@@ -258,9 +275,8 @@ namespace InputMaster.Forms
     {
       var failCount = 0;
       HotkeyFile hotkeyFile = null;
-      var multipleHotkeyFilesFound = false;
-      PasswordFile = null;
-      var multiplePasswordsFilesFound = false;
+      var hotkeyFilesFound = 0;
+      var accountFilesFound = 0;
       List<FileLink> links = new List<FileLink>();
       await Task.Run(() =>
       {
@@ -272,29 +288,23 @@ namespace InputMaster.Forms
             failCount++;
             continue;
           }
-          links.Add(new FileLink { Title = title, File = file });
           if (updateHotkeyFile && title.Contains("[hotkeys]"))
           {
-            if (hotkeyFile != null)
+            var text = Decrypt(GetDataFile(file));
+            hotkeyFile = new HotkeyFile(nameof(TextEditorForm), text);
+            hotkeyFilesFound++;
+          }
+          if (title.Contains("[accounts]"))
+          {
+            accountFilesFound++;
+            if (AccountFile == null)
             {
-              multipleHotkeyFilesFound = true;
-            }
-            else
-            {
-              var text = Decrypt(GetDataFile(file));
-              hotkeyFile = new HotkeyFile(nameof(TextEditorForm), text);
+              AccountFile = GetDataFile(file);
             }
           }
-          if (title.Contains("[passwords]"))
+          else
           {
-            if (PasswordFile != null)
-            {
-              multiplePasswordsFilesFound = true;
-            }
-            else
-            {
-              PasswordFile = GetDataFile(file);
-            }
+            links.Add(new FileLink { Title = title, File = file });
           }
         }
       });
@@ -303,13 +313,18 @@ namespace InputMaster.Forms
         Env.Notifier.WriteWarning($"Password incorrect. Failed to decrypt {failCount} files.");
         WrongPassword = true;
       }
-      if (multiplePasswordsFilesFound)
+      if (accountFilesFound > 1)
       {
-        Env.Notifier.WriteWarning("Multiple passwords files found. Only one is supported.");
+        Env.Notifier.WriteError("Multiple account files found.");
       }
-      if (multipleHotkeyFilesFound)
+      else if (accountFilesFound == 0)
       {
-        Env.Notifier.WriteWarning("Multiple hotkey files found. Only one is supported.");
+        var file = CreateNewFile("[hidden] [accounts]", "[]");
+        AccountFile = GetDataFile(file);
+      }
+      if (hotkeyFilesFound > 1)
+      {
+        Env.Notifier.WriteError("Multiple hotkey files found.");
       }
       Parser.UpdateParseAction(nameof(TextEditorForm), (parserOutput) =>
       {
@@ -393,36 +408,6 @@ namespace InputMaster.Forms
       Env.Notifier.WriteError("Cannot complete action (wrong password).");
     }
 
-    private void Run(Func<Task> action)
-    {
-      Task.Factory.StartNew(async () =>
-      {
-        try
-        {
-          await action();
-        }
-        catch (Exception ex)
-        {
-          Helper.HandleFatalException(ex);
-        }
-      }, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.FromCurrentSynchronizationContext());
-    }
-
-    private void Run(Action action)
-    {
-      Task.Factory.StartNew(() =>
-      {
-        try
-        {
-          action();
-        }
-        catch (Exception ex)
-        {
-          Helper.HandleFatalException(ex);
-        }
-      }, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.FromCurrentSynchronizationContext());
-    }
-
     private async Task ExportToDirectoryAsync()
     {
       var path = Helper.GetString("Please give a directory to which to export all files.");
@@ -488,6 +473,7 @@ namespace InputMaster.Forms
       {
         Helper.TryCatchLog(fileTab.Save);
       }
+      Saving();
     }
 
     private async Task FindAllAsync()
@@ -520,18 +506,6 @@ namespace InputMaster.Forms
       foreach (var item in FileTabs.ToArray())
       {
         item.Close();
-      }
-    }
-
-    private void Encrypt(FileInfo file, string text)
-    {
-      if (Config.UseCipher)
-      {
-        Cipher.Encrypt(file, text, Password);
-      }
-      else
-      {
-        File.WriteAllText(file.FullName, text);
       }
     }
 
@@ -879,7 +853,7 @@ namespace InputMaster.Forms
           Title = newTitle;
           TabPage.Text = Title;
           Form.Encrypt(File, Title);
-          Form.Run(async () => { await Form.CompileTextEditorModeAsync(false); });
+          Helper.Run(async () => { await Form.CompileTextEditorModeAsync(false); });
         }
       }
 

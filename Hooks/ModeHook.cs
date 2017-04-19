@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace InputMaster.Hooks
@@ -43,6 +44,8 @@ namespace InputMaster.Hooks
     /// Returns whether a mode is active.
     /// </summary>
     public bool Active => ActiveMode != null;
+
+    public event Action LeavingMode = delegate { };
 
     [CommandTypes(CommandTypes.Visible)]
     public void EnterMode(string name, [ValidFlags("h")]string flags = "")
@@ -154,6 +157,7 @@ namespace InputMaster.Hooks
     {
       if (ActiveMode != null)
       {
+        LeavingMode();
         ActiveMode = null;
         Hidden = false;
       }

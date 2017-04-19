@@ -152,11 +152,11 @@ namespace InputMaster.Hooks
 
     public void Dispose()
     {
-      if (!HookHandle.IsInvalid && !HookHandle.IsClosed)
+      if (HookHandle != null && !HookHandle.IsInvalid && !HookHandle.IsClosed)
       {
         HookHandle.Dispose();
       }
-      if (!MouseHookHandle.IsInvalid && !MouseHookHandle.IsClosed)
+      if (MouseHookHandle != null && !MouseHookHandle.IsInvalid && !MouseHookHandle.IsClosed)
       {
         MouseHookHandle.Dispose();
       }

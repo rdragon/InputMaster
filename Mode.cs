@@ -17,7 +17,7 @@ namespace InputMaster
     public string Name { get; }
     public bool IsComposeMode { get; }
 
-    public void AddHotkey(ModeHotkey modeHotkey)
+    public void AddHotkey(ModeHotkey modeHotkey, bool hideWarningMessage = false)
     {
       Debug.Assert(IsComposeMode || (modeHotkey.Chord.Length == 1 && modeHotkey.Chord.First().Modifiers == Modifiers.None));
       foreach (var chord in Hotkeys.Select(z => z.Chord))
@@ -30,7 +30,11 @@ namespace InputMaster
         }
         if (big.HasPrefix(small))
         {
-          Env.Notifier.WriteWarning($"Mode '{Name}' has ambiguous chord '{small}'.");
+          if (!hideWarningMessage)
+          {
+            Env.Notifier.WriteWarning($"Mode '{Name}' has ambiguous chord '{small}'.");
+          }
+          break;
         }
       }
       Hotkeys.Add(modeHotkey);

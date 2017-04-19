@@ -1,12 +1,12 @@
-﻿using System;
-using System.IO;
-using System.Drawing;
-using InputMaster.Extensions;
+﻿using InputMaster.Extensions;
 using InputMaster.Parsers;
+using InputMaster.Win32;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using InputMaster.Win32;
-using System.Collections.Generic;
 
 namespace InputMaster
 {
@@ -68,6 +68,11 @@ namespace InputMaster
     public const int MaxChordLength = 10;
     public const string NotifierWindowTitle = "Notifier - InputMaster";
     public const bool CaptureLmb = false;
+    public const string EmailSuffix = "@example.com";
+    public const int DefaultPasswordLength = 12;
+    public const string OpenAccountModeName = "OpenAccount";
+    public const string ModifyAccountModeName = "ModifyAccount";
+    public const string AccountModeName = "Account";
 
     // Text Editor
     public static bool EnableTextEditor = false;
@@ -108,6 +113,11 @@ namespace InputMaster
     public static bool IsCharacterKey(this Input input)
     {
       return input == Input.Space || KeyboardInputs.Contains(input);
+    }
+
+    public static bool IsIdentifierCharacter(char c)
+    {
+      return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
     }
 
     public static readonly Input[] LeftModifierKeys = new Input[] { Input.LShift, Input.LCtrl, Input.LAlt, Input.LWin };

@@ -34,6 +34,11 @@ namespace InputMaster
       Env.CreateInjector().Add(DateTime.Now.Add(d).ToString("yyyy-MM-dd"), new InputReader(InputReaderFlags.ParseLiteral)).Run();
     }
 
+    public static void PrintFormattedDate([AllowSpaces] string format)
+    {
+      Env.CreateInjector().Add(DateTime.Now.ToString(format), new InputReader(InputReaderFlags.ParseLiteral)).Run();
+    }
+
     public static void Send([AllowSpaces] Action action)
     {
       action();

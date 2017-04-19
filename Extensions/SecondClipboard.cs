@@ -32,7 +32,10 @@ namespace InputMaster.Extensions
       {
         s = string.Join("  ", Values);
       }
-      await ForegroundInteractor.Paste(s);
+      if (s.Length > 0)
+      {
+        await ForegroundInteractor.Paste(s);
+      }
     }
 
     public async Task SecondClipboardPasteReverse()

@@ -32,6 +32,34 @@ namespace InputMaster.Parsers
 
     public event Action<ParserOutput> NewParserOutput = delegate { };
 
+    public static string RunPreprocessor(string text)
+    {
+      var sb = new StringBuilder(text.Length * 2);
+      int i = 0;
+      while (true)
+      {
+        var match = PreprocessorReplaceRegex.Match(text, i);
+        if (match.Success)
+        {
+          sb.Append(text.Substring(i, match.Index - i));
+          i = match.Index + match.Length;
+          var name = match.Groups["ident"].Value;
+          if (!Config.PreprocessorReplaces.TryGetValue(name, out string s))
+          {
+            Env.Notifier.WriteWarning($"Use of undefined preprocessor variable '{name}'.");
+            s = "(undefined)";
+          }
+          sb.Append(s);
+        }
+        else
+        {
+          break;
+        }
+      }
+      sb.Append(text.Substring(i));
+      return sb.ToString();
+    }
+
     public void UpdateHotkeyFile(HotkeyFile hotkeyFile)
     {
       HotkeyFiles[hotkeyFile.Name] = hotkeyFile;
@@ -49,7 +77,8 @@ namespace InputMaster.Parsers
       {
         foreach (var hotkeyFile in HotkeyFiles)
         {
-          new MyCharReader(new LocatedString(Preprocessor(hotkeyFile.Value.Text), new Location(1, 1)), this, parserOutput).Run();
+          var text = CommentRegex.Replace(hotkeyFile.Value.Text, "");
+          new MyCharReader(new LocatedString(RunPreprocessor(text), new Location(1, 1)), this, parserOutput).Run();
         }
         foreach (var action in ParseActions)
         {
@@ -62,36 +91,6 @@ namespace InputMaster.Parsers
         return;
       }
       NewParserOutput(parserOutput);
-    }
-
-    private string Preprocessor(string text)
-    {
-      text = CommentRegex.Replace(text, "");
-      var sb = new StringBuilder(text.Length * 2);
-      int i = 0;
-      while (true)
-      {
-        var match = PreprocessorReplaceRegex.Match(text, i);
-        if (match.Success)
-        {
-          sb.Append(text.Substring(i, match.Index - i));
-          i = match.Index + match.Length;
-          string s;
-          var name = match.Groups["ident"].Value;
-          if (!Config.PreprocessorReplaces.TryGetValue(name, out s))
-          {
-            Env.Notifier.WriteWarning($"Use of undefined preprocessor variable '{name}'.");
-            s = "(undefined)";
-          }
-          sb.Append(s);
-        }
-        else
-        {
-          break;
-        }
-      }
-      sb.Append(text.Substring(i));
-      return sb.ToString();
     }
 
     private class MyCharReader : CharReader
@@ -412,7 +411,7 @@ namespace InputMaster.Parsers
           }
           else
           {
-            Env.Notifier.WriteWarning($"Async function '{actor.GetType().ToString()}.{methodInfo.Name}' has a return type other than 'Task'. Exceptions thrown by this function will not be catched.");
+            Env.Notifier.WriteWarning($"Async function '{actor.GetType().ToString()}.{methodInfo.Name}' has a return type other than 'Task'. Any exceptions thrown by this function will cause the program to exit.");
           }
         }
         var func1 = CreateFunc<object>(actor, methodInfo, arguments, insertTrigger);

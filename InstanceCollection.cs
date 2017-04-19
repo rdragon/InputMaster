@@ -21,8 +21,9 @@ namespace InputMaster
     public ComboHook ComboHook { get; }
     public ModeHook ModeHook { get; }
     public Actor Actor { get; }
+    public AccountManager AccountManager { get; }
 
-    public InstanceCollection(Brain brain, Notifier notifier, CommandCollection commandCollection, ForegroundInteractor foregroundInteractor, FlagManager flagManager, ForegroundListener foregroundListener, Parser parser, TextEditorForm textEditorForm, PrimaryHook primaryHook, InputRelay inputRelay, InputHook inputHook, ComboRelay comboRelay, ComboHook comboHook, ModeHook modeHook, Actor actor)
+    public InstanceCollection(Brain brain, Notifier notifier, CommandCollection commandCollection, ForegroundInteractor foregroundInteractor, FlagManager flagManager, ForegroundListener foregroundListener, Parser parser, TextEditorForm textEditorForm, PrimaryHook primaryHook, InputRelay inputRelay, InputHook inputHook, ComboRelay comboRelay, ComboHook comboHook, ModeHook modeHook, Actor actor, AccountManager accountManager)
     {
       Brain = brain;
       Notifier = notifier;
@@ -39,6 +40,7 @@ namespace InputMaster
       ComboHook = comboHook;
       ModeHook = modeHook;
       Actor = actor;
+      AccountManager = accountManager;
     }
   }
 }

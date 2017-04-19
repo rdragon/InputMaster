@@ -80,6 +80,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Account.cs" />
+    <Compile Include="AccountManager.cs" />
     <Compile Include="Attributes.cs" />
     <Compile Include="DynamicHotkeyCollection.cs" />
     <Compile Include="Brain.cs" />
@@ -111,6 +113,7 @@
     <Compile Include="Parsers\Location.cs" />
     <Compile Include="Extensions\CustomActor.cs" />
     <Compile Include="HotkeyCollection.cs" />
+    <Compile Include="TitleFilter.cs" />
     <Compile Include="Win32\Definitions.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>

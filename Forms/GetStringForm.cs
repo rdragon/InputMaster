@@ -8,12 +8,15 @@ namespace InputMaster.Forms
   /// </summary>
   partial class GetStringForm : ThemeForm
   {
-    public GetStringForm(string title, string defaultValue = null)
+    public GetStringForm(string title, string defaultValue, bool selectAll)
     {
       InitializeComponent();
       Text = Helper.ForbidNull(title, nameof(title));
       RichTextBox.Text = defaultValue ?? "";
-      RichTextBox.SelectAll();
+      if (selectAll)
+      {
+        RichTextBox.SelectAll();
+      }
     }
 
     public string GetValue()

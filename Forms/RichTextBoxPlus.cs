@@ -18,6 +18,7 @@ namespace InputMaster.Forms
   /// 5) Easy saving and loading of cursor and scrollbar position.
   /// 6) No delay while scrolling.
   /// 7) Edit multiple lines simultaneously with Alt + Lmb.
+  /// 8) Does not select a trailing space on double click (and includes '_' as word character).
   /// </summary>
   class RichTextBoxPlus : RichTextBox
   {
@@ -220,10 +221,30 @@ namespace InputMaster.Forms
       {
         SetScrollPosition(GetScrollPosition() + ScrollDelta * (Helper.GetMouseWheelDelta(m) < 0 ? 1 : -1));
       }
+      else if (m.Msg == (int)WindowMessage.LeftMouseButtonDoubleClick)
+      {
+        SelectCurrentWord();
+      }
       else
       {
         base.WndProc(ref m);
       }
+    }
+
+    private void SelectCurrentWord()
+    {
+      var i = SelectionStart;
+      var text = Text;
+      var j = i;
+      while (j < text.Length && Config.IsIdentifierCharacter(text[j]))
+      {
+        j++;
+      }
+      while (i >= 0 && Config.IsIdentifierCharacter(text[i]))
+      {
+        i--;
+      }
+      Select(i + 1, j - (i + 1));
     }
 
     /// <summary>
