@@ -138,7 +138,14 @@ namespace InputMaster.Hooks
         {
           if (modeHotkey.Chord.TestPosition(0, e.Combo))
           {
-            modeHotkey.Action(e.Combo);
+            try
+            {
+              modeHotkey.Action(e.Combo);
+            }
+            catch (Exception ex) when (!Helper.IsCriticalException(ex))
+            {
+              Env.Notifier.WriteError(ex);
+            }
             return;
           }
         }

@@ -22,14 +22,14 @@ namespace InputMaster
 
     public static void SetException(Exception exception)
     {
-      if (exception != null && Interlocked.CompareExchange(ref Exception, exception, null) == null)
+      try
       {
-        try
+        if (exception != null && Interlocked.CompareExchange(ref Exception, exception, null) == null)
         {
           Env.Notifier.WriteError(exception.ToString());
         }
-        catch (Exception) { }
       }
+      catch (Exception) { }
     }
 
     public static Action Wrap(Action action)

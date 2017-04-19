@@ -18,7 +18,7 @@ namespace InputMaster
     private Parser Parser;
     private Account CurrentAccount;
     private ModeHook ModeHook;
-    private bool FailedState;
+    private bool Loaded;
 
     public AccountManager(TextEditorForm textEditorForm, Parser parser, ModeHook modeHook)
     {
@@ -30,36 +30,37 @@ namespace InputMaster
         {
           return;
         }
-        var text = textEditorForm.Decrypt(textEditorForm.AccountFile);
         try
         {
+          var text = textEditorForm.Decrypt(textEditorForm.AccountFile);
           var accounts = JsonConvert.DeserializeObject<List<Account>>(text);
           foreach (var account in accounts)
           {
             AddAccount(account);
           }
         }
-        catch (JsonException ex)
+        catch (Exception ex) when (!Helper.IsCriticalException(ex))
         {
-          Env.Notifier.WriteError(ex);
-          FailedState = true;
+          Env.Notifier.WriteError(ex, "Failed to load account data.");
+          return;
         }
         Parse();
         Changed = false;
+        Loaded = true;
       };
 
       textEditorForm.Saving += () =>
       {
         if (Changed)
         {
-          if (FailedState)
-          {
-            Env.Notifier.WriteError("Could not save account data due to failed state. A program restart is required.");
-          }
-          else
+          if (Loaded)
           {
             textEditorForm.Encrypt(textEditorForm.AccountFile, JsonConvert.SerializeObject(Accounts.Values, Formatting.Indented));
             Changed = false;
+          }
+          else
+          {
+            Env.Notifier.WriteError("Could not save account data. A program restart is required.");
           }
         }
       };
@@ -247,9 +248,9 @@ namespace InputMaster
             ModeHook.EnterMode(Config.AccountModeName, "");
             CurrentAccount = account;
           }, account.Chord + " " + account.Description));
-          modifyMode.AddHotkey(new ModeHotkey(account.Chord, (combo) =>
+          modifyMode.AddHotkey(new ModeHotkey(account.Chord, async (combo) =>
           {
-            Helper.Run(() => ModifyAccount(account.Id));
+            await ModifyAccount(account.Id);
           }, account.Chord + " " + account.Description), true);
         }
       });

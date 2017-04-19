@@ -82,28 +82,36 @@ namespace InputMaster
       }
     }
 
-    public static void HandleFatalException(Exception exception, string suffix = "")
+    public static void HandleAnyException(Exception exception)
     {
-      Try.SetException(new WrappedException(GetUnhandledExceptionFatalErrorMessage(suffix), exception));
-      Env.Notifier.RequestExit();
+      try
+      {
+        if (IsCriticalException(exception))
+        {
+          HandleFatalException(exception);
+        }
+        else
+        {
+          Env.Notifier.WriteError(exception);
+        }
+      }
+      catch (Exception ex)
+      {
+        HandleFatalException(ex);
+      }
     }
 
-    public static string GetUnhandledExceptionWarningMessage(string suffix = "")
+    public static void HandleFatalException(Exception exception)
     {
-      if (suffix != "")
+      Try.SetException(exception);
+      if (Env.Notifier != null)
       {
-        suffix = " " + suffix;
+        Env.Notifier.RequestExit();
       }
-      return $"Unhandled exception thrown{suffix}.";
-    }
-
-    public static string GetUnhandledExceptionFatalErrorMessage(string suffix = "")
-    {
-      if (suffix != "")
+      else
       {
-        suffix = " " + suffix;
+        Application.Exit();
       }
-      return $"Unhandled exception thrown{suffix}. Exiting program.";
     }
 
     public static void Unhook()
@@ -201,50 +209,6 @@ namespace InputMaster
       }
       throw new IOException("Failed to clear the clipboard.");
     }
-
-    public static void TryCatchLog(Action action)
-    {
-      try
-      {
-        action();
-      }
-      catch (Exception ex) when (!IsCriticalException(ex))
-      {
-        Env.Notifier.WriteError(ex);
-      }
-    }
-
-    public static void Run(Func<Task> action)
-    {
-      Task.Factory.StartNew(async () =>
-      {
-        try
-        {
-          await action();
-        }
-        catch (Exception ex)
-        {
-          HandleFatalException(ex);
-        }
-      }, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.FromCurrentSynchronizationContext());
-    }
-
-    public static void Run(Action action)
-    {
-      Task.Factory.StartNew(() =>
-      {
-        try
-        {
-          action();
-        }
-        catch (Exception ex)
-        {
-          HandleFatalException(ex);
-        }
-      }, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.FromCurrentSynchronizationContext());
-    }
-
-
 
     public static void Swap<T>(ref T val1, ref T val2)
     {

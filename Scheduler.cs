@@ -48,7 +48,7 @@ namespace InputMaster
           }
           catch (Exception ex) when (!Helper.IsCriticalException(ex))
           {
-            Env.Notifier.WriteError(ex, Helper.GetUnhandledExceptionWarningMessage(suffix: "during execution of a task") + Helper.GetBindingsSuffix(nameof(name), name));
+            Env.Notifier.WriteError(ex, "Failed to complete a scheduled task" + Helper.GetBindingsSuffix(nameof(name), name));
           }
         }
       };

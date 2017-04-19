@@ -66,7 +66,7 @@ namespace InputMaster.Parsers
         }
         catch (ParseException ex) when (!ex.HasLocation)
         {
-          new ParseException(LocatedString, ex);
+          throw new ParseException(LocatedString, ex);
         }
       }
 

@@ -24,15 +24,8 @@ namespace InputMaster
 
         Application.ThreadException += (s, e) =>
         {
-          Try.SetException(new WrappedException("Unhandled Windows Forms exception (only innermost exception is being shown).", e.Exception));
-          if (Env.Notifier != null)
-          {
-            Env.Notifier.RequestExit();
-          }
-          else
-          {
-            Application.Exit();
-          }
+          // Warning: the argument only contains the innermost exception (see http://stackoverflow.com/questions/347502/why-does-the-inner-exception-reach-the-threadexception-handler-and-not-the-actual).
+          Helper.HandleAnyException(e.Exception);
         };
 
         var exitFlag = arguments.Length == 1 && arguments[0] == "exit";

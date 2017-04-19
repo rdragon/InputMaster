@@ -87,7 +87,7 @@ namespace InputMaster.Parsers
       }
       catch (Exception ex) when (!Helper.IsCriticalException(ex))
       {
-        Env.Notifier.WriteError(ex, $"Error during parsing.");
+        Env.Notifier.WriteError(ex, "Failed to parse hotkeys.");
         return;
       }
       NewParserOutput(parserOutput);
@@ -392,21 +392,7 @@ namespace InputMaster.Parsers
             var func = CreateFunc<Task>(actor, methodInfo, arguments, insertTrigger);
             return async (combo) =>
             {
-              try
-              {
-                await func(combo);
-              }
-              catch (Exception ex)
-              {
-                if (Helper.IsCriticalException(ex))
-                {
-                  Helper.HandleFatalException(ex);
-                }
-                else
-                {
-                  Env.Notifier.WriteError(ex, Helper.GetUnhandledExceptionWarningMessage());
-                }
-              }
+              await func(combo);
             };
           }
           else

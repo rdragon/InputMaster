@@ -164,10 +164,10 @@ namespace InputMaster.Hooks
 
     private IntPtr HookProcedure(int code, IntPtr wParam, IntPtr lParam)
     {
-      bool captured = false;
-      if (code >= 0)
+      var captured = false;
+      try
       {
-        try
+        if (code >= 0)
         {
           var e = ReadMessage((WindowMessage)wParam, lParam);
           if (e != null)
@@ -183,17 +183,10 @@ namespace InputMaster.Hooks
             }
           }
         }
-        catch (Exception ex)
-        {
-          if (Helper.IsCriticalException(ex))
-          {
-            Helper.HandleFatalException(ex, "during the hook procedure");
-          }
-          else
-          {
-            Env.Notifier.WriteError(ex, Helper.GetUnhandledExceptionWarningMessage("during the hook procedure"));
-          }
-        }
+      }
+      catch (Exception ex) // This is the last place to handle any exceptions thrown during the hook procedure.
+      {
+        Helper.HandleAnyException(ex);
       }
       return captured ? new IntPtr(-1) : NativeMethods.CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
     }

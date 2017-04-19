@@ -73,32 +73,37 @@ namespace InputMaster.Forms
         Started();
       };
 
-      KeyDown += (s, e) =>
+      KeyDown += async (s, e) =>
       {
+        if (WrongPassword)
+        {
+          ShowWrongPasswordError();
+          return;
+        }
         if (e.KeyData == (Keys.Control | Keys.N))
         {
           e.Handled = true;
-          Helper.Run(CreateNewFileAsync);
+          await CreateNewFileAsync();
         }
         else if (e.KeyData == (Keys.Control | Keys.Shift | Keys.F))
         {
           e.Handled = true;
-          Helper.Run(FindAllAsync);
+          await FindAllAsync();
         }
         else if (e.KeyData == (Keys.Control | Keys.Shift | Keys.I))
         {
           e.Handled = true;
-          Helper.Run(ImportFromDirectoryAsync);
+          await ImportFromDirectoryAsync();
         }
         else if (e.KeyData == (Keys.Control | Keys.Shift | Keys.E))
         {
           e.Handled = true;
-          Helper.Run(ExportToDirectoryAsync);
+          await ExportToDirectoryAsync();
         }
         else if (e.KeyData == (Keys.Control | Keys.O))
         {
           e.Handled = true;
-          Helper.Run(OpenCustomFileAsync);
+          await OpenCustomFileAsync();
         }
       };
 
@@ -167,16 +172,14 @@ namespace InputMaster.Forms
       return new DirectoryInfo(Path.Combine(parentDir.FullName, "names"));
     }
 
-    public void Start()
+    public async void Start()
     {
-      Helper.Run(() =>
+      await Task.Yield();
+      if (Config.UseCipher)
       {
-        if (Config.UseCipher)
-        {
-          CreatePassword();
-        }
-        Show();
-      });
+        CreatePassword();
+      }
+      Show();
     }
 
     public string Decrypt(FileInfo file)
@@ -317,7 +320,7 @@ namespace InputMaster.Forms
       {
         Env.Notifier.WriteError("Multiple account files found.");
       }
-      else if (accountFilesFound == 0)
+      else if (accountFilesFound == 0 && !WrongPassword)
       {
         var file = CreateNewFile("[hidden] [accounts]", "[]");
         AccountFile = GetDataFile(file);
@@ -360,11 +363,6 @@ namespace InputMaster.Forms
 
     private async Task ImportFromDirectoryAsync()
     {
-      if (WrongPassword)
-      {
-        ShowWrongPasswordError();
-        return;
-      }
       var path = Helper.GetString("Please give a directory from which to import all text files.");
       var count = 0;
       if (!string.IsNullOrWhiteSpace(path))
@@ -437,11 +435,6 @@ namespace InputMaster.Forms
 
     private async Task CreateNewFileAsync()
     {
-      if (WrongPassword)
-      {
-        ShowWrongPasswordError();
-        return;
-      }
       var title = Helper.GetString("Title of new file");
       if (!string.IsNullOrWhiteSpace(title))
       {
@@ -471,7 +464,14 @@ namespace InputMaster.Forms
     {
       foreach (var fileTab in FileTabs)
       {
-        Helper.TryCatchLog(fileTab.Save);
+        try
+        {
+          fileTab.Save();
+        }
+        catch (Exception ex) when (!Helper.IsCriticalException(ex))
+        {
+          Env.Notifier.WriteError(ex, "Failed to save a TextEditor text file" + Helper.GetBindingsSuffix(fileTab.Title, nameof(fileTab.Title)));
+        }
       }
       Saving();
     }
@@ -547,7 +547,6 @@ namespace InputMaster.Forms
       private readonly RichTextBoxPlus Panel;
       private readonly RichTextBoxPlus Rtb;
       private readonly List<IDisposable> Disposables = new List<IDisposable>();
-      private string Title;
       private bool Changed;
 
       public FileTab(FileInfo file, TextEditorForm form)
@@ -623,41 +622,43 @@ namespace InputMaster.Forms
           updatePanelTimeout.Start(Config.UpdatePanelDelay);
         };
 
-        Rtb.KeyDown += (s, e) =>
+        Rtb.KeyDown += async (s, e) =>
         {
           if (e.Handled)
           {
             return;
           }
-          var handled = true;
           switch (e.KeyData)
           {
             case Keys.F6:
+              e.Handled = true;
               OpenMode(MoveSelectedLines);
               break;
             case Keys.F6 | Keys.Shift:
+              e.Handled = true;
               OpenMode(MoveCaretToSection);
               break;
             case Keys.Control | Keys.PageUp:
+              e.Handled = true;
               MoveCaretToTopOfSection();
               break;
             case Keys.Control | Keys.PageDown:
+              e.Handled = true;
               MoveCaretToEndOfSection();
               break;
             case Keys.Control | Keys.W:
+              e.Handled = true;
               Close();
               break;
             case Keys.F2:
-              Rename();
+              e.Handled = true;
+              await RenameAsync();
               break;
             case Keys.F5:
+              e.Handled = true;
               Compile();
               break;
-            default:
-              handled = false;
-              break;
           }
-          e.Handled = handled;
         };
 
         Panel.MouseClick += (s, e) =>
@@ -668,6 +669,7 @@ namespace InputMaster.Forms
       }
 
       public FileInfo File { get; }
+      public string Title { get; private set; }
 
       /// <summary>
       /// Returns the position of the special section character, or -1 on failure.
@@ -845,7 +847,7 @@ namespace InputMaster.Forms
         Form.ModeHook.EnterMode(mode);
       }
 
-      private void Rename()
+      private async Task RenameAsync()
       {
         var newTitle = Helper.GetString("New Name", Title);
         if (!string.IsNullOrEmpty(newTitle) && newTitle != Title)
@@ -853,7 +855,7 @@ namespace InputMaster.Forms
           Title = newTitle;
           TabPage.Text = Title;
           Form.Encrypt(File, Title);
-          Helper.Run(async () => { await Form.CompileTextEditorModeAsync(false); });
+          await Form.CompileTextEditorModeAsync(false);
         }
       }
 

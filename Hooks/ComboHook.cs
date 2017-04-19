@@ -55,7 +55,14 @@ namespace InputMaster.Hooks
       if (action != null)
       {
         Reset();
-        action(e.Combo);
+        try
+        {
+          action(e.Combo);
+        }
+        catch (Exception ex) when (!Helper.IsCriticalException(ex))
+        {
+          Env.Notifier.WriteError(ex);
+        }
         e.Capture = true;
       }
       else if (Config.InsertSpaceAfterComma && e.Combo == new Combo(Input.Comma))
