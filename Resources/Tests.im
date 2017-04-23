@@ -82,7 +82,7 @@ a EnterMode foo
   b Send x
 √: Test ab{Esc} x
 √: Test abb{Esc} xx
-√: Test acbcb{Esc} xx
+√: Test abbc xx
 b EnterModeHot foo
 √: Test b{Esc} x
 √: Test bb{Esc} xx

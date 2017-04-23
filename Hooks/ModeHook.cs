@@ -122,22 +122,17 @@ namespace InputMaster.Hooks
 
     public void Handle(ComboArgs e)
     {
-      if (e.Combo.Input.IsMouseInput())
-      {
-        return;
-      }
-
       if (ActiveMode.IsComposeMode)
       {
         HandleComposeMode(e);
       }
       else
       {
-        e.Capture = true;
         foreach (var modeHotkey in ModeHotkeys)
         {
           if (modeHotkey.Chord.TestPosition(0, e.Combo))
           {
+            e.Capture = true;
             try
             {
               modeHotkey.Action(e.Combo);
@@ -151,10 +146,12 @@ namespace InputMaster.Hooks
         }
         if (e.Combo == Config.ShowModeCombo)
         {
+          e.Capture = true;
           ToggleViewerVisibility();
         }
-        else if (Config.ClearModeCombos.Contains(e.Combo))
+        else if (!e.Combo.Input.IsMouseInput())
         {
+          e.Capture = true;
           LeaveMode();
         }
       }
@@ -178,6 +175,11 @@ namespace InputMaster.Hooks
 
     private void HandleComposeMode(ComboArgs e)
     {
+      if (e.Combo.Input.IsMouseInput())
+      {
+        return;
+      }
+
       // Capture any non-modifier key. Modifier keys should not be captured as that would prevent the key from modifying the virtual modifier state.
       if (!e.Combo.Input.IsModifierKey())
       {
