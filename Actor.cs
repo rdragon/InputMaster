@@ -18,9 +18,21 @@ namespace InputMaster
       ExitInputMaster();
     }
 
-    public static void Run([AllowSpaces] string filePath, [AllowSpaces]string arguments = "")
+    public static void RunElevated([AllowSpaces] string filePath, [AllowSpaces]string arguments = "")
     {
       Helper.StartProcess(filePath, arguments);
+    }
+
+    public static void EditElevated([AllowSpaces]string filePath)
+    {
+      if (Config.PreprocessorReplaces.TryGetValue("Notepadpp", out string exePath))
+      {
+        RunElevated(exePath, $"-multiInst \"{filePath}\"");
+      }
+      else
+      {
+        Env.Notifier.WriteError("Notepad++ path not set.");
+      }
     }
 
     public static void WriteLine([AllowSpaces] string text)

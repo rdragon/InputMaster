@@ -15,6 +15,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Security;
 
 namespace InputMaster
 {
@@ -62,15 +63,26 @@ namespace InputMaster
       }
     }
 
-    public static void StartProcess(string fileName, string arguments = "", bool captureForeground = false)
+    public static void StartProcess(string fileName, string arguments = "", string userName = null, SecureString password = null, string domain = null, bool captureForeground = false)
     {
+      ForbidNull(fileName, nameof(fileName));
       if (captureForeground)
       {
         Env.Notifier.CaptureForeground();
       }
       try
       {
-        var p = Process.Start(fileName, arguments);
+        Process p;
+        if (userName != null)
+        {
+          ForbidNull(password, nameof(password));
+          ForbidNull(domain, nameof(domain));
+          p = Process.Start(fileName, arguments, userName, password, domain);
+        }
+        else
+        {
+          p = Process.Start(fileName, arguments);
+        }
         if (p != null)
         {
           p.Dispose();

@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -227,21 +228,58 @@ namespace InputMaster
       }
     }
 
+    [CommandTypes(CommandTypes.Visible)]
+    public void Run([AllowSpaces] string filePath, [AllowSpaces]string arguments = "")
+    {
+      if (TryGetAccount(Config.LocalAccountId, out Account account))
+      {
+        var s = new SecureString();
+        foreach (var c in account.GetPassword())
+        {
+          s.AppendChar(c);
+        }
+        Helper.StartProcess(filePath, arguments, account.GetUsername(), s, Environment.MachineName);
+      }
+      else
+      {
+        Helper.StartProcess(filePath, arguments);
+      }
+    }
+
+    [CommandTypes(CommandTypes.Visible)]
+    public void Edit([AllowSpaces]string filePath)
+    {
+      if (Config.PreprocessorReplaces.TryGetValue("DefaultTextEditor", out string exePath))
+      {
+        Run(exePath, $"\"{filePath}\"");
+      }
+      else
+      {
+        Env.Notifier.WriteError("Default text editor not set.");
+      }
+    }
+
+    [CommandTypes(CommandTypes.Visible)]
+    public void Surf([AllowSpaces]string url)
+    {
+      if (Config.PreprocessorReplaces.TryGetValue("DefaultWebBrowser", out string exePath))
+      {
+        Run(exePath, $"\"{url}\"");
+      }
+      else
+      {
+        Env.Notifier.WriteError("Default web browser not set.");
+      }
+    }
+
     public IEnumerable<Account> GetAccounts()
     {
       return Accounts.Values.ToList();
     }
 
-    public Account TryGetAccount(int id)
+    public bool TryGetAccount(int id, out Account account)
     {
-      if (Accounts.TryGetValue(id, out Account account))
-      {
-        return account;
-      }
-      else
-      {
-        return null;
-      }
+      return Accounts.TryGetValue(id, out account);
     }
 
     private void AddAccount(Account account)

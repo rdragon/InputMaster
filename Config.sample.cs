@@ -73,6 +73,7 @@ namespace InputMaster
     public const string OpenAccountModeName = "OpenAccount";
     public const string ModifyAccountModeName = "ModifyAccount";
     public const string AccountModeName = "Account";
+    public const int LocalAccountId = -1;
 
     // Text Editor
     public static bool EnableTextEditor = false;

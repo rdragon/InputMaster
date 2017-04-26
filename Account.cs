@@ -111,9 +111,9 @@ namespace InputMaster
       {
         foreach (var pair in LinkedAccounts)
         {
-          if (Env.ForegroundListener.IsFlagSet(pair.Key))
+          if (Env.ForegroundListener.IsFlagSet(pair.Key) && account == null)
           {
-            account = account ?? AccountManager.TryGetAccount(pair.Value);
+            AccountManager.TryGetAccount(pair.Value, out account);
           }
         }
       }
