@@ -132,10 +132,22 @@ namespace InputMaster
     }
 
     [CommandTypes(CommandTypes.Visible)]
-    public async Task ModifyAccount(int id)
+    public async Task ModifyAccount(int? id = null)
     {
       await Task.Yield();
-      if (Accounts.TryGetValue(id, out Account account))
+      if (!id.HasValue)
+      {
+        var s = Helper.GetString("id");
+        if (s != null && int.TryParse(s, out int x))
+        {
+          id = x;
+        }
+        else
+        {
+          return;
+        }
+      }
+      if (Accounts.TryGetValue(id.Value, out Account account))
       {
         var newAccount = GetModifiedAccount(account);
         Accounts.Remove(account.Id);
@@ -169,13 +181,12 @@ namespace InputMaster
     public async Task ModifyAllAccounts(bool showUsernameAndEmail = false)
     {
       await Task.Yield();
-      var strippedAccounts = Accounts.Values.Select(a => new Account(a, excludeUsernameAndEmail: !showUsernameAndEmail, exludePassword: true)).ToList();
-      strippedAccounts.Sort((x, y) => x.Id.CompareTo(y.Id));
+      var strippedAccounts = GetSortedAccounts().Select(a => new Account(a, excludeUsernameAndEmail: !showUsernameAndEmail, exludePassword: true)).ToList();
       var s = Helper.GetString("Accounts", JsonConvert.SerializeObject(strippedAccounts, Formatting.Indented), selectAll: false);
       if (!string.IsNullOrWhiteSpace(s))
       {
-        strippedAccounts = JsonConvert.DeserializeObject<List<Account>>(s);
-        var newAccounts = strippedAccounts.Select(a => new Account(a, sensitiveDataAccount: Accounts.ElementAtOrDefault(a.Id).Value));
+        var submittedAccounts = JsonConvert.DeserializeObject<List<Account>>(s);
+        var newAccounts = submittedAccounts.Select(a => new Account(a, sensitiveDataAccount: Accounts.ContainsKey(a.Id) ? Accounts[a.Id] : null)).ToList();
         Accounts.Clear();
         foreach (var account in newAccounts)
         {
@@ -265,6 +276,13 @@ namespace InputMaster
         id++;
       }
       return id;
+    }
+
+    private IEnumerable<Account> GetSortedAccounts()
+    {
+      var list = Accounts.Values.ToList();
+      list.Sort((x, y) => x.Id.CompareTo(y.Id));
+      return list;
     }
   }
 }
