@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace InputMaster
 {
@@ -61,6 +62,28 @@ namespace InputMaster
       FlagsChanged();
       var text = Flags.Contains(flag) ? "Enabled" : "Disabled";
       Env.Notifier.Write($"{text} flag '{flag}'.");
+    }
+
+    [CommandTypes(CommandTypes.Visible)]
+    public async Task SetCustomFlag()
+    {
+      await Task.Yield();
+      var s = Helper.GetString("Flag");
+      if (!string.IsNullOrWhiteSpace(s))
+      {
+        SetFlag(s);
+      }
+    }
+
+    [CommandTypes(CommandTypes.Visible)]
+    public async Task ClearCustomFlag()
+    {
+      await Task.Yield();
+      var s = Helper.GetString("Flag");
+      if (!string.IsNullOrWhiteSpace(s))
+      {
+        ClearFlag(s);
+      }
     }
 
     private class MyStateManager : State

@@ -167,14 +167,14 @@ namespace InputMaster
     public void PrintAccountPassword()
     {
       if (CurrentAccount == null) return;
-      Env.CreateInjector().Add(CurrentAccount.Password, Config.LiteralInputReader).Run();
+      Env.CreateInjector().Add(CurrentAccount.GetPassword(), Config.LiteralInputReader).Run();
     }
 
     [CommandTypes(CommandTypes.Visible)]
     public void PrintAccountEmail()
     {
       if (CurrentAccount == null) return;
-      Env.CreateInjector().Add(CurrentAccount.Email, Config.LiteralInputReader).Run();
+      Env.CreateInjector().Add(CurrentAccount.GetEmail(), Config.LiteralInputReader).Run();
     }
 
     [CommandTypes(CommandTypes.Visible)]
@@ -201,7 +201,7 @@ namespace InputMaster
     {
       foreach (var account in Accounts.Values)
       {
-        if (account.Order == order && account.IsEnabled())
+        if (account.Order == order && account.HasForegroundWindowMatch())
         {
           var injector = Env.CreateInjector();
           if (flags.Contains('u'))
@@ -209,7 +209,7 @@ namespace InputMaster
             injector.Add(account.GetUsername(), Config.LiteralInputReader);
             injector.Add(Input.Tab);
           }
-          injector.Add(account.Password, Config.LiteralInputReader);
+          injector.Add(account.GetPassword(), Config.LiteralInputReader);
           injector.Add(Input.Enter);
           injector.Run();
           break;
@@ -232,6 +232,18 @@ namespace InputMaster
       return Accounts.Values.ToList();
     }
 
+    public Account TryGetAccount(int id)
+    {
+      if (Accounts.TryGetValue(id, out Account account))
+      {
+        return account;
+      }
+      else
+      {
+        return null;
+      }
+    }
+
     private void AddAccount(Account account)
     {
       if (Accounts.ContainsKey(account.Id))
@@ -239,6 +251,7 @@ namespace InputMaster
         Env.Notifier.WriteError($"Multiple accounts with id '{account.Id}' found.");
       }
       Accounts[account.Id] = account;
+      account.AccountManager = this;
       Changed = true;
     }
 

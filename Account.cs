@@ -8,6 +8,14 @@ namespace InputMaster
   {
     [JsonProperty]
     private List<TitleFilter> TitleFilters = new List<TitleFilter>();
+    [JsonProperty]
+    private Dictionary<string, int> LinkedAccounts = new Dictionary<string, int>();
+    [JsonProperty]
+    private string Username = "";
+    [JsonProperty]
+    private string Password = "";
+    [JsonProperty]
+    private string Email = "";
 
     public Account() { }
 
@@ -31,6 +39,8 @@ namespace InputMaster
       Hidden = account.Hidden;
       Order = account.Order;
       TitleFilters = account.TitleFilters;
+      LinkedAccounts = account.LinkedAccounts;
+      AccountManager = account.AccountManager;
       if (sensitiveDataAccount != null)
       {
         if (string.IsNullOrWhiteSpace(Username))
@@ -63,12 +73,6 @@ namespace InputMaster
     [JsonProperty]
     public Chord Chord { get; private set; } = new Chord(0);
     [JsonProperty]
-    public string Username { get; private set; } = "";
-    [JsonProperty]
-    public string Password { get; private set; } = "";
-    [JsonProperty]
-    public string Email { get; private set; } = "";
-    [JsonProperty]
     public bool UseEmailAsUsername { get; private set; }
     [JsonProperty]
     public string Description { get; private set; } = "";
@@ -76,15 +80,44 @@ namespace InputMaster
     public bool Hidden { get; private set; }
     [JsonProperty]
     public int Order { get; private set; }
+    [JsonIgnore]
+    public AccountManager AccountManager { get; set; }
 
     public string GetUsername()
     {
-      return UseEmailAsUsername ? Email : Username;
+      var account = GetLinkedAccount();
+      return account.UseEmailAsUsername ? account.Email : account.Username;
     }
 
-    public bool IsEnabled()
+    public string GetPassword()
+    {
+      return GetLinkedAccount().Password;
+    }
+
+    public string GetEmail()
+    {
+      return GetLinkedAccount().Email;
+    }
+
+    public bool HasForegroundWindowMatch()
     {
       return TitleFilters.Any(z => z.IsEnabled());
+    }
+
+    private Account GetLinkedAccount()
+    {
+      Account account = null;
+      if (LinkedAccounts != null)
+      {
+        foreach (var pair in LinkedAccounts)
+        {
+          if (Env.ForegroundListener.IsFlagSet(pair.Key))
+          {
+            account = account ?? AccountManager.TryGetAccount(pair.Value);
+          }
+        }
+      }
+      return account ?? this;
     }
   }
 }
