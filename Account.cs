@@ -7,26 +7,6 @@ namespace InputMaster
   class Account
   {
     [JsonProperty]
-    public int Id { get; private set; }
-    [JsonProperty]
-    public string Title { get; private set; } = "";
-    [JsonProperty]
-    public Chord Chord { get; private set; } = new Chord(0);
-    [JsonProperty]
-    public string Username { get; private set; } = "";
-    [JsonProperty]
-    public string Password { get; private set; } = "";
-    [JsonProperty]
-    public string Email { get; private set; } = "";
-    [JsonProperty]
-    public bool UseEmailAsUsername { get; private set; }
-    [JsonProperty]
-    public string Description { get; private set; } = "";
-    [JsonProperty]
-    public bool Hidden { get; private set; }
-    [JsonProperty]
-    public int Order { get; private set; }
-    [JsonProperty]
     private List<TitleFilter> TitleFilters = new List<TitleFilter>();
 
     public Account() { }
@@ -75,6 +55,27 @@ namespace InputMaster
       Password = password;
       Email = email;
     }
+
+    [JsonProperty]
+    public int Id { get; private set; }
+    [JsonProperty]
+    public string Title { get; private set; } = "";
+    [JsonProperty]
+    public Chord Chord { get; private set; } = new Chord(0);
+    [JsonProperty]
+    public string Username { get; private set; } = "";
+    [JsonProperty]
+    public string Password { get; private set; } = "";
+    [JsonProperty]
+    public string Email { get; private set; } = "";
+    [JsonProperty]
+    public bool UseEmailAsUsername { get; private set; }
+    [JsonProperty]
+    public string Description { get; private set; } = "";
+    [JsonProperty]
+    public bool Hidden { get; private set; }
+    [JsonProperty]
+    public int Order { get; private set; }
 
     public string GetUsername()
     {
