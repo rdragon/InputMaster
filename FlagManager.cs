@@ -14,6 +14,7 @@ namespace InputMaster
       {
         var state = new MyStateManager(this);
         state.Load();
+        state.Changed = true;
         brain.Exiting += Try.Wrap(state.Save);
       }
     }
