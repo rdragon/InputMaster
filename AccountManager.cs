@@ -238,7 +238,7 @@ namespace InputMaster
         {
           s.AppendChar(c);
         }
-        Helper.StartProcess(filePath, arguments, account.GetUsername(), s, Environment.MachineName);
+        Helper.StartProcess(filePath, arguments, account.GetUsername(), s, Environment.UserDomainName);
       }
       else
       {
