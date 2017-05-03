@@ -10,7 +10,7 @@ namespace InputMaster
   {
     private List<ModeHotkey> Hotkeys = new List<ModeHotkey>();
     private List<string> Includes = new List<string>();
-    private IncludeState MyIncludeState;
+    private MyIncludeState IncludeState = MyIncludeState.Idle;
 
     public Mode(string name, bool isComposeMode)
     {
@@ -58,10 +58,10 @@ namespace InputMaster
 
     public void ResolveIncludes(ParserOutput parserOutput)
     {
-      switch (MyIncludeState)
+      switch (IncludeState)
       {
-        case IncludeState.Idle:
-          MyIncludeState = IncludeState.Running;
+        case MyIncludeState.Idle:
+          IncludeState = MyIncludeState.Running;
           foreach (var name in Includes)
           {
             var mode = parserOutput.Modes.Find(z => z.Name == name);
@@ -79,13 +79,13 @@ namespace InputMaster
               AddHotkey(hotkey, mode.HasAmbiguousChord);
             }
           }
-          MyIncludeState = IncludeState.Done;
+          IncludeState = MyIncludeState.Done;
           break;
-        case IncludeState.Running:
+        case MyIncludeState.Running:
           throw new ParseException($"Cyclic include detected at mode '{Name}'.");
       }
     }
 
-    enum IncludeState { Idle, Running, Done }
+    enum MyIncludeState { Idle, Running, Done }
   }
 }

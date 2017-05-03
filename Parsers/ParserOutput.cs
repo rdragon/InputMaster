@@ -6,16 +6,12 @@ namespace InputMaster.Parsers
 {
   class ParserOutput
   {
-    public ParserOutput()
-    {
-      Modes = new List<Mode>();
-      HotkeyCollection = new HotkeyCollection();
-      DynamicHotkeyCollection = new DynamicHotkeyCollection();
-    }
+    private int FlagSetCounter;
 
-    public HotkeyCollection HotkeyCollection { get; }
-    public List<Mode> Modes { get; }
-    public DynamicHotkeyCollection DynamicHotkeyCollection { get; }
+    public HotkeyCollection HotkeyCollection { get; } = new HotkeyCollection();
+    public List<Mode> Modes { get; } = new List<Mode>();
+    public DynamicHotkeyCollection DynamicHotkeyCollection { get; } = new DynamicHotkeyCollection();
+    public List<HashSet<string>> FlagSets { get; } = new List<HashSet<string>>();
 
     public void Clear()
     {

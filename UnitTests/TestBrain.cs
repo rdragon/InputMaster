@@ -43,11 +43,11 @@ namespace UnitTests
         SourceInputReader = new InputReader(InputReaderFlags.AllowHoldRelease | InputReaderFlags.AllowCustomModifier | InputReaderFlags.AllowMultiplier);
         SinkInputReader = new InputReader(InputReaderFlags.AllowMultiplier);
         var commandCollection = new CommandCollection();
-        var flagManager = new FlagManager();
+        var parser = new Parser(commandCollection);
+        var flagManager = new FlagManager(parser);
         ParserOutputProvider = new ParserOutputProvider();
         ForegroundManager = new ForegroundManager(flagManager, ParserOutputProvider);
         Env.ForegroundListener = ForegroundManager;
-        var parser = new Parser(commandCollection);
         var modeHook = new ModeHook(ParserOutputProvider);
         var comboHook = new ComboHook(ParserOutputProvider);
         var comboRelay = new ComboRelay(modeHook, comboHook);

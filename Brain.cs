@@ -46,8 +46,8 @@ namespace InputMaster
       var commandCollection = new CommandCollection();
       var hotkeyFileWatcher = new FileChangedWatcher(Config.HotkeyFile);
       Disposables.Add(hotkeyFileWatcher);
-      var flagManager = new FlagManager(this);
       var parser = new Parser(commandCollection, hotkeyFileWatcher);
+      var flagManager = new FlagManager(parser, this);
       var foregroundListener = new ForegroundListener(flagManager, parser);
       Env.ForegroundListener = foregroundListener;
       var modeHook = new ModeHook(parser);

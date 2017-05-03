@@ -1,5 +1,6 @@
 ﻿using InputMaster.Parsers;
 using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
 
 namespace InputMaster
@@ -77,6 +78,12 @@ namespace InputMaster
     public void IncludeMode(ExecuteAtParseTimeData data, LocatedString modeName)
     {
       data.Section.AsMode.IncludeMode(modeName.Value);
+    }
+
+    [CommandTypes(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime | CommandTypes.TopLevelOnly)]
+    public void MutualExclusiveFlags(ExecuteAtParseTimeData data, [AllowSpaces]string names)
+    {
+      data.ParserOutput.FlagSets.Add(new HashSet<string>(names.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)));
     }
 
     public static void PrintInput(HotkeyTrigger trigger)

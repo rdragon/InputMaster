@@ -1,6 +1,8 @@
-﻿using System;
+﻿using InputMaster.Parsers;
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace InputMaster
@@ -8,9 +10,14 @@ namespace InputMaster
   class FlagManager : IFlagViewer
   {
     private readonly HashSet<string> Flags = new HashSet<string>();
+    private List<HashSet<string>> FlagSets;
 
-    public FlagManager(Brain brain = null)
+    public FlagManager(Parser parser, Brain brain = null)
     {
+      if (parser != null)
+      {
+        parser.NewParserOutput += (parserOutput) => FlagSets = parserOutput.FlagSets;
+      }
       if (brain != null)
       {
         var state = new MyStateManager(this);
@@ -58,10 +65,7 @@ namespace InputMaster
     [CommandTypes(CommandTypes.Visible)]
     public void ToggleFlag(string flag)
     {
-      Flags.SymmetricExceptWith(new string[] { flag });
-      FlagsChanged();
-      var text = Flags.Contains(flag) ? "Enabled" : "Disabled";
-      Env.Notifier.Write($"{text} flag '{flag}'.");
+      ToggleFlag(flag, true);
     }
 
     [CommandTypes(CommandTypes.Visible)]
@@ -83,6 +87,27 @@ namespace InputMaster
       if (!string.IsNullOrWhiteSpace(s))
       {
         ClearFlag(s);
+      }
+    }
+
+    private void ToggleFlag(string flag, bool raiseEvent)
+    {
+      if (FlagSets != null && !Flags.Contains(flag))
+      {
+        foreach (var otherFlag in FlagSets.Where(z => z.Contains(flag)).SelectMany(z => z).Where(z => z != flag))
+        {
+          if (Flags.Contains(otherFlag))
+          {
+            ToggleFlag(otherFlag, false);
+          }
+        }
+      }
+      Flags.SymmetricExceptWith(new string[] { flag });
+      if (raiseEvent)
+      {
+        var text = Flags.Contains(flag) ? "Enabled" : "Disabled";
+        Env.Notifier.Write($"{text} flag '{flag}'.");
+        FlagsChanged();
       }
     }
 
