@@ -45,8 +45,6 @@ namespace InputMaster.Hooks
     /// </summary>
     public bool Active => ActiveMode != null;
 
-    public event Action LeavingMode = delegate { };
-
     [CommandTypes(CommandTypes.Visible)]
     public void EnterMode(string name, [ValidFlags("h")]string flags = "")
     {
@@ -161,7 +159,6 @@ namespace InputMaster.Hooks
     {
       if (ActiveMode != null)
       {
-        LeavingMode();
         ActiveMode = null;
         Hidden = false;
       }

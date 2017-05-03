@@ -65,8 +65,6 @@ namespace InputMaster
           }
         }
       };
-
-      ModeHook.LeavingMode += () => CurrentAccount = null;
     }
 
     public static string CreateRandomIdentifier(int length)
