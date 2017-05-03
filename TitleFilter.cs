@@ -12,7 +12,7 @@ namespace InputMaster
     public TitleFilter(string value)
     {
       Value = value;
-      Regex = Helper.GetRegex(Value);
+      Regex = Helper.GetRegex(Value, RegexOptions.IgnoreCase);
     }
 
     public string Value { get; }

@@ -245,6 +245,14 @@ namespace InputMaster.Parsers
           throw CreateException($"Failed to parse as TimeSpan.");
         }
       }
+      else if (type == typeof(DirectoryInfo))
+      {
+        return new DirectoryInfo(Value);
+      }
+      else if (type == typeof(FileInfo))
+      {
+        return new FileInfo(Value);
+      }
       else if (type == typeof(Action))
       {
         return Env.CreateInjector().Add(this, Config.DefaultInputReader).Compile();

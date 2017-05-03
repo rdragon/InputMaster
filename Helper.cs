@@ -16,6 +16,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Security;
+using Newtonsoft.Json;
 
 namespace InputMaster
 {
@@ -475,11 +476,14 @@ namespace InputMaster
 
     public static void Delete(DirectoryInfo dir)
     {
-      foreach (var file in dir.GetFiles("*", SearchOption.AllDirectories))
+      if (dir.Exists)
       {
-        file.Attributes = FileAttributes.Normal;
+        foreach (var file in dir.GetFiles("*", SearchOption.AllDirectories))
+        {
+          file.Attributes = FileAttributes.Normal;
+        }
+        dir.Delete(true);
       }
-      dir.Delete(true);
     }
 
     public static void Delete(FileInfo file)
@@ -532,6 +536,22 @@ namespace InputMaster
     {
       ForbidNull(file, nameof(file));
       return await TryAsync(() => { return File.ReadAllText(file.FullName).Replace("\r\n", "\n"); });
+    }
+
+    public static bool TryReadJson<T>(FileInfo file, out T val)
+    {
+      try
+      {
+        if (file.Exists)
+        {
+          var s = File.ReadAllText(file.FullName);
+          val = JsonConvert.DeserializeObject<T>(s);
+          return true;
+        }
+      }
+      catch (Exception ex) when (!IsCriticalException(ex)) { }
+      val = default(T);
+      return false;
     }
 
     /// <summary>
@@ -665,7 +685,21 @@ namespace InputMaster
     public static string GetChordText(string text)
     {
       ForbidNull(text, nameof(text));
-      var m = Regex.Match(text, @"\((.+)\) *$");
+      var m = Regex.Match(text, @"\(([^)]+)\) *$");
+      if (m.Success)
+      {
+        return m.Groups[1].Value;
+      }
+      else
+      {
+        return null;
+      }
+    }
+
+    public static string GetAltChordText(string text)
+    {
+      ForbidNull(text, nameof(text));
+      var m = Regex.Match(text, @"\(([^)]+)\) *\(([^)]+)\) *$");
       if (m.Success)
       {
         return m.Groups[1].Value;

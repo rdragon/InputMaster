@@ -113,6 +113,8 @@
     <Compile Include="Parsers\Location.cs" />
     <Compile Include="Extensions\CustomActor.cs" />
     <Compile Include="HotkeyCollection.cs" />
+    <Compile Include="SharedFile.cs" />
+    <Compile Include="SharedFileManager.cs" />
     <Compile Include="TitleFilter.cs" />
     <Compile Include="Win32\Definitions.cs" />
     <Compile Include="Properties\Resources.Designer.cs">

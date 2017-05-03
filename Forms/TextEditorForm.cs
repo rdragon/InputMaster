@@ -58,6 +58,7 @@ namespace InputMaster.Forms
       };
       Components.Add(saveTimer);
       State = new MyState(this);
+      SharedFileManager = new SharedFileManager(this);
 
       saveTimer.Tick += (s, e) =>
       {
@@ -128,6 +129,10 @@ namespace InputMaster.Forms
 
     public FileInfo AccountFile { get; private set; }
 
+    public string SafePassword { get; private set; }
+
+    public SharedFileManager SharedFileManager { get; }
+
     private DirectoryInfo DataDir => GetDataDir(Config.TextEditorDir);
 
     private DirectoryInfo NamesDir => GetNamesDir(Config.TextEditorDir);
@@ -175,35 +180,22 @@ namespace InputMaster.Forms
     public async void Start()
     {
       await Task.Yield();
-      if (Config.UseCipher)
-      {
-        CreatePassword();
-      }
+      CreatePassword();
       Show();
     }
 
     public string Decrypt(FileInfo file)
     {
-      if (Config.UseCipher)
+      if (WrongPassword)
       {
-        return Cipher.Decrypt(file, Password);
+        throw new InvalidPasswordException();
       }
-      else
-      {
-        return File.ReadAllText(file.FullName);
-      }
+      return Cipher.Decrypt(file, Password);
     }
 
     public void Encrypt(FileInfo file, string text)
     {
-      if (Config.UseCipher)
-      {
-        Cipher.Encrypt(file, text, Password);
-      }
-      else
-      {
-        File.WriteAllText(file.FullName, text);
-      }
+      Cipher.Encrypt(file, text, Password);
     }
 
     public int ExportToDirectory(DirectoryInfo sourceDir, DirectoryInfo targetDir)
@@ -281,6 +273,7 @@ namespace InputMaster.Forms
       var hotkeyFilesFound = 0;
       var accountFilesFound = 0;
       List<FileLink> links = new List<FileLink>();
+      SharedFileManager.Clear();
       await Task.Run(() =>
       {
         foreach (var file in NamesDir.GetFiles())
@@ -297,6 +290,10 @@ namespace InputMaster.Forms
             hotkeyFile = new HotkeyFile(nameof(TextEditorForm), text);
             hotkeyFilesFound++;
           }
+          if (Config.SharedFileRegex.IsMatch(title))
+          {
+            SharedFileManager.Add(new SharedFile(title, file, GetDataFile(file)));
+          }
           if (title.Contains("[accounts]"))
           {
             accountFilesFound++;
@@ -305,10 +302,11 @@ namespace InputMaster.Forms
               AccountFile = GetDataFile(file);
             }
           }
-          else
+          if (title.Contains("[safePassword]"))
           {
-            links.Add(new FileLink { Title = title, File = file });
+            SafePassword = Decrypt(GetDataFile(file));
           }
+          links.Add(new FileLink { Title = title, File = file });
         }
       });
       if (failCount > 0)
@@ -322,7 +320,7 @@ namespace InputMaster.Forms
       }
       else if (accountFilesFound == 0 && !WrongPassword)
       {
-        var file = CreateNewFile("[hidden] [accounts]", "[]");
+        var file = CreateNewFile("[accounts]", "[]");
         AccountFile = GetDataFile(file);
       }
       if (hotkeyFilesFound > 1)
@@ -336,7 +334,7 @@ namespace InputMaster.Forms
         {
           var file = link.File;
           var title = link.Title;
-          var chordText = Helper.GetChordText(title);
+          var chordText = Config.GetChordText(title);
           if (chordText == null)
           {
             chordText = title;
@@ -444,7 +442,7 @@ namespace InputMaster.Forms
       await CompileTextEditorModeAsync(false);
     }
 
-    private FileInfo CreateNewFile(string title, string text)
+    public FileInfo CreateNewFile(string title, string text)
     {
       int i = 0;
       while (true)
@@ -460,7 +458,7 @@ namespace InputMaster.Forms
       }
     }
 
-    private void SaveAll()
+    public void SaveAll()
     {
       foreach (var fileTab in FileTabs)
       {
@@ -501,7 +499,7 @@ namespace InputMaster.Forms
       Helper.ShowSelectableText(log.Length == 0 ? "No matches found!" : log.ToString());
     }
 
-    private void CloseAll()
+    public void CloseAll()
     {
       foreach (var item in FileTabs.ToArray())
       {

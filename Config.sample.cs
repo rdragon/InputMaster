@@ -56,7 +56,7 @@ namespace InputMaster
     public static readonly Dictionary<string, Combo> CustomCombos = new Dictionary<string, Combo>();
     public static readonly TimeSpan ExitRunningInputMasterTimeout = TimeSpan.FromSeconds(1);
     public static readonly TimeSpan NotifierTextLifetime = TimeSpan.FromSeconds(1.5);
-    public static readonly TimeSpan SchedulerInterval = TimeSpan.FromMinutes(1);
+    public static readonly TimeSpan SchedulerInterval = TimeSpan.FromSeconds(1);
     public static readonly TimeSpan ProcessManagerInterval = TimeSpan.FromMinutes(1);
     public static readonly Color ForegroundColor = Color.Black;
     public static readonly Color BackgroundColor = Color.White;
@@ -74,6 +74,7 @@ namespace InputMaster
     public const string ModifyAccountModeName = "ModifyAccount";
     public const string AccountModeName = "Account";
     public const int LocalAccountId = -1;
+    public static readonly Regex SharedFileRegex = new Regex(@"\[shared_(?<id>[0-9a-z]+)\]");
 
     // Text Editor
     public static bool EnableTextEditor = false;
@@ -85,7 +86,6 @@ namespace InputMaster
     public const string TextEditorWindowTitle = "Text Editor - InputMaster";
     public const string TextEditorModeName = "TextEditor";
     public static readonly Combo TextEditorDesktopHotkey = Combo.None;
-    public static readonly bool UseCipher = false;
     public const int CipherDerivationIterations = 100;
     public static readonly FileInfo KeyFile = null;
     public static readonly bool AskForPassword = false;
@@ -153,6 +153,11 @@ namespace InputMaster
     public static bool HandleCustomToken(string text, IInjectorStream<object> injectorStream)
     {
       return false;
+    }
+
+    public static string GetChordText(string title)
+    {
+      return Helper.GetChordText(title);;
     }
 
     private static string CreateTokenPattern(string text)
