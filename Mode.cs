@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using InputMaster.Parsers;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
@@ -7,6 +9,8 @@ namespace InputMaster
   class Mode : Section
   {
     private List<ModeHotkey> Hotkeys = new List<ModeHotkey>();
+    private List<string> Includes = new List<string>();
+    private IncludeState MyIncludeState;
 
     public Mode(string name, bool isComposeMode)
     {
@@ -16,6 +20,7 @@ namespace InputMaster
 
     public string Name { get; }
     public bool IsComposeMode { get; }
+    public bool HasAmbiguousChord { get; private set; }
 
     public void AddHotkey(ModeHotkey modeHotkey, bool hideWarningMessage = false)
     {
@@ -33,6 +38,7 @@ namespace InputMaster
           if (!hideWarningMessage)
           {
             Env.Notifier.WriteWarning($"Mode '{Name}' has ambiguous chord '{small}'.");
+            HasAmbiguousChord = true;
           }
           break;
         }
@@ -44,5 +50,42 @@ namespace InputMaster
     {
       return Hotkeys.AsReadOnly();
     }
+
+    public void IncludeMode(string modeName)
+    {
+      Includes.Add(modeName);
+    }
+
+    public void ResolveIncludes(ParserOutput parserOutput)
+    {
+      switch (MyIncludeState)
+      {
+        case IncludeState.Idle:
+          MyIncludeState = IncludeState.Running;
+          foreach (var name in Includes)
+          {
+            var mode = parserOutput.Modes.Find(z => z.Name == name);
+            if (mode == null)
+            {
+              throw new ParseException($"Cannot find mode '{name}' (an include of mode '{Name}').");
+            }
+            else if (mode.IsComposeMode != IsComposeMode)
+            {
+              throw new ParseException($"Cannot include mode '{name}' in mode '{Name}' as they are not of the same kind.");
+            }
+            mode.ResolveIncludes(parserOutput);
+            foreach (var hotkey in mode.Hotkeys)
+            {
+              AddHotkey(hotkey, mode.HasAmbiguousChord);
+            }
+          }
+          MyIncludeState = IncludeState.Done;
+          break;
+        case IncludeState.Running:
+          throw new ParseException($"Cyclic include detected at mode '{Name}'.");
+      }
+    }
+
+    enum IncludeState { Idle, Running, Done }
   }
 }

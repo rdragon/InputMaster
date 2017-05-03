@@ -84,6 +84,10 @@ namespace InputMaster.Parsers
         {
           action.Value(parserOutput);
         }
+        foreach (var mode in parserOutput.Modes)
+        {
+          mode.ResolveIncludes(parserOutput);
+        }
       }
       catch (Exception ex) when (!Helper.IsCriticalException(ex))
       {

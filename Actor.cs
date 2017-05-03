@@ -73,6 +73,12 @@ namespace InputMaster
       data.ParserOutput.DynamicHotkeyCollection.AddDynamicHotkey(name, action, data.Section.AsStandardSection);
     }
 
+    [CommandTypes(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime | CommandTypes.ModeOnly)]
+    public void IncludeMode(ExecuteAtParseTimeData data, LocatedString modeName)
+    {
+      data.Section.AsMode.IncludeMode(modeName.Value);
+    }
+
     public static void PrintInput(HotkeyTrigger trigger)
     {
       Env.CreateInjector().Add(trigger.Combo.ToString(), Config.LiteralInputReader).Run();
