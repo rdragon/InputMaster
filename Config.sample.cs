@@ -73,8 +73,9 @@ namespace InputMaster
     public const string OpenAccountModeName = "OpenAccount";
     public const string ModifyAccountModeName = "ModifyAccount";
     public const string AccountModeName = "Account";
-    public const int LocalAccountId = -1;
+    public const string LocalAccountId = null;
     public static readonly Regex SharedFileRegex = new Regex(@"\[shared_(?<id>[0-9a-z]+)\]");
+    public static readonly FileInfo AccountsOutputFile = new FileInfo(Path.Combine(CacheDir.FullName, "Accounts.txt"));
 
     // Text Editor
     public static bool EnableTextEditor = false;
@@ -131,6 +132,7 @@ namespace InputMaster
       PreprocessorReplaces.Add(nameof(WindowHandleFile), WindowHandleFile.FullName);
       PreprocessorReplaces.Add(nameof(ErrorLogFile), ErrorLogFile.FullName);
       PreprocessorReplaces.Add(nameof(TextEditorDir), TextEditorDir.FullName);
+      PreprocessorReplaces.Add(nameof(AccountsOutputFile), AccountsOutputFile.FullName);
 
       var colorTracker = new ColorTracker(instanceCollection.FlagManager);
       instanceCollection.Brain.AddDisposable(colorTracker);

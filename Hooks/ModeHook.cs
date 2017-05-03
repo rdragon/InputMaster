@@ -235,7 +235,14 @@ namespace InputMaster.Hooks
       else
       {
         LeaveMode();
-        hit.Action(e.Combo);
+        try
+        {
+          hit.Action(e.Combo);
+        }
+        catch (Exception ex) when (!Helper.IsCriticalException(ex))
+        {
+          Env.Notifier.WriteError(ex);
+        }
       }
       ModeViewer.UpdateText(GetDisplayText());
     }

@@ -9,7 +9,7 @@ namespace InputMaster
     [JsonProperty]
     private List<TitleFilter> TitleFilters = new List<TitleFilter>();
     [JsonProperty]
-    private Dictionary<string, int> LinkedAccounts = new Dictionary<string, int>();
+    private Dictionary<string, string> LinkedAccounts = new Dictionary<string, string>();
     [JsonProperty]
     private string Username = "";
     [JsonProperty]
@@ -58,7 +58,7 @@ namespace InputMaster
       }
     }
 
-    public Account(int id, string username, string password, string email)
+    public Account(string id, string username, string password, string email)
     {
       Id = id;
       Username = username;
@@ -67,7 +67,7 @@ namespace InputMaster
     }
 
     [JsonProperty]
-    public int Id { get; private set; }
+    public string Id { get; private set; }
     [JsonProperty]
     public string Title { get; private set; } = "";
     [JsonProperty]

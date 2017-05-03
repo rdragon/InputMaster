@@ -4,6 +4,7 @@ using InputMaster.Parsers;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security;
 using System.Security.Cryptography;
@@ -14,7 +15,7 @@ namespace InputMaster
 {
   class AccountManager
   {
-    private Dictionary<int, Account> Accounts = new Dictionary<int, Account>();
+    private Dictionary<string, Account> Accounts = new Dictionary<string, Account>();
     private bool Changed;
     private Parser Parser;
     private Account CurrentAccount;
@@ -131,28 +132,22 @@ namespace InputMaster
     }
 
     [CommandTypes(CommandTypes.Visible)]
-    public async Task ModifyAccount(int? id = null)
+    public async Task ModifyAccount(string id = null)
     {
       await Task.Yield();
-      if (!id.HasValue)
-      {
-        var s = Helper.GetString("id");
-        if (s != null && int.TryParse(s, out int x))
-        {
-          id = x;
-        }
-        else
-        {
-          return;
-        }
-      }
-      if (Accounts.TryGetValue(id.Value, out Account account))
+      id = id ?? AskId();
+      if (!string.IsNullOrEmpty(id) && Accounts.TryGetValue(id, out Account account))
       {
         var newAccount = GetModifiedAccount(account);
         Accounts.Remove(account.Id);
         AddAccount(newAccount);
         Parse();
       }
+    }
+
+    private string AskId()
+    {
+      return Helper.GetString("id");
     }
 
     [CommandTypes(CommandTypes.Visible)]
@@ -217,9 +212,11 @@ namespace InputMaster
     }
 
     [CommandTypes(CommandTypes.Visible)]
-    public void EnterAccount(int id)
+    public async Task EnterAccount(string id = null)
     {
-      if (Accounts.TryGetValue(id, out Account account))
+      await Task.Yield();
+      id = id ?? AskId();
+      if (!string.IsNullOrEmpty(id) && Accounts.TryGetValue(id, out Account account))
       {
         ModeHook.EnterMode(Config.AccountModeName, "");
         CurrentAccount = account;
@@ -275,7 +272,7 @@ namespace InputMaster
       return Accounts.Values.ToList();
     }
 
-    public bool TryGetAccount(int id, out Account account)
+    public bool TryGetAccount(string id, out Account account)
     {
       return Accounts.TryGetValue(id, out account);
     }
@@ -307,24 +304,51 @@ namespace InputMaster
           {
             ModeHook.EnterMode(Config.AccountModeName, "");
             CurrentAccount = account;
-          }, account.Chord + " " + account.Description));
+          }, account.Chord + " " + account.Title + " " + account.Description));
           modifyMode.AddHotkey(new ModeHotkey(account.Chord, async (combo) =>
           {
             await ModifyAccount(account.Id);
-          }, account.Chord + " " + account.Description), true);
+          }, account.Chord + " " + account.Title + " " + account.Description), true);
         }
+        File.WriteAllLines(Config.AccountsOutputFile.FullName, Accounts.Values.Select(z => z.Id + " " + z.Title + " " + z.Description + (z.Chord.Length == 0 ? "" : $" ({z.Chord})")).ToArray());
       });
       Parser.Parse();
     }
 
-    private int GetNewId()
+    private string GetNewId()
     {
-      int id = 0;
+      var sb = new StringBuilder("0");
+      var id = "0";
       while (Accounts.ContainsKey(id))
       {
-        id++;
+        id = Increment(sb);
       }
       return id;
+    }
+
+    private string Increment(StringBuilder sb, int i = 0)
+    {
+      if (i == sb.Length)
+      {
+        sb.Append('1');
+      }
+      else
+      {
+        switch (sb[i])
+        {
+          case 'z':
+            sb[i] = '0';
+            Increment(sb, i + 1);
+            break;
+          case '9':
+            sb[i] = 'a';
+            break;
+          default:
+            sb[i]++;
+            break;
+        }
+      }
+      return new string(sb.ToString().Reverse().ToArray());
     }
 
     private IEnumerable<Account> GetSortedAccounts()
