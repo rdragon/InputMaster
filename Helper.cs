@@ -834,6 +834,9 @@ namespace InputMaster
       }
     }
 
+    /// <summary>
+    /// Inclusive.
+    /// </summary>
     public static void RequireAtMost<T>(T value, string name, T max) where T : IComparable<T>
     {
       if (value.CompareTo(max) > 0)

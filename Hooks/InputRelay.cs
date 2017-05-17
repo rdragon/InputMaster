@@ -80,6 +80,10 @@ namespace InputMaster.Hooks
       CaptureAll = true;
     }
 
+    /// <summary>
+    /// Like <see cref="Actor.Send(Action)"/>, but only accepts a single <see cref="Input"/> as argument, and will release the given input when the hotkey key that triggered the event is released.
+    /// Also, when the hotkey key is being held down, no additional injections are made (if this is not desired, an additional parameter should be added to the function which controls this behaviour).
+    /// </summary>
     [CommandTypes(CommandTypes.Visible)]
     public void SimulateInput(HotkeyTrigger trigger, Input input)
     {

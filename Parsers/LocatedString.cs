@@ -109,16 +109,22 @@ namespace InputMaster.Parsers
 
     public LocatedString Substring(int startIndex)
     {
+      Helper.RequireInInterval(startIndex, nameof(startIndex), 0, Value.Length);
       return new LocatedString(Value.Substring(startIndex), Location.AddColumns(startIndex));
     }
 
     public LocatedString Substring(int startIndex, int length)
     {
+      Helper.RequireAtLeast(startIndex, nameof(startIndex), 0);
+      Helper.RequireAtLeast(length, nameof(length), 0);
+      Helper.RequireAtMost(startIndex + length, nameof(startIndex) + "+" + nameof(length), Value.Length);
       return new LocatedString(Value.Substring(startIndex, length), Location.AddColumns(startIndex));
     }
 
     public LocatedString Replace(string str, string replacement)
     {
+      Helper.ForbidNullOrEmpty(str, nameof(str));
+      Helper.ForbidNull(replacement, nameof(replacement));
       var newValue = Value.Replace(str, replacement);
       return new LocatedString(newValue, newValue.Length != Value.Length ? Location.WithoutColumnInfo : Location);
     }
@@ -152,10 +158,12 @@ namespace InputMaster.Parsers
 
     public IEnumerable<object> ReadArguments(IEnumerable<ParameterInfo> parameterInfos)
     {
+      Helper.ForbidNull(parameterInfos, nameof(parameterInfos));
       var arguments = new List<object>();
       var current = Trim();
       foreach (var parameterInfo in parameterInfos)
       {
+        Helper.ForbidNull(parameterInfo, nameof(parameterInfo));
         if (current.Length == 0)
         {
           if (parameterInfo.IsOptional)
