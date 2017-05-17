@@ -172,6 +172,12 @@ namespace InputMaster
     }
 
     [CommandTypes(CommandTypes.Visible)]
+    public void SetCurrentAccount(string id)
+    {
+      TryGetAccount(id, out CurrentAccount);
+    }
+
+    [CommandTypes(CommandTypes.Visible)]
     public async Task ModifyAllAccounts(bool showUsernameAndEmail = false)
     {
       await Task.Yield();

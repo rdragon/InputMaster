@@ -64,6 +64,9 @@ namespace InputMaster
       }
     }
 
+    /// <summary>
+    /// Use only on main thread (because of <see cref="Env.Notifier"/>).
+    /// </summary>
     public static void StartProcess(string fileName, string arguments = "", string userName = null, SecureString password = null, string domain = null, bool captureForeground = false)
     {
       ForbidNull(fileName, nameof(fileName));
@@ -95,6 +98,9 @@ namespace InputMaster
       }
     }
 
+    /// <summary>
+    /// Use only on main thread (because of <see cref="Env.Notifier"/>).
+    /// </summary>
     public static void HandleAnyException(Exception exception)
     {
       try
@@ -114,6 +120,9 @@ namespace InputMaster
       }
     }
 
+    /// <summary>
+    /// Use only on main thread (because of <see cref="Env.Notifier"/>).
+    /// </summary>
     public static void HandleFatalException(Exception exception)
     {
       Try.SetException(exception);
