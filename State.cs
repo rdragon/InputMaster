@@ -8,9 +8,12 @@ namespace InputMaster
     private readonly FileInfo File;
     private bool IsLoaded;
 
-    public State(string name)
+    public State(string name) : this(name, Config.CacheDir) { }
+
+    public State(string name, DirectoryInfo dir)
     {
-      File = new FileInfo(Path.Combine(Config.CacheDir.FullName, name));
+      Helper.RequireValidFileName(name);
+      File = new FileInfo(Path.Combine(dir.FullName, name));
     }
 
     public bool Changed { get; set; }

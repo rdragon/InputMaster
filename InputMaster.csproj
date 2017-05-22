@@ -87,6 +87,7 @@
     <Compile Include="Brain.cs" />
     <Compile Include="Chord.cs" />
     <Compile Include="ComboArgs.cs" />
+    <Compile Include="Extensions\VarActor.cs" />
     <Compile Include="Forms\GetStringLineForm.cs">
       <SubType>Form</SubType>
     </Compile>
