@@ -84,6 +84,33 @@ namespace InputMaster
       Jobs.Add(date, job);
     }
 
+    private class Job
+    {
+      private readonly Action Action;
+
+      public string Name { get; }
+      public TimeSpan Delay { get; }
+
+      public Job(string name, Action action, TimeSpan delay)
+      {
+        Name = name;
+        Action = action;
+        Delay = delay;
+      }
+
+      public void Run()
+      {
+        try
+        {
+          Action();
+        }
+        catch (Exception ex) when (!Helper.IsCriticalException(ex))
+        {
+          Env.Notifier.WriteError(ex, "Failed to complete a scheduled job" + Helper.GetBindingsSuffix(nameof(Name), Name));
+        }
+      }
+    }
+
     private class MyState : State<Scheduler>
     {
       public MyState(Scheduler scheduler) : base(nameof(Scheduler), scheduler) { }
@@ -113,33 +140,6 @@ namespace InputMaster
           {
             Parent.LastRuns.Add(name, new DateTime(ticks));
           }
-        }
-      }
-    }
-
-    private class Job
-    {
-      private readonly Action Action;
-
-      public string Name { get; }
-      public TimeSpan Delay { get; }
-
-      public Job(string name, Action action, TimeSpan delay)
-      {
-        Name = name;
-        Action = action;
-        Delay = delay;
-      }
-
-      public void Run()
-      {
-        try
-        {
-          Action();
-        }
-        catch (Exception ex) when (!Helper.IsCriticalException(ex))
-        {
-          Env.Notifier.WriteError(ex, "Failed to complete a scheduled job" + Helper.GetBindingsSuffix(nameof(Name), Name));
         }
       }
     }

@@ -467,32 +467,6 @@ namespace InputMaster.Forms
       }
     }
 
-    private class MyState : State<TextEditorForm>
-    {
-      public MyState(TextEditorForm form) : base(nameof(TextEditorForm), form) { }
-
-      protected override void Load(BinaryReader reader)
-      {
-        var count = reader.ReadInt32();
-        for (var i = 0; i < count; i++)
-        {
-          var key = reader.ReadString();
-          var position = new RtbPosition(reader);
-          Parent.Positions.Add(key, position);
-        }
-      }
-
-      protected override void Save(BinaryWriter writer)
-      {
-        writer.Write(Parent.Positions.Count);
-        foreach (var pair in Parent.Positions)
-        {
-          writer.Write(pair.Key);
-          pair.Value.Write(writer);
-        }
-      }
-    }
-
     private class FileTab : IDisposable
     {
       private readonly TextEditorForm Form;
@@ -844,6 +818,32 @@ namespace InputMaster.Forms
     {
       public FileInfo File { get; set; }
       public string Title { get; set; }
+    }
+
+    private class MyState : State<TextEditorForm>
+    {
+      public MyState(TextEditorForm form) : base(nameof(TextEditorForm), form) { }
+
+      protected override void Load(BinaryReader reader)
+      {
+        var count = reader.ReadInt32();
+        for (var i = 0; i < count; i++)
+        {
+          var key = reader.ReadString();
+          var position = new RtbPosition(reader);
+          Parent.Positions.Add(key, position);
+        }
+      }
+
+      protected override void Save(BinaryWriter writer)
+      {
+        writer.Write(Parent.Positions.Count);
+        foreach (var pair in Parent.Positions)
+        {
+          writer.Write(pair.Key);
+          pair.Value.Write(writer);
+        }
+      }
     }
   }
 }
