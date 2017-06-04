@@ -190,12 +190,9 @@ namespace InputMaster.Hooks
       Modifiers = Modifiers.None;
       StuckModifiers = Modifiers.None;
       AlmostStuckModifiers = Modifiers.None;
-      if (ModifiersToRelease != Modifiers.None)
-      {
-        Env.CreateInjector().Add(ModifiersToRelease, false).Run();
-        ModifiersToRelease = Modifiers.None;
-      }
+      ModifiersToRelease = Modifiers.None;
       Captured.Clear();
+      ResetStandardModifierKeys();
       TargetHook.Reset();
     }
 
@@ -219,6 +216,15 @@ namespace InputMaster.Hooks
     public void ReplaceOp(ExecuteAtParseTimeData data, [AllowSpaces] LocatedString argument)
     {
       Replace(data, argument, true);
+    }
+
+    private void ResetStandardModifierKeys()
+    {
+      Config.LeftModifierKeys
+        .Concat(Config.RightModifierKeys)
+        .Where(z => z.IsStandardModifierKey())
+        .Aggregate(Env.CreateInjector(), (x, y) => x.Add(y, false))
+        .Run();
     }
 
     private void Replace(ExecuteAtParseTimeData data, [AllowSpaces] LocatedString argument, bool surroundWithSpaces)
