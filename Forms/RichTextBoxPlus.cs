@@ -9,10 +9,14 @@ namespace InputMaster.Forms
 {
   /// <summary>
   /// Fixes the following <see cref="RichTextBox"/> bugs:
-  /// 1) "Chinese Character Bug": After pressing Alt, the next key is sometimes replaced by a seemingly random Unicode character (most of the times a Chinese character). For example: inside a <see cref="RichTextBox"/> hold left Alt, press three times the left arrow key, and release left Alt. Whatever character you type next, it will be replaced by the character '5' (on my machine at least).
+  /// 1) "Chinese Character Bug": After pressing Alt, the next key is sometimes replaced by a seemingly random Unicode
+  /// character (most of the times a Chinese character). For example: inside a <see cref="RichTextBox"/> hold left Alt,
+  /// press three times the left arrow key, and release left Alt. Whatever character you type next, it will be replaced
+  /// by the character '5' (on my machine at least).
   /// 
   /// Other features:
-  /// 1) A properly disabled <see cref="RichTextBox.AutoWordSelection"/>. By default this functionality is enabled for a RichTextBox, contradicting the default value of <see cref="RichTextBox.AutoWordSelection"/>.
+  /// 1) A properly disabled <see cref="RichTextBox.AutoWordSelection"/>. By default this functionality is enabled for
+  /// a RichTextBox, contradicting the default value of <see cref="RichTextBox.AutoWordSelection"/>.
   /// 2) Pressing Tab inserts two spaces.
   /// 3) Uses <see cref="Helper.StartProcess"/> when a link is clicked.
   /// 4) A number of standard hotkeys are supported, like Ctrl + F and Alt + Up.
