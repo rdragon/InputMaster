@@ -76,6 +76,7 @@ namespace InputMaster
     {
       Config.DataDir.Create();
       Config.CacheDir.Create();
+      Config.HotkeyFile.Refresh();
       if (!Config.HotkeyFile.Exists)
       {
         File.WriteAllText(Config.HotkeyFile.FullName, "");

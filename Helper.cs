@@ -315,6 +315,7 @@ namespace InputMaster
 
     public static void RequireExists(FileSystemInfo fsi)
     {
+      fsi.Refresh();
       if (!fsi.Exists)
       {
         if (fsi is FileInfo)
@@ -327,6 +328,7 @@ namespace InputMaster
 
     public static void ForbidExists(FileSystemInfo fsi)
     {
+      fsi.Refresh();
       if (fsi.Exists)
       {
         if (fsi is FileInfo)
@@ -429,6 +431,7 @@ namespace InputMaster
 
     public static void Delete(DirectoryInfo dir)
     {
+      dir.Refresh();
       if (dir.Exists)
       {
         foreach (var file in dir.GetFiles("*", SearchOption.AllDirectories))
@@ -470,6 +473,7 @@ namespace InputMaster
 
     public static void Copy(FileInfo sourceFile, FileInfo targetFile, bool overwrite = false)
     {
+      targetFile.Refresh();
       if (!overwrite)
       {
         ForbidExists(targetFile);
