@@ -1,11 +1,14 @@
-﻿namespace InputMaster.Forms
+﻿using System.ComponentModel;
+using System.Windows.Forms;
+
+namespace InputMaster.Forms
 {
   partial class GetStringLineForm
   {
     /// <summary>
     /// Required designer variable.
     /// </summary>
-    private System.ComponentModel.IContainer components = null;
+    private IContainer components = null;
 
     /// <summary>
     /// Clean up any resources being used.
@@ -79,7 +82,7 @@
 
     #endregion
 
-    private System.Windows.Forms.Button Button;
-    private System.Windows.Forms.TextBox TextBox;
+    private Button Button;
+    private TextBox TextBox;
   }
 }

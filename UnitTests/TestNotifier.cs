@@ -1,18 +1,15 @@
-﻿using InputMaster;
+﻿using System;
+using System.ComponentModel;
 using System.Text;
+using InputMaster;
 
 namespace UnitTests
 {
-  class FakeNotifier : INotifier
+  internal class TestNotifier : INotifier
   {
-    private StringBuilder Log = new StringBuilder();
+    private readonly StringBuilder Log = new StringBuilder();
 
-    public int LogLength => Log.Length;
-
-    public string GetLog()
-    {
-      return Log.ToString();
-    }
+    public ISynchronizeInvoke SynchronizingObject => throw new NotImplementedException();
 
     public void Write(string text) { }
 
@@ -26,14 +23,13 @@ namespace UnitTests
       Log.Append($"Error: {text}\n");
     }
 
-    public void ShowLog() { }
-
     public void SetPersistentText(string text) { }
 
     public void CaptureForeground() { }
 
-    public void Disable() { }
-
-    public void RequestExit() { WriteError("Exit requested."); }
+    public string GetLog()
+    {
+      return Log.ToString();
+    }
   }
 }

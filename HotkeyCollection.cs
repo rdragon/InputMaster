@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace InputMaster
 {
-  class HotkeyCollection
+  internal class HotkeyCollection
   {
     private readonly Dictionary<Chord, SortedSet<Hotkey>> Dictionary = new Dictionary<Chord, SortedSet<Hotkey>>();
 
@@ -13,8 +13,7 @@ namespace InputMaster
 
     public void AddHotkey(Chord chord, Action<Combo> action, StandardSection section)
     {
-      SortedSet<Hotkey> set;
-      if (!Dictionary.TryGetValue(chord, out set))
+      if (!Dictionary.TryGetValue(chord, out var set))
       {
         set = new SortedSet<Hotkey>(Hotkey.SectionComparer);
         Dictionary[chord] = set;
@@ -35,8 +34,7 @@ namespace InputMaster
     public Action<Combo> TryGetAction(Chord chord)
     {
       Action<Combo> action = null;
-      SortedSet<Hotkey> set;
-      if (Dictionary.TryGetValue(chord, out set))
+      if (Dictionary.TryGetValue(chord, out var set))
       {
         foreach (var item in set)
         {

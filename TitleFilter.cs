@@ -1,13 +1,13 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json;
 
 namespace InputMaster
 {
   [JsonConverter(typeof(TitleFilterJsonConverter))]
-  class TitleFilter
+  internal class TitleFilter
   {
-    private Regex Regex;
+    private readonly Regex Regex;
 
     public TitleFilter(string value)
     {
@@ -23,7 +23,7 @@ namespace InputMaster
     }
   }
 
-  class TitleFilterJsonConverter : JsonConverter
+  internal class TitleFilterJsonConverter : JsonConverter
   {
     public override bool CanConvert(Type objectType)
     {

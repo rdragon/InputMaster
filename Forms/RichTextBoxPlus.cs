@@ -1,41 +1,41 @@
 ﻿using System;
-using System.Windows.Forms;
-using System.Text.RegularExpressions;
-using InputMaster.Win32;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using InputMaster.Win32;
 
 namespace InputMaster.Forms
 {
   /// <summary>
   /// Fixes the following <see cref="RichTextBox"/> bugs:
-  /// 1) "Chinese Character Bug": After pressing Alt, the next key is sometimes replaced by a seemingly random Unicode character (most times a Chinese character, in my experience). For example: inside a <see cref="RichTextBox"/> hold left Alt, press three times the left arrow key, and release left Alt. Whatever character you type next, it will be replaced by the character '5' (on my machine at least).
+  /// 1) "Chinese Character Bug": After pressing Alt, the next key is sometimes replaced by a seemingly random Unicode character (most of the times a Chinese character). For example: inside a <see cref="RichTextBox"/> hold left Alt, press three times the left arrow key, and release left Alt. Whatever character you type next, it will be replaced by the character '5' (on my machine at least).
   /// 
   /// Other features:
-  /// 1) A properly disabled <see cref="RichTextBox.AutoWordSelection"/>. By default this functionality is enabled for a RichTextBox, contradicting the default value of <see cref="RichTextBox.AutoWordSelection"/>, which is false.
+  /// 1) A properly disabled <see cref="RichTextBox.AutoWordSelection"/>. By default this functionality is enabled for a RichTextBox, contradicting the default value of <see cref="RichTextBox.AutoWordSelection"/>.
   /// 2) Pressing Tab inserts two spaces.
   /// 3) Uses <see cref="Helper.StartProcess"/> when a link is clicked.
   /// 4) A number of standard hotkeys are supported, like Ctrl + F and Alt + Up.
   /// 5) Easy saving and loading of cursor and scrollbar position.
   /// 6) No delay while scrolling.
   /// 7) Edit multiple lines simultaneously with Alt + Lmb.
-  /// 8) Does not select a trailing space on double click (and includes '_' as word character).
+  /// 8) Does not select a trailing space on double click.
+  /// 9) Does not stop at the character '_' on double click.
   /// </summary>
-  class RichTextBoxPlus : RichTextBox
+  internal class RichTextBoxPlus : RichTextBox
   {
-    private const int EM_GETEVENTMASK = (int)WindowMessage.User + 59;
-    private const int EM_SETEVENTMASK = (int)WindowMessage.User + 69;
-    private const int EM_GETSCROLLPOS = (int)WindowMessage.User + 221;
-    private const int EM_SETSCROLLPOS = (int)WindowMessage.User + 222;
-    private const int SB_THUMBPOSITION = 4;
-    private const int SB_BOTTOM = 7;
-    private const int MK_CONTROL = 8;
+    private const int EmGetEventMask = (int)WindowMessage.User + 59;
+    private const int EmSetEventMask = (int)WindowMessage.User + 69;
+    private const int EmGetScrollPos = (int)WindowMessage.User + 221;
+    private const int EmSetScrollPos = (int)WindowMessage.User + 222;
+    private const int SbThumbPosition = 4;
+    private const int SbBottom = 7;
+    private const int MkControl = 8;
 
     /// <summary>
     /// Speed at which the control can be scrolled with the mouse wheel.
     /// </summary>
     private const int ScrollDelta = 200;
-    private readonly Timeout ChineseBugTimeout = new Timeout();
-    private readonly MyMultiEditBrain MultiEditBrain;
     private Regex FindRegex;
     private Regex FindPrevRegex;
     private string LastSearchString = "";
@@ -44,21 +44,11 @@ namespace InputMaster.Forms
 
     public RichTextBoxPlus()
     {
-      MultiEditBrain = new MyMultiEditBrain(this);
+      var multiEditBrain = new MyMultiEditBrain(this);
       AcceptsTab = true;
 
       // A hack to properly disable AutoWordSelection. It is first set to true in the constructor, and sometime after the constructor it is set back to false.
       AutoWordSelection = true;
-
-      ChineseBugTimeout.Elapsed += () =>
-      {
-        // A hack to fix the "Chinese Character Bug".
-        if (Parent != null)
-        {
-          Parent.Focus();
-          Focus();
-        }
-      };
 
       KeyDown += (s, e) =>
       {
@@ -124,18 +114,23 @@ namespace InputMaster.Forms
         }
       };
 
-      KeyUp += (s, e) =>
+      KeyUp += async (s, e) =>
       {
+        // A hack to fix the "Chinese Character Bug".
         if (e.KeyData.HasFlag(Keys.Alt))
         {
-          ChineseBugTimeout.Start(TimeSpan.FromMilliseconds(1));
+          await Task.Yield();
+          if (Parent != null)
+          {
+            Parent.Focus();
+            Focus();
+          }
         }
       };
 
       Disposed += (s, e) =>
       {
-        ChineseBugTimeout.Dispose();
-        MultiEditBrain.Dispose();
+        multiEditBrain.Dispose();
       };
 
       LinkClicked += (s, e) =>
@@ -164,15 +159,15 @@ namespace InputMaster.Forms
     /// </summary>
     public void SuspendPainting()
     {
-      NativeMethods.SendMessage(Handle, EM_GETSCROLLPOS, IntPtr.Zero, ref ScrollPointBackup);
+      NativeMethods.SendMessage(Handle, EmGetScrollPos, IntPtr.Zero, ref ScrollPointBackup);
       NativeMethods.SendMessage(Handle, (int)WindowMessage.SetRedraw, 0, 0);
-      EventMask = NativeMethods.SendMessage(Handle, EM_GETEVENTMASK, 0, 0);
+      EventMask = NativeMethods.SendMessage(Handle, EmGetEventMask, 0, 0);
     }
 
     public void ResumePainting()
     {
-      NativeMethods.SendMessage(Handle, EM_SETSCROLLPOS, IntPtr.Zero, ref ScrollPointBackup);
-      NativeMethods.SendMessage(Handle, EM_SETEVENTMASK, IntPtr.Zero, EventMask);
+      NativeMethods.SendMessage(Handle, EmSetScrollPos, IntPtr.Zero, ref ScrollPointBackup);
+      NativeMethods.SendMessage(Handle, EmSetEventMask, IntPtr.Zero, EventMask);
       NativeMethods.SendMessage(Handle, (int)WindowMessage.SetRedraw, 1, 0);
       Invalidate();
     }
@@ -198,7 +193,7 @@ namespace InputMaster.Forms
 
     public void ScrollToBottom()
     {
-      var msg = new Message { HWnd = Handle, WParam = new IntPtr(SB_BOTTOM), LParam = IntPtr.Zero, Msg = (int)WindowMessage.VerticalScroll };
+      var msg = new Message { HWnd = Handle, WParam = new IntPtr(SbBottom), LParam = IntPtr.Zero, Msg = (int)WindowMessage.VerticalScroll };
       base.WndProc(ref msg);
     }
 
@@ -217,7 +212,7 @@ namespace InputMaster.Forms
     protected override void WndProc(ref Message m)
     {
       // Remove the delay of the default scrolling behaviour.
-      if (m.Msg == (int)WindowMessage.MouseWheel && (m.WParam.ToInt32() & MK_CONTROL) == 0)
+      if (m.Msg == (int)WindowMessage.MouseWheel && (m.WParam.ToInt32() & MkControl) == 0)
       {
         SetScrollPosition(GetScrollPosition() + ScrollDelta * (Helper.GetMouseWheelDelta(m) < 0 ? 1 : -1));
       }
@@ -319,13 +314,10 @@ namespace InputMaster.Forms
         {
           return;
         }
-        else
-        {
-          i = Helper.GetLineStart(text, a - 1);
-          j = a - 1;
-          k = b;
-          ss -= a - i;
-        }
+        i = Helper.GetLineStart(text, a - 1);
+        j = a - 1;
+        k = b;
+        ss -= a - i;
       }
       else
       {
@@ -333,13 +325,10 @@ namespace InputMaster.Forms
         {
           return;
         }
-        else
-        {
-          i = a;
-          j = b;
-          k = Helper.GetLineEnd(text, b + 1);
-          ss += k + 1 - (j + 1); // Length of 'v' below.
-        }
+        i = a;
+        j = b;
+        k = Helper.GetLineEnd(text, b + 1);
+        ss += k + 1 - (j + 1); // Length of 'v' below.
       }
       var l = Math.Min(k + 1, text.Length);
       Select(i, l - i);
@@ -360,7 +349,7 @@ namespace InputMaster.Forms
           SelectionLength = m.Length;
           return true;
         }
-        else if (startAt > 0)
+        if (startAt > 0)
         {
           var found = FindNext(0);
           if (found)
@@ -369,10 +358,7 @@ namespace InputMaster.Forms
           }
           return found;
         }
-        else
-        {
-          ShowNotFoundMessage();
-        }
+        ShowNotFoundMessage();
       }
       return false;
     }
@@ -389,7 +375,7 @@ namespace InputMaster.Forms
           SelectionLength = m.Length;
           return true;
         }
-        else if (startAt < TextLength - 1)
+        if (startAt < TextLength - 1)
         {
           var found = FindPrev(TextLength - 1);
           if (found)
@@ -398,10 +384,7 @@ namespace InputMaster.Forms
           }
           return found;
         }
-        else
-        {
-          ShowNotFoundMessage();
-        }
+        ShowNotFoundMessage();
       }
       return false;
     }
@@ -418,7 +401,7 @@ namespace InputMaster.Forms
 
     private void SetScrollPosition(int scrollPosition)
     {
-      var low = SB_THUMBPOSITION;
+      var low = SbThumbPosition;
       var high = Math.Max(0, scrollPosition);
       var wParam = new IntPtr(high << 16 | low);
       var msg = new Message { HWnd = Handle, WParam = wParam, LParam = IntPtr.Zero, Msg = (int)WindowMessage.VerticalScroll };
@@ -531,7 +514,7 @@ namespace InputMaster.Forms
           }
         };
 
-        Rtb.Pasting += async (e) =>
+        Rtb.Pasting += async e =>
         {
           if (On)
           {
@@ -567,7 +550,7 @@ namespace InputMaster.Forms
           var i = Helper.GetLineStart(text, A);
           Rtb.Select(i, Helper.GetLineEnd(text, B) - i);
           var lines = Rtb.SelectedText.Split('\n');
-          for (int p = 0; p < lines.Length; p++)
+          for (var p = 0; p < lines.Length; p++)
           {
             if (type == ModifyType.Backspace)
             {

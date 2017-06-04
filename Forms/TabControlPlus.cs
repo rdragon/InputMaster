@@ -8,30 +8,32 @@ namespace InputMaster.Forms
   /// Adds Ctrl + Tab support.
   /// Also does not capture Ctrl + PgUp and Ctrl + PgDn.
   /// </summary>
-  class TabControlPlus : TabControl
+  internal class TabControlPlus : TabControl
   {
-    private LinkedList<TabPage> TabOrder = new LinkedList<TabPage>();
+    private readonly LinkedList<TabPage> TabOrder = new LinkedList<TabPage>();
 
     public TabControlPlus()
     {
       ControlAdded += (s, e) =>
       {
-        if (e.Control is TabPage)
+        var tabPage = e.Control as TabPage;
+        if (tabPage != null)
         {
-          TabOrder.AddFirst(e.Control as TabPage);
+          TabOrder.AddFirst(tabPage);
         }
       };
 
       ControlRemoved += (s, e) =>
       {
-        if (e.Control is TabPage)
+        var tabPage = e.Control as TabPage;
+        if (tabPage == null)
         {
-          var tabPage = e.Control as TabPage;
-          TabOrder.Remove(tabPage);
-          if (tabPage == SelectedTab && TabOrder.Any())
-          {
-            SelectedTab = TabOrder.First.Value;
-          }
+          return;
+        }
+        TabOrder.Remove(tabPage);
+        if (tabPage == SelectedTab && TabOrder.Any())
+        {
+          SelectedTab = TabOrder.First.Value;
         }
       };
 
@@ -52,15 +54,13 @@ namespace InputMaster.Forms
 
     protected override bool ProcessCmdKey(ref Message msg, Keys key)
     {
-      if (key == (Keys.Tab | Keys.Control) && TabOrder.Count > 1)
-      {
-        SelectedTab = TabOrder.First.Next.Value;
-        return true;
-      }
-      else
+      if (key != (Keys.Tab | Keys.Control) || TabOrder.Count < 2)
       {
         return base.ProcessCmdKey(ref msg, key);
       }
+      // ReSharper disable once PossibleNullReferenceException
+      SelectedTab = TabOrder.First.Next.Value;
+      return true;
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

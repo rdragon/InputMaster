@@ -1,13 +1,14 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using InputMaster.Parsers;
+using Newtonsoft.Json;
 
 namespace InputMaster
 {
   [JsonConverter(typeof(ChordJsonConverter))]
-  class Chord : IEquatable<Chord>, IEnumerable<Combo>
+  internal class Chord : IEquatable<Chord>, IEnumerable<Combo>
   {
     private readonly List<Combo> CombosReversed;
     private int HashCode;
@@ -45,26 +46,19 @@ namespace InputMaster
       {
         return false;
       }
-      else
+      for (var i = 0; i < other.Length; i++)
       {
-        for (int i = 0; i < other.Length; i++)
+        if (other.CombosReversed[other.Length - 1 - i] != CombosReversed[Length - 1 - i])
         {
-          if (other.CombosReversed[other.Length - 1 - i] != CombosReversed[Length - 1 - i])
-          {
-            return false;
-          }
+          return false;
         }
-        return true;
       }
-    }
-
-    public bool Contains(Input input)
-    {
-      return CombosReversed.Any(z => z.Input == input);
+      return true;
     }
 
     public override int GetHashCode()
     {
+      // ReSharper disable once NonReadonlyMemberInGetHashCode
       return HashCode;
     }
 
@@ -79,17 +73,14 @@ namespace InputMaster
       {
         return false;
       }
-      else
+      for (var i = 0; i < Length; i++)
       {
-        for (int i = 0; i < Length; i++)
+        if (CombosReversed[i] != other.CombosReversed[i])
         {
-          if (CombosReversed[i] != other.CombosReversed[i])
-          {
-            return false;
-          }
+          return false;
         }
-        return true;
       }
+      return true;
     }
 
     public static bool operator ==(Chord chord1, Chord chord2)
@@ -98,10 +89,7 @@ namespace InputMaster
       {
         return ReferenceEquals(chord1, chord2);
       }
-      else
-      {
-        return chord1.Equals(chord2);
-      }
+      return chord1.Equals(chord2);
     }
 
     public static bool operator !=(Chord chord1, Chord chord2)
@@ -110,10 +98,7 @@ namespace InputMaster
       {
         return !ReferenceEquals(chord1, chord2);
       }
-      else
-      {
-        return !chord1.Equals(chord2);
-      }
+      return !chord1.Equals(chord2);
     }
 
     public override string ToString()
@@ -143,12 +128,12 @@ namespace InputMaster
 
     private int GetComparisonValue()
     {
-      var anys = CombosReversed.Where(z => z.Input == Input.Any);
-      return anys.Select(z => Helper.CountOnes((int)z.Modifiers)).Sum() - 999 * anys.Count();
+      var anys = CombosReversed.Where(z => z.Input == Input.Any).ToList();
+      return anys.Select(z => Helper.CountOnes((int)z.Modifiers)).Sum() - 999 * anys.Count;
     }
   }
 
-  class ChordJsonConverter : JsonConverter
+  internal class ChordJsonConverter : JsonConverter
   {
     public override bool CanConvert(Type objectType)
     {
@@ -157,7 +142,7 @@ namespace InputMaster
 
     public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
     {
-      return Config.DefaultChordReader.CreateChord(new Parsers.LocatedString(reader.Value.ToString()));
+      return Config.DefaultChordReader.CreateChord(new LocatedString(reader.Value.ToString()));
     }
 
     public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)

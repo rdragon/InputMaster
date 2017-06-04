@@ -1,8 +1,8 @@
 ﻿namespace InputMaster
 {
-  abstract class Section
+  internal abstract class Section
   {
-    public Section()
+    protected Section()
     {
       Column = -1;
     }

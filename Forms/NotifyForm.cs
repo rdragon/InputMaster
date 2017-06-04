@@ -1,17 +1,22 @@
-﻿using InputMaster.Win32;
+﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using InputMaster.Win32;
 
 namespace InputMaster.Forms
 {
-  class NotifyForm : ThemeForm
+  internal sealed class NotifyForm : ThemeForm, INotifier
   {
     private readonly Label Label = new Label { AutoSize = true, Location = new Point(9, 9) };
     private readonly Queue<string> Messages = new Queue<string>();
+    private readonly StringBuilder Log = new StringBuilder();
     private string PersistentText;
+    private bool Alive = true;
 
     public NotifyForm()
     {
@@ -31,21 +36,57 @@ namespace InputMaster.Forms
       {
         // This method is used instead of setting `this.Enabled` to false, so that the visuals are not affected.
         NativeMethods.EnableWindow(Handle, false);
+
+        File.WriteAllText(Config.WindowHandleFile.FullName, Handle.ToString());
       };
 
       SizeChanged += (s, e) =>
       {
         UpdateFormPosition();
       };
+
+      FormClosing += (s, e) =>
+      {
+        if (!Alive)
+        {
+          return;
+        }
+        Alive = false;
+        Application.Exit();
+        Config.WindowHandleFile.Delete();
+      };
     }
 
-    public void Write(string text)
+    public ISynchronizeInvoke SynchronizingObject => this;
+
+    private static string AppendTimestamp(string text)
     {
-      Helper.ForbidNull(text, nameof(text));
-      Messages.Enqueue(text);
+      var date = DateTime.Now.ToString(Config.LogDateTimeFormat);
+      return $"{date} {text}";
+    }
+
+    public void Write(string message)
+    {
+      message = message ?? "";
+      WriteToLog(message);
+      Messages.Enqueue(message);
       UpdateLabel();
       Task.Delay(Config.NotifierTextLifetime)
         .ContinueWith(t => DequeueMessage(), TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
+    public void WriteWarning(string message)
+    {
+      message = $"Warning: {message}";
+      WriteToFile(message);
+      Write(message);
+    }
+
+    public void WriteError(string message)
+    {
+      message = $"Error: {message}";
+      WriteToFile(message);
+      Write(message);
     }
 
     public void SetPersistentText(string text)
@@ -54,9 +95,39 @@ namespace InputMaster.Forms
       UpdateLabel();
     }
 
+    public string GetLog()
+    {
+      return Log.ToString();
+    }
+
+    public void CaptureForeground()
+    {
+      if (!Alive)
+      {
+        return;
+      }
+      Helper.SetForegroundWindowForce(Handle);
+    }
+
+    private void WriteToLog(string message)
+    {
+      message = AppendTimestamp(message);
+      Log.Append($"{message}\n");
+    }
+
+    private void WriteToFile(string message)
+    {
+      message = AppendTimestamp(message);
+      File.AppendAllLines(Config.ErrorLogFile.FullName, new[] { message });
+    }
+
     private void UpdateLabel()
     {
-      StringBuilder sb = new StringBuilder();
+      if (!Alive)
+      {
+        return;
+      }
+      var sb = new StringBuilder();
       if (!string.IsNullOrEmpty(PersistentText))
       {
         sb.AppendLine(PersistentText);

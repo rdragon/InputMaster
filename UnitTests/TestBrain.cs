@@ -1,80 +1,44 @@
-﻿using InputMaster.Parsers;
-using InputMaster.Hooks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Text;
+﻿using System.Text;
 using InputMaster;
+using InputMaster.Hooks;
+using InputMaster.Parsers;
 using InputMaster.Properties;
-using System.IO;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace UnitTests
 {
-  class TestBrain
+  internal class TestBrain : Actor
   {
-    private readonly FakeNotifier Notifier = new FakeNotifier();
-    private readonly StringBuilder Output = new StringBuilder();
-    private ForegroundManager ForegroundManager;
-    private FakeInjectorFactory SourceFactory;
-    private InputReader SourceInputReader;
-    private InputReader SinkInputReader;
-    private ParserOutputProvider ParserOutputProvider;
+    private readonly TestOutputHandler OutputHandler;
+    private readonly InputReader InputReader = new InputReader(InputReaderFlags.AllowHoldRelease | InputReaderFlags.AllowCustomModifier | InputReaderFlags.AllowMultiplier);
+    private TestInjector PrimaryHookInjector;
+    private TestPrimaryHook PrimaryHook;
     private InputRelay InputRelay;
+    private InputHook InputHook;
+    private ComboRelay ComboRelay;
+    private ComboHook ComboHook;
+    private ModeHook ModeHook;
+    private TestForegroundListener ForegroundListener;
+
+    public TestBrain(TestOutputHandler outputHandler)
+    {
+      OutputHandler = outputHandler;
+    }
 
     public void Run()
     {
-      var assertFailed = false;
-      Env.Notifier = Notifier;
-      try
-      {
-        SourceFactory = new FakeInjectorFactory();
-        SourceFactory.Injecting += (input, down) =>
-        {
-          var e = new InputArgs(input, down);
-          InputRelay.Handle(e);
-          if (!e.Capture)
-          {
-            Env.CreateInjector().Add(input, down).Run();
-          }
-        };
-        var sinkFactory = new FakeInjectorFactory();
-        Env.InjectorPrototype = sinkFactory.CreateInjector();
-        var outputHandler = new OutputHandler(Output);
-        sinkFactory.Injecting += outputHandler.Handle;
-        SourceInputReader = new InputReader(InputReaderFlags.AllowHoldRelease | InputReaderFlags.AllowCustomModifier | InputReaderFlags.AllowMultiplier);
-        SinkInputReader = new InputReader(InputReaderFlags.AllowMultiplier);
-        var commandCollection = new CommandCollection();
-        var parser = new Parser(commandCollection);
-        var flagManager = new FlagManager(parser);
-        ParserOutputProvider = new ParserOutputProvider();
-        ForegroundManager = new ForegroundManager(flagManager, ParserOutputProvider);
-        Env.ForegroundListener = ForegroundManager;
-        var modeHook = new ModeHook(ParserOutputProvider);
-        var comboHook = new ComboHook(ParserOutputProvider);
-        var comboRelay = new ComboRelay(modeHook, comboHook);
-        var inputHook = new InputHook(comboRelay);
-        InputRelay = new InputRelay(inputHook);
-        var actor = new Actor();
-        commandCollection.AddActors(this, flagManager, ForegroundManager, modeHook, comboHook, inputHook, InputRelay, actor);
-        parser.UpdateHotkeyFile(new HotkeyFile(nameof(TestBrain), Resources.Tests.Replace("\r\n", "\n")));
-        parser.Parse();
-      }
-      catch (Exception ex) when (Helper.HasAssertFailed(ex))
-      {
-        assertFailed = true;
-        throw;
-      }
-      catch (Exception ex) when (!Helper.IsCriticalException(ex))
-      {
-        Notifier.WriteError(ex);
-      }
-      finally
-      {
-        if (!assertFailed && Notifier.LogLength > 0)
-        {
-          Assert.Fail("Unexpected output: " + Notifier.GetLog());
-        }
-        Try.ThrowException();
-      }
+      ForegroundListener = Env.ForegroundListener as TestForegroundListener;
+      ModeHook = new ModeHook();
+      ComboHook = new ComboHook();
+      ComboRelay = new ComboRelay(ModeHook, ComboHook);
+      InputHook = new InputHook(ComboRelay);
+      InputRelay = new InputRelay(InputHook);
+      PrimaryHook = new TestPrimaryHook(InputRelay);
+      PrimaryHookInjector = new TestInjector(PrimaryHook);
+      Env.AddActor(new MiscActor());
+      Env.Parser.UpdateHotkeyFile(new HotkeyFile(nameof(TestBrain), Resources.Tests.Replace("\r\n", "\n")));
+      Env.Parser.Enabled = true;
+      Env.Parser.Run();
     }
 
     [CommandTypes(CommandTypes.ExecuteAtParseTime | CommandTypes.Chordless | CommandTypes.Visible | CommandTypes.TopLevelOnly)]
@@ -86,26 +50,28 @@ namespace UnitTests
     [CommandTypes(CommandTypes.ExecuteAtParseTime | CommandTypes.Chordless | CommandTypes.Visible | CommandTypes.TopLevelOnly)]
     public void Test(ExecuteAtParseTimeData data, LocatedString toSimulate, string expectedOutput, string processName = null, string windowTitle = null, string flag = null)
     {
-      ParserOutputProvider.SetParserOutput(data.ParserOutput);
-      InputRelay.Reset();
-      ForegroundManager.Reset();
+      Env.Parser.FireNewParserOutput(data.ParserOutput);
+      PrimaryHook.Reset();
+      OutputHandler.Reset();
+      ForegroundListener.Reset();
+      Env.FlagManager.ClearFlags();
       if (!string.IsNullOrEmpty(processName))
       {
-        ForegroundManager.SetProcessName(processName);
+        ForegroundListener.NewProcessName = processName;
       }
       if (!string.IsNullOrEmpty(windowTitle))
       {
-        ForegroundManager.SetWindowTitle(windowTitle);
+        ForegroundListener.NewWindowTitle = windowTitle;
       }
       if (!string.IsNullOrEmpty(flag))
       {
-        ForegroundManager.FlagManager.ToggleFlag(flag);
+        Env.FlagManager.ToggleFlag(flag);
       }
-      Output.Clear();
-      SourceFactory.CreateInjector().Add(toSimulate, SourceInputReader).Run();
-      var output = Output.ToString();
-      var state = InputRelay.GetStateInfo();
-      if (expectedOutput != output || Notifier.LogLength > 0 || state.Length > 0)
+      PrimaryHookInjector.CreateInjector().Add(toSimulate, InputReader).Run();
+      var output = OutputHandler.GetStateInfo();
+      var state = PrimaryHook.GetStateInfo();
+      var errorLog = Env.Notifier.GetLog();
+      if (expectedOutput != output || errorLog.Length > 0 || state.Length > 0)
       {
         var sb = new StringBuilder();
         sb.AppendLine();
@@ -117,10 +83,10 @@ namespace UnitTests
           sb.AppendLine("Actual output: " + (output.Length == 0 ? "(no output)" : output));
           sb.AppendLine();
         }
-        if (Notifier.LogLength > 0)
+        if (errorLog.Length > 0)
         {
-          sb.AppendLine("Unexpected output:");
-          sb.AppendLine(Notifier.GetLog());
+          sb.AppendLine("Unexpected error(s):");
+          sb.AppendLine(errorLog);
           sb.AppendLine();
         }
         if (state.Length > 0)

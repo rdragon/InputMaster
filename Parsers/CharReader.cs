@@ -8,65 +8,36 @@ namespace InputMaster.Parsers
   /// <summary>
   /// Functionality for reading a string one character at a time. Keeps track of position in the string.
   /// </summary>
-  abstract class CharReader
+  internal abstract class CharReader
   {
     private readonly string Text;
-    private readonly Location StartLocation;
     private int Index;
 
-    public CharReader(LocatedString locatedString)
+    protected CharReader(LocatedString locatedString)
     {
       var text = Helper.ForbidNull(locatedString.Value, nameof(locatedString) + "." + nameof(locatedString.Value));
       if (text.Contains('\t'))
       {
-        throw new ParseException($"Tab character(s) found in input. Please use spaces only.");
+        throw new ParseException("Tab character(s) found in input. Please use spaces only.");
       }
       Debug.Assert(!text.Contains("\r\n"));
       Text = text;
-      StartLocation = locatedString.Location;
-      Location = StartLocation;
+      Location = locatedString.Location;
     }
 
     protected bool EndOfStream => Index == Text.Length;
     protected bool EndOfLine => Current == '\n';
-    protected char Current
-    {
-      get
-      {
-        if (EndOfStream)
-        {
-          return '\n';
-        }
-        else
-        {
-          return Text[Index];
-        }
-      }
-    }
+    protected char Current => EndOfStream ? '\n' : Text[Index];
     protected Location Location { get; private set; }
-
-    protected void Reset()
-    {
-      Index = 0;
-      Location = StartLocation;
-    }
 
     protected char Read()
     {
-      var c = Current;
-      if (!EndOfStream)
+      if (EndOfStream)
       {
-        if (EndOfLine)
-        {
-          Location = Location.NextLine;
-        }
-        else
-        {
-          Location = Location.NextColumn;
-        }
-        Index++;
+        return Current;
       }
-      return c;
+      Location = EndOfLine ? Location.NextLine : Location.NextColumn;
+      return Text[Index++];
     }
 
     protected void Read(char c)
@@ -116,15 +87,12 @@ namespace InputMaster.Parsers
 
     protected bool TryRead(string text)
     {
-      if (At(text))
-      {
-        Read(text);
-        return true;
-      }
-      else
+      if (!At(text))
       {
         return false;
       }
+      Read(text);
+      return true;
     }
 
     protected bool At(string text)
@@ -153,29 +121,19 @@ namespace InputMaster.Parsers
 
     protected void Require(char c)
     {
-      if (c != Current)
+      if (c == Current)
       {
-        if (EndOfStream)
-        {
-          throw CreateException($"Unexpected end of stream, expecting '{c}'.");
-        }
-        else if (EndOfLine)
-        {
-          throw CreateException($"Unexpected end of line, expecting '{c}'.");
-        }
-        else
-        {
-          throw CreateException($"Unexpected character '{Current}', expecting '{c}'.");
-        }
+        return;
       }
-    }
-
-    protected void Forbid(char c)
-    {
-      if (Current == c)
+      if (EndOfStream)
       {
-        throw CreateException($"Unexpected character '{c}'.");
+        throw CreateException($"Unexpected end of stream, expecting '{c}'.");
       }
+      if (EndOfLine)
+      {
+        throw CreateException($"Unexpected end of line, expecting '{c}'.");
+      }
+      throw CreateException($"Unexpected character '{Current}', expecting '{c}'.");
     }
 
     protected LocatedString ReadToken(out string text)
@@ -189,39 +147,12 @@ namespace InputMaster.Parsers
 
     protected LocatedString ReadIdentifier()
     {
-      return ReadIdentifier(true);
-    }
-
-    protected LocatedString TryReadIdentifier()
-    {
-      return ReadIdentifier(false);
-    }
-
-    private LocatedString ReadIdentifier(bool throwException)
-    {
-      if (throwException)
-      {
-        ForbidEndOfStream();
-      }
-      else if (EndOfStream)
-      {
-        return LocatedString.None;
-      }
+      ForbidEndOfStream();
       if (Current < 'A' || Current > 'Z')
       {
-        if (throwException)
-        {
-          throw CreateException($"Unexpected character '{Current}'. An identifier should start with an upper case letter.");
-        }
-        else
-        {
-          return LocatedString.None;
-        }
+        throw CreateException($"Unexpected character '{Current}'. An identifier should start with an upper case letter.");
       }
-      else
-      {
-        return ReadWhile(Config.IsIdentifierCharacter);
-      }
+      return ReadWhile(Config.IsIdentifierCharacter);
     }
   }
 }

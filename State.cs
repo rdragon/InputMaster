@@ -3,64 +3,65 @@ using System.IO;
 
 namespace InputMaster
 {
-  abstract class State
+  internal abstract class State<T>
   {
-    private readonly FileInfo File;
-    private bool IsLoaded;
+    protected readonly T Parent;
+    private readonly FileInfo DataFile;
 
-    public State(string name) : this(name, Config.CacheDir) { }
+    protected State(string name, T parent) : this(name, parent, Config.CacheDir) { }
 
-    public State(string name, DirectoryInfo dir)
+    protected State(string name, T parent, DirectoryInfo dir)
     {
       Helper.RequireValidFileName(name);
-      File = new FileInfo(Path.Combine(dir.FullName, name));
+      Helper.ForbidNull(parent, nameof(parent));
+      Parent = parent;
+      if (Env.TestRun)
+      {
+        return;
+      }
+      DataFile = new FileInfo(Path.Combine(dir.FullName, name));
+      Env.Scheduler.AddJob($"State<{name}>", Save, Config.SaveTimerInterval);
+      Env.App.Exiting += Try.Wrap(Save);
     }
 
     public bool Changed { get; set; }
 
     public void Load()
     {
-      if (File.Exists)
+      if (Env.TestRun || !DataFile.Exists)
       {
-        using (var stream = File.OpenRead())
+        return;
+      }
+      using (var stream = DataFile.OpenRead())
+      using (var reader = new BinaryReader(stream))
+      {
+        try
         {
-          using (var reader = new BinaryReader(stream))
-          {
-            try
-            {
-              Load(reader);
-            }
-            catch (Exception ex) when (!Helper.IsCriticalException(ex))
-            {
-              Env.Notifier.WriteError(ex, $"Failed to load state data from '{File}'.");
-            }
-          }
+          Load(reader);
+        }
+        catch (Exception ex) when (!Helper.IsCriticalException(ex))
+        {
+          Env.Notifier.WriteError(ex, $"Failed to load state data from '{DataFile}'.");
         }
       }
-      Fix();
-      Changed = false;
-      IsLoaded = true;
     }
 
     public void Save()
     {
-      if (IsLoaded && Changed)
+      if (!Changed || Env.TestRun)
       {
-        using (var stream = System.IO.File.Open(File.FullName, FileMode.Create))
-        {
-          using (var writer = new BinaryWriter(stream))
-          {
-            Save(writer);
-            Changed = false;
-          }
-        }
+        return;
+      }
+      using (var stream = File.Open(DataFile.FullName, FileMode.Create))
+      using (var writer = new BinaryWriter(stream))
+      {
+        Save(writer);
+        Changed = false;
       }
     }
 
     protected abstract void Load(BinaryReader reader);
 
     protected abstract void Save(BinaryWriter writer);
-
-    protected virtual void Fix() { }
   }
 }

@@ -2,7 +2,7 @@
 
 namespace InputMaster.Parsers
 {
-  class Command
+  internal class Command
   {
     public object Actor { get; }
     public MethodInfo MethodInfo { get; }

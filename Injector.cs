@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-
 using InputMaster.Win32;
 
 namespace InputMaster
 {
-  class Injector : IInjector
+  internal class Injector : IInjector
   {
-    private List<NativeInput> NativeInputs = new List<NativeInput>();
+    private readonly List<NativeInput> NativeInputs = new List<NativeInput>();
 
     private static void Inject(NativeInput[] myInputs)
     {
@@ -26,15 +25,12 @@ namespace InputMaster
       {
         return GetNativeMouse(input, down);
       }
-      else
-      {
-        return GetNativeKey(input, down);
-      }
+      return GetNativeKey(input, down);
     }
 
     private static NativeInput GetNativeKey(Input input, bool down)
     {
-      bool extended =
+      var extended =
         input == Input.Left || input == Input.Right || input == Input.Up || input == Input.Down ||
         input == Input.Ins || input == Input.Home || input == Input.PgUp || input == Input.PgDn || input == Input.End || input == Input.Del ||
         input == Input.NumEnter || input == Input.Div || input == Input.NumLock ||
@@ -51,7 +47,7 @@ namespace InputMaster
           KeyInput = new KeyInput
           {
             VirtualKeyCode = (short)input,
-            Flags = (extended ? KeyFlags.ExtendedKey : 0) | (down ? 0 : KeyFlags.KeyUp),
+            Flags = (extended ? KeyFlags.ExtendedKey : 0) | (down ? 0 : KeyFlags.KeyUp)
           }
         }
       };
@@ -60,7 +56,7 @@ namespace InputMaster
     private static NativeInput GetNativeMouse(Input input, bool down)
     {
       MouseFlags flags;
-      int data = 0;
+      var data = 0;
       switch (input)
       {
         case Input.Lmb:

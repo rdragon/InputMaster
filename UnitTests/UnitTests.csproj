@@ -52,11 +52,12 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="FakeNotifier.cs" />
-    <Compile Include="OutputHandler.cs" />
-    <Compile Include="ParserOutputProvider.cs" />
-    <Compile Include="ForegroundManager.cs" />
-    <Compile Include="FakeInjector.cs" />
+    <Compile Include="TestFactory.cs" />
+    <Compile Include="TestPrimaryHook.cs" />
+    <Compile Include="TestNotifier.cs" />
+    <Compile Include="TestOutputHandler.cs" />
+    <Compile Include="TestForegroundListener.cs" />
+    <Compile Include="TestInjector.cs" />
     <Compile Include="TestBrain.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestClass.cs" />

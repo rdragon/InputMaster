@@ -1,11 +1,12 @@
-﻿using System;
+﻿using JetBrains.Annotations;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace InputMaster.Parsers
 {
-  class InputReader
+  internal class InputReader
   {
     private readonly List<Combo> Combos = new List<Combo>();
     private IInjectorStream<object> InjectorStream;
@@ -97,22 +98,16 @@ namespace InputMaster.Parsers
 
       private void HandleToken()
       {
-        string text;
-        LocatedString = ReadToken(out text);
-        Modifiers modifiers;
-        Input input;
-        Combo combo;
-        PressType pressType;
-        DynamicHotkeyEnum dynamicHotkey;
+        LocatedString = ReadToken(out var text);
         if (text[0] >= '0' && text[0] <= '9')
         {
           HandleMultiplier(text);
         }
-        else if (Enum.TryParse(text, out modifiers) && modifiers != Modifiers.None)
+        else if (Enum.TryParse(text, out Modifiers modifiers) && modifiers != Modifiers.None)
         {
           HandleModifiers(modifiers);
         }
-        else if (Enum.TryParse(text, out input) && input != Input.None)
+        else if (Enum.TryParse(text, out Input input) && input != Input.None)
         {
           Add(input);
         }
@@ -120,22 +115,18 @@ namespace InputMaster.Parsers
         {
           Add(input);
         }
-        else if (Config.CustomCombos.TryGetValue(text, out combo))
+        else if (Config.CustomCombos.TryGetValue(text, out var combo))
         {
           HandleModifiers(combo.Modifiers);
           Add(combo.Input);
         }
-        else if (Enum.TryParse(text, out pressType) && pressType != PressType.None)
+        else if (Enum.TryParse(text, out PressType pressType) && pressType != PressType.None)
         {
           HandleHoldRelease(pressType);
         }
-        else if (Enum.TryParse(text, out dynamicHotkey) && dynamicHotkey != DynamicHotkeyEnum.None)
+        else if (Enum.TryParse(text, out DynamicHotkeyEnum dynamicHotkey) && dynamicHotkey != DynamicHotkeyEnum.None)
         {
           HandleDynamicHotkey(text);
-        }
-        else if (Config.HandleCustomToken(text, InputReader.InjectorStream))
-        {
-          HandleCustomToken(text);
         }
         else
         {
@@ -147,11 +138,10 @@ namespace InputMaster.Parsers
       {
         if (!InputReader.Flags.HasFlag(InputReaderFlags.AllowMultiplier))
         {
-          throw CreateException($"No multiplier allowed at this position.");
+          throw CreateException("No multiplier allowed at this position.");
         }
         var s = text.Substring(0, text.Length - 1);
-        int multiplier;
-        if (int.TryParse(s, out multiplier))
+        if (int.TryParse(s, out var multiplier))
         {
           Multiplier *= multiplier;
         }
@@ -189,26 +179,16 @@ namespace InputMaster.Parsers
       {
         if (!InputReader.Flags.HasFlag(InputReaderFlags.AllowDynamicHotkey))
         {
-          throw CreateException($"Cannot use a dynamic hotkey token at this location (use '{nameof(Actor.SendDynamic)}' instead).");
+          throw CreateException($"Cannot use a dynamic hotkey token at this location (use '{nameof(MiscActor.SendDynamic)}' instead).");
         }
         ForbidModifierHoldRelease();
-        for (int i = 0; i < Multiplier; i++)
+        if (!Env.Parser.TryGetAction(text, true, out var action))
         {
-          Env.ForegroundListener.DynamicHotkeyCollection.GetAction(text)?.Invoke(InputReader.InjectorStream);
+          return;
         }
-        Multiplier = 1;
-      }
-
-      private void HandleCustomToken(string text)
-      {
-        if (!InputReader.Flags.HasFlag(InputReaderFlags.AllowCustomToken))
+        for (var i = 0; i < Multiplier; i++)
         {
-          throw CreateException("No custom tokens allowed at this location.");
-        }
-        ForbidModifierHoldRelease();
-        for (int i = 1; i < Multiplier; i++)
-        {
-          Config.HandleCustomToken(text, InputReader.InjectorStream);
+          action.Invoke(InputReader.InjectorStream);
         }
         Multiplier = 1;
       }
@@ -217,8 +197,7 @@ namespace InputMaster.Parsers
       {
         foreach (var c in str)
         {
-          Combo combo;
-          if (Combo.TryConvertFromChar(c, out combo))
+          if (Combo.TryConvertFromChar(c, out var combo))
           {
             Modifiers |= combo.Modifiers;
             CheckConflict();
@@ -235,7 +214,7 @@ namespace InputMaster.Parsers
       {
         if (!InputReader.Flags.HasFlag(InputReaderFlags.AllowCustomCharacter) || CreateChord)
         {
-          throw CreateException($"No custom characters allowed at this location.");
+          throw CreateException("No custom characters allowed at this location.");
         }
         if (Modifiers != Modifiers.None)
         {
@@ -281,7 +260,7 @@ namespace InputMaster.Parsers
       {
         if (PressType != PressType.None || Modifiers != Modifiers.None)
         {
-          throw CreateException($"No modifiers allowed before this token.");
+          throw CreateException("No modifiers allowed before this token.");
         }
       }
 
@@ -289,14 +268,20 @@ namespace InputMaster.Parsers
       {
         if (PressType != PressType.None && (Modifiers != Modifiers.None || Multiplier != 1))
         {
-          throw CreateException($"Cannot combine hold/release with modifier or multiplier.");
+          throw CreateException("Cannot combine hold/release with modifier or multiplier.");
         }
       }
+    }
+
+    [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+    private enum PressType
+    {
+      None, Hold, Release
     }
   }
 
   [Flags]
-  enum InputReaderFlags
+  internal enum InputReaderFlags
   {
     None = 0,
     AllowKeywordAny = 1,
@@ -305,12 +290,6 @@ namespace InputMaster.Parsers
     AllowCustomCharacter = 8,
     ParseLiteral = 16,
     AllowMultiplier = 32,
-    AllowDynamicHotkey = 64,
-    AllowCustomToken = 128
-  }
-
-  enum PressType
-  {
-    None, Hold, Release
+    AllowDynamicHotkey = 64
   }
 }

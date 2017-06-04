@@ -1,44 +1,36 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
-using System.Windows.Forms;
-using System.IO;
-using System.Diagnostics;
 using System.Text.RegularExpressions;
-using InputMaster.Parsers;
-using InputMaster.Hooks;
 using System.Threading.Tasks;
-using System.Threading;
-using Timer = System.Windows.Forms.Timer;
+using System.Windows.Forms;
+using InputMaster.Hooks;
+using InputMaster.Parsers;
 
 namespace InputMaster.Forms
 {
-  class TextEditorForm : ThemeForm, IDisposable
+  internal sealed class TextEditorForm : ThemeForm
   {
     private readonly ModeHook ModeHook;
     private readonly List<FileTab> FileTabs = new List<FileTab>();
     private readonly Dictionary<string, RtbPosition> Positions = new Dictionary<string, RtbPosition>();
     private readonly MyState State;
     private readonly TabControlPlus TabControl;
-    private readonly IContainer Components;
-    private readonly Parser Parser;
     private bool Alive = true;
     private string Password;
     private bool WrongPassword;
 
-    public TextEditorForm(Brain brain, ModeHook modeHook, Parser parser)
+    public TextEditorForm(ModeHook modeHook)
     {
       HideFirstInstant();
       ModeHook = Helper.ForbidNull(modeHook, nameof(modeHook));
-      Parser = Helper.ForbidNull(parser, nameof(parser));
       SuspendLayout();
-      Components = new Container();
       TabControl = new TabControlPlus
       {
-        Dock = DockStyle.Fill,
+        Dock = DockStyle.Fill
       };
       Controls.Add(TabControl);
       FormBorderStyle = FormBorderStyle.None;
@@ -51,29 +43,38 @@ namespace InputMaster.Forms
       Width = Screen.PrimaryScreen.WorkingArea.Width;
       Height = Screen.PrimaryScreen.WorkingArea.Height;
       ResumeLayout(false);
+      var updatePanelTimer = new Timer
+      {
+        Interval = (int)Config.UpdatePanelInterval.TotalMilliseconds,
+        Enabled = true
+      };
+      updatePanelTimer.Tick += (s, e) =>
+      {
+        foreach (var fileTab in FileTabs)
+        {
+          fileTab.UpdatePanel();
+        }
+      };
       var saveTimer = new Timer
       {
-        Enabled = true,
-        Interval = (int)Config.SaveTimerInterval.TotalMilliseconds
+        Interval = (int)Config.SaveTimerInterval.TotalMilliseconds,
+        Enabled = true
       };
-      Components.Add(saveTimer);
       State = new MyState(this);
+      State.Load();
       SharedFileManager = new SharedFileManager(this);
-
       saveTimer.Tick += (s, e) =>
       {
         SaveAll();
       };
-
       Shown += async (s, e) =>
       {
         DataDir.Create();
         NamesDir.Create();
-        State.Load();
         await CompileTextEditorModeAsync(true);
         Started();
+        HasStarted = true;
       };
-
       KeyDown += async (s, e) =>
       {
         if (WrongPassword)
@@ -107,51 +108,32 @@ namespace InputMaster.Forms
           await OpenCustomFileAsync();
         }
       };
-
-      brain.Exiting += () =>
+      FormClosing += (s, e) =>
       {
+        if (!Alive)
+        {
+          return;
+        }
         Alive = false;
         Try.Execute(SaveAll);
         Try.Execute(CloseAll);
-        Try.Execute(State.Save);
-        Try.Execute(Close);
-      };
-
-      FormClosing += (s, e) =>
-      {
-        if (Alive)
-        {
-          e.Cancel = true;
-          Env.Notifier.RequestExit();
-        }
+        saveTimer.Dispose();
+        updatePanelTimer.Dispose();
+        Application.Exit();
       };
     }
+
+    public SharedFileManager SharedFileManager { get; }
 
     public FileInfo AccountFile { get; private set; }
 
     public string SafePassword { get; private set; }
 
-    public SharedFileManager SharedFileManager { get; }
+    public bool HasStarted { get; private set; }
 
     private DirectoryInfo DataDir => GetDataDir(Config.TextEditorDir);
 
     private DirectoryInfo NamesDir => GetNamesDir(Config.TextEditorDir);
-
-    private FileTab CurrentFileTab
-    {
-      get
-      {
-        var i = TabControl.SelectedIndex;
-        if (TabControl.TabCount == 0 || i == -1)
-        {
-          return null;
-        }
-        else
-        {
-          return FileTabs[i];
-        }
-      }
-    }
 
     public event Action Started = delegate { };
 
@@ -215,12 +197,6 @@ namespace InputMaster.Forms
       return count;
     }
 
-    public new void Dispose()
-    {
-      Components.Dispose();
-      base.Dispose();
-    }
-
     private void CreatePassword()
     {
       Password = Config.KeyFile == null ? "" : File.ReadAllText(Config.KeyFile.FullName);
@@ -233,24 +209,10 @@ namespace InputMaster.Forms
     private void HideFirstInstant()
     {
       Opacity = 0;
-
-      var timeout = new Timeout();
-
-      Shown += (s, e) =>
+      Shown += async (s, e) =>
       {
-        timeout.Start(TimeSpan.FromSeconds(1));
-      };
-
-      timeout.Elapsed += () =>
-      {
+        await Task.Delay(TimeSpan.FromSeconds(1));
         Opacity = 1;
-        timeout.Dispose();
-        timeout = null;
-      };
-
-      Disposed += (s, e) =>
-      {
-        timeout?.Dispose();
       };
     }
 
@@ -272,7 +234,7 @@ namespace InputMaster.Forms
       HotkeyFile hotkeyFile = null;
       var hotkeyFilesFound = 0;
       var accountFilesFound = 0;
-      List<FileLink> links = new List<FileLink>();
+      var links = new List<FileLink>();
       SharedFileManager.Clear();
       await Task.Run(() =>
       {
@@ -327,36 +289,34 @@ namespace InputMaster.Forms
       {
         Env.Notifier.WriteError("Multiple hotkey files found.");
       }
-      Parser.UpdateParseAction(nameof(TextEditorForm), (parserOutput) =>
+      Env.Parser.UpdateParseAction(nameof(TextEditorForm), parserOutput =>
       {
         var mode = parserOutput.AddMode(new Mode(Config.TextEditorModeName, true));
         foreach (var link in links)
         {
           var file = link.File;
           var title = link.Title;
-          var chordText = Config.GetChordText(title);
-          if (chordText == null)
-          {
-            chordText = title;
-          }
+          var chordText = Config.GetChordText(title) ?? title;
           var chord = Config.DefaultChordReader.CreateChord(new LocatedString(chordText));
-          Action<Combo> action = (combo) =>
+
+          void Action(Combo combo)
           {
             OpenFile(file);
             if (Config.TextEditorDesktopHotkey != Combo.None)
             {
               Env.CreateInjector().Add(Config.TextEditorDesktopHotkey).Run();
             }
-          };
-          var hotkey = new ModeHotkey(chord, action, title);
+          }
+
+          var hotkey = new ModeHotkey(chord, Action, title);
           mode.AddHotkey(hotkey);
         }
       });
       if (hotkeyFile != null)
       {
-        Parser.UpdateHotkeyFile(hotkeyFile);
+        Env.Parser.UpdateHotkeyFile(hotkeyFile);
       }
-      Parser.Parse();
+      Env.Parser.Run();
     }
 
     private async Task ImportFromDirectoryAsync()
@@ -439,12 +399,12 @@ namespace InputMaster.Forms
         var file = CreateNewFile(title.Trim(), "");
         OpenFile(file);
       }
-      await CompileTextEditorModeAsync(false);
+      await CompileTextEditorModeAsync();
     }
 
     public FileInfo CreateNewFile(string title, string text)
     {
-      int i = 0;
+      var i = 0;
       while (true)
       {
         var file = new FileInfo(Path.Combine(NamesDir.FullName, i.ToString()));
@@ -507,30 +467,25 @@ namespace InputMaster.Forms
       }
     }
 
-    private class MyState : State
+    private class MyState : State<TextEditorForm>
     {
-      private TextEditorForm Form;
-
-      public MyState(TextEditorForm form) : base(nameof(TextEditorForm))
-      {
-        Form = form;
-      }
+      public MyState(TextEditorForm form) : base(nameof(TextEditorForm), form) { }
 
       protected override void Load(BinaryReader reader)
       {
-        var n = reader.ReadInt32();
-        for (int i = 0; i < n; i++)
+        var count = reader.ReadInt32();
+        for (var i = 0; i < count; i++)
         {
           var key = reader.ReadString();
           var position = new RtbPosition(reader);
-          Form.Positions.Add(key, position);
+          Parent.Positions.Add(key, position);
         }
       }
 
       protected override void Save(BinaryWriter writer)
       {
-        writer.Write(Form.Positions.Count);
-        foreach (var pair in Form.Positions)
+        writer.Write(Parent.Positions.Count);
+        foreach (var pair in Parent.Positions)
         {
           writer.Write(pair.Key);
           pair.Value.Write(writer);
@@ -546,6 +501,7 @@ namespace InputMaster.Forms
       private readonly RichTextBoxPlus Rtb;
       private readonly List<IDisposable> Disposables = new List<IDisposable>();
       private bool Changed;
+      private bool ShouldUpdatePanel;
 
       public FileTab(FileInfo file, TextEditorForm form)
       {
@@ -554,8 +510,7 @@ namespace InputMaster.Forms
         Title = Form.Decrypt(File);
         var text = Form.Decrypt(GetDataFile(File));
         Form.SuspendLayout();
-        TabPage = new TabPage(Title);
-        TabPage.Tag = this;
+        TabPage = new TabPage(Title) { Tag = this };
         Disposables.Add(TabPage);
         Form.TabControl.TabPages.Add(TabPage);
 
@@ -587,15 +542,11 @@ namespace InputMaster.Forms
           Text = text
         };
 
-        UpdatePanel();
-        RtbPosition rtbPosition;
-        if (Form.Positions.TryGetValue(file.FullName.ToLower(), out rtbPosition))
+        UpdatePanel(true);
+        if (Form.Positions.TryGetValue(file.FullName.ToLower(), out var rtbPosition))
         {
           Rtb.LoadPosition(rtbPosition);
         }
-        var updatePanelTimeout = new Timeout();
-        updatePanelTimeout.Elapsed += UpdatePanel;
-        Disposables.Add(updatePanelTimeout);
 
         Form.TabControl.SelectedIndexChanged += Form_TabControl_SelectedIndexChanged;
         if (Form.TabControl.SelectedTab == TabPage)
@@ -609,15 +560,10 @@ namespace InputMaster.Forms
         Changed = false;
         Form.ResumeLayout();
 
-        Rtb.SelectionChanged += (s, e) =>
-        {
-          Form.State.Changed = true;
-        };
-
         Rtb.TextChanged += (s, e) =>
         {
           Changed = true;
-          updatePanelTimeout.Start(Config.UpdatePanelDelay);
+          ShouldUpdatePanel = true;
         };
 
         Rtb.KeyDown += async (s, e) =>
@@ -675,7 +621,7 @@ namespace InputMaster.Forms
       private static int GetStartOfSection(string padded, string section)
       {
         var s = $"\n{Config.TextEditorSectionIdentifier} {section}\n";
-        var i = padded.IndexOf(s);
+        var i = padded.IndexOf(s, StringComparison.Ordinal);
         return i == -1 ? -1 : i + 1;
       }
 
@@ -693,7 +639,7 @@ namespace InputMaster.Forms
       /// </summary>
       private static int GetAppendIndex(string padded, int index)
       {
-        var i = padded.IndexOf($"\n{Config.TextEditorSectionIdentifier} ", index);
+        var i = padded.IndexOf($"\n{Config.TextEditorSectionIdentifier} ", index, StringComparison.Ordinal);
         i = i == -1 ? padded.Length : i;
         for (; i >= 2; i--)
         {
@@ -715,6 +661,32 @@ namespace InputMaster.Forms
         Form.TabControl.SelectTab(TabPage);
       }
 
+      public void UpdatePanel(bool force = false)
+      {
+        if (!force && !ShouldUpdatePanel)
+        {
+          return;
+        }
+        ShouldUpdatePanel = false;
+        var sb = new StringBuilder();
+        foreach (var line in Rtb.Lines)
+        {
+          if (line.Length >= 3 && line.StartsWith(Config.TextEditorSectionIdentifier + " "))
+          {
+            var s = line.Substring(2);
+            if (!string.IsNullOrWhiteSpace(s))
+            {
+              sb.AppendLine(s);
+            }
+          }
+        }
+        var text = sb.ToString();
+        if (Panel.Text != text)
+        {
+          Panel.Text = text;
+        }
+      }
+
       public void Save()
       {
         if (Changed)
@@ -728,6 +700,7 @@ namespace InputMaster.Forms
       {
         Save();
         Form.Positions[File.FullName.ToLower()] = Rtb.GetPosition();
+        Form.State.Changed = true;
         Form.FileTabs.Remove(this);
         Form.TabControl.SelectedIndexChanged -= Form_TabControl_SelectedIndexChanged;
         Form.TabControl.TabPages.Remove(TabPage);
@@ -810,7 +783,7 @@ namespace InputMaster.Forms
       private void MoveCaretToTopOfSection()
       {
         var padded = GetPaddedText(Rtb.Text);
-        var i = padded.LastIndexOf($"\n{Config.TextEditorSectionIdentifier} ", Rtb.SelectionStart + 1);
+        var i = padded.LastIndexOf($"\n{Config.TextEditorSectionIdentifier} ", Rtb.SelectionStart + 1, StringComparison.Ordinal);
         if (i == -1)
         {
           Rtb.Select(0, 0);
@@ -839,7 +812,7 @@ namespace InputMaster.Forms
           if (chordText != null)
           {
             var chord = Config.DefaultChordReader.CreateChord(new LocatedString(chordText));
-            mode.AddHotkey(new ModeHotkey(chord, (combo) => { action(section); }, section));
+            mode.AddHotkey(new ModeHotkey(chord, combo => action(section), section));
           }
         }
         Form.ModeHook.EnterMode(mode);
@@ -853,28 +826,7 @@ namespace InputMaster.Forms
           Title = newTitle;
           TabPage.Text = Title;
           Form.Encrypt(File, Title);
-          await Form.CompileTextEditorModeAsync(false);
-        }
-      }
-
-      private void UpdatePanel()
-      {
-        var sb = new StringBuilder();
-        foreach (var line in Rtb.Lines)
-        {
-          if (line.Length >= 3 && line.StartsWith(Config.TextEditorSectionIdentifier + " "))
-          {
-            var s = line.Substring(2);
-            if (!string.IsNullOrWhiteSpace(s))
-            {
-              sb.AppendLine(s);
-            }
-          }
-        }
-        var text = sb.ToString();
-        if (Panel.Text != text)
-        {
-          Panel.Text = text;
+          await Form.CompileTextEditorModeAsync();
         }
       }
 
@@ -882,8 +834,8 @@ namespace InputMaster.Forms
       {
         if (Title.Contains("[hotkeys]"))
         {
-          Form.Parser.UpdateHotkeyFile(new HotkeyFile(nameof(TextEditorForm), Rtb.Text));
-          Form.Parser.Parse();
+          Env.Parser.UpdateHotkeyFile(new HotkeyFile(nameof(TextEditorForm), Rtb.Text));
+          Env.Parser.Run();
         }
       }
     }

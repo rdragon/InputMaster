@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Text;
-using System.Security.Cryptography;
 using System.IO;
-using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace InputMaster
 {
@@ -78,14 +77,7 @@ namespace InputMaster
                   {
                     return null;
                   }
-                  if (s.StartsWith(Identifier))
-                  {
-                    return s.Substring(Identifier.Length);
-                  }
-                  else
-                  {
-                    return null;
-                  }
+                  return s.StartsWith(Identifier) ? s.Substring(Identifier.Length) : null;
                 }
               }
             }
@@ -94,7 +86,9 @@ namespace InputMaster
       }
       catch (CryptographicException)
       {
-        // A hack to catch a CryptographicException with message "Padding is invalid and can't be removed" when password is invalid. It looks like the exception is thrown during a dispose. However, manually disposing all IDisposables doesn't throw anything, and the exception is still only raised when "return null;" is called. Strange.
+        // A hack to catch a CryptographicException with message "Padding is invalid and can't be removed" when password is invalid.
+        // It looks like the exception is thrown during a dispose. However, manually disposing all IDisposables doesn't throw anything, 
+        // and the exception is still only raised when "return null;" is called. Strange.
         return null;
       }
     }

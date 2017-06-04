@@ -1,127 +1,146 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace InputMaster
 {
-  class Scheduler : IDisposable
+  internal class Scheduler : IScheduler
   {
-    private readonly Dictionary<string, Entry> Entries = new Dictionary<string, Entry>();
-    private readonly MyState State;
+    private readonly Dictionary<string, DateTime> LastRuns = new Dictionary<string, DateTime>();
+    private readonly SortedDictionary<DateTime, Job> Jobs = new SortedDictionary<DateTime, Job>();
     private readonly Timer Timer = new Timer { Interval = (int)Config.SchedulerInterval.TotalMilliseconds, Enabled = true };
-    private readonly HiddenProcessManager ProcessManager;
+    private MyState State;
 
-    public Scheduler(Brain brain, HiddenProcessManager processManager)
+    public Scheduler()
     {
-      ProcessManager = processManager;
-      State = new MyState(this);
-      State.Load();
-      brain.Exiting += Try.Wrap(State.Save);
-    }
-
-    public void AddTask(string name, Action action, TimeSpan delay)
-    {
-      Entry entry;
-      if (!Entries.TryGetValue(name, out entry))
-      {
-        entry = new Entry();
-        Entries[name] = entry;
-      }
-      if (entry.Loaded)
-      {
-        throw new ArgumentException($"A task with name '{name}' already exists.", nameof(name));
-      }
-      else
-      {
-        entry.Loaded = true;
-      }
+      Env.App.Exiting += Timer.Dispose;
+      var stateLoaded = false;
       Timer.Tick += (s, e) =>
       {
-        if (entry.LastSuccess.Add(delay) < DateTime.Now)
+        if (!stateLoaded)
         {
-          State.Changed = true;
-          try
+          stateLoaded = true;
+          // We cannot load the state inside the constructor as that would create a circular dependency.
+          State = new MyState(this);
+          State.Load();
+        }
+        while (Jobs.Count > 0 && Jobs.Keys.First() < DateTime.Now)
+        {
+          var job = Jobs.Values.First();
+          Jobs.Remove(Jobs.Keys.First());
+          AddToJobs(DateTime.Now.Add(job.Delay), job);
+          LastRuns[job.Name] = DateTime.Now;
+          if (State != null)
           {
-            action();
-            entry.LastSuccess = DateTime.Now;
+            State.Changed = true;
           }
-          catch (Exception ex) when (!Helper.IsCriticalException(ex))
-          {
-            Env.Notifier.WriteError(ex, "Failed to complete a scheduled task" + Helper.GetBindingsSuffix(nameof(name), name));
-          }
+          job.Run();
         }
       };
     }
 
-    public void AddFileTask(FileInfo file, string arguments, TimeSpan delay)
+    public void AddJob(string name, Action action, TimeSpan delay)
+    {
+      Helper.ForbidNull(name, nameof(name));
+      Helper.ForbidNull(action, nameof(action));
+      Helper.RequireInInterval(delay, nameof(delay), Config.SchedulerInterval, TimeSpan.MaxValue);
+      if (Jobs.Any(z => z.Value.Name == name))
+      {
+        throw new ArgumentException($"A job with name '{name}' already exists.", nameof(name));
+      }
+      if (!LastRuns.TryGetValue(name, out var date))
+      {
+        date = DateTime.Now;
+        LastRuns[name] = date;
+        if (State != null)
+        {
+          State.Changed = true;
+        }
+      }
+      AddToJobs(date.Add(delay), new Job(name, action, delay));
+    }
+
+    public void AddFileJob(FileInfo file, string arguments, TimeSpan delay)
     {
       var taskName = file.FullName;
       if (arguments.Length > 0)
       {
         taskName = $"\"{taskName}\" {arguments}";
       }
-      AddTask(taskName, () =>
+      AddJob(taskName, () =>
       {
-        ProcessManager.StartHiddenProcess(file, arguments);
+        Env.ProcessManager.StartHiddenProcess(file, arguments);
       }, delay);
     }
 
-    public void Dispose()
+    private void AddToJobs(DateTime date, Job job)
     {
-      Timer.Dispose();
+      while (Jobs.ContainsKey(date))
+      {
+        date = date.AddTicks(1);
+      }
+      Jobs.Add(date, job);
     }
 
-    private class MyState : State
+    private class MyState : State<Scheduler>
     {
-      private Scheduler Parent;
-
-      public MyState(Scheduler scheduler) : base(nameof(Scheduler))
-      {
-        Parent = scheduler;
-      }
+      public MyState(Scheduler scheduler) : base(nameof(Scheduler), scheduler) { }
 
       protected override void Save(BinaryWriter writer)
       {
-        writer.Write(Parent.Entries.Count);
-        foreach (var pair in Parent.Entries)
+        writer.Write(Parent.Jobs.Count);
+        foreach (var job in Parent.Jobs.Values)
         {
-          writer.Write(pair.Key);
-          pair.Value.Write(writer);
+          writer.Write(job.Name);
+          writer.Write(Parent.LastRuns[job.Name].Ticks);
         }
       }
 
       protected override void Load(BinaryReader reader)
       {
-        var n = reader.ReadInt32();
-        for (int i = 0; i < n; i++)
+        var count = reader.ReadInt32();
+        for (var i = 0; i < count; i++)
         {
-          var key = reader.ReadString();
-          var entry = new Entry(reader);
-          Parent.Entries.Add(key, entry);
+          var name = reader.ReadString();
+          var ticks = reader.ReadInt64();
+          if (Parent.LastRuns.ContainsKey(name))
+          {
+            Parent.LastRuns[name] = new DateTime(ticks);
+          }
+          else
+          {
+            Parent.LastRuns.Add(name, new DateTime(ticks));
+          }
         }
       }
     }
 
-    private class Entry
+    private class Job
     {
-      public DateTime LastSuccess;
+      private readonly Action Action;
 
-      public Entry()
+      public string Name { get; }
+      public TimeSpan Delay { get; }
+
+      public Job(string name, Action action, TimeSpan delay)
       {
-        LastSuccess = DateTime.MinValue;
+        Name = name;
+        Action = action;
+        Delay = delay;
       }
 
-      public Entry(BinaryReader reader)
+      public void Run()
       {
-        LastSuccess = new DateTime(reader.ReadInt64());
-      }
-
-      public bool Loaded { get; set; }
-
-      public void Write(BinaryWriter writer)
-      {
-        writer.Write(LastSuccess.Ticks);
+        try
+        {
+          Action();
+        }
+        catch (Exception ex) when (!Helper.IsCriticalException(ex))
+        {
+          Env.Notifier.WriteError(ex, "Failed to complete a scheduled job" + Helper.GetBindingsSuffix(nameof(Name), Name));
+        }
       }
     }
   }

@@ -1,5 +1,4 @@
-﻿using InputMaster.Parsers;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,36 +6,36 @@ using System.Threading.Tasks;
 
 namespace InputMaster
 {
-  class FlagManager : IFlagViewer
+  internal class FlagManager : Actor, IFlagManager
   {
     private readonly HashSet<string> Flags = new HashSet<string>();
+    private readonly MyState State;
     private List<HashSet<string>> FlagSets;
 
-    public FlagManager(Parser parser, Brain brain = null)
+    public FlagManager()
     {
-      if (parser != null)
-      {
-        parser.NewParserOutput += (parserOutput) => FlagSets = parserOutput.FlagSets;
-      }
-      if (brain != null)
-      {
-        var state = new MyStateManager(this);
-        state.Load();
-        state.Changed = true;
-        brain.Exiting += Try.Wrap(state.Save);
-      }
+      Env.Parser.NewParserOutput += parserOutput => FlagSets = parserOutput.FlagSets;
+      State = new MyState(this);
+      State.Load();
     }
 
     public event Action FlagsChanged = delegate { };
 
-    public bool IsFlagSet(string flag)
+    public bool IsSet(string flag)
     {
       return Flags.Contains(flag);
+    }
+
+    public IEnumerable<string> GetFlags()
+    {
+      return Flags.ToList();
     }
 
     public void ClearFlags()
     {
       Flags.Clear();
+      State.Changed = true;
+      FlagsChanged();
     }
 
     public override string ToString()
@@ -47,7 +46,7 @@ namespace InputMaster
     [CommandTypes(CommandTypes.Visible)]
     public void SetFlag(string flag)
     {
-      if (!IsFlagSet(flag))
+      if (!IsSet(flag))
       {
         ToggleFlag(flag);
       }
@@ -56,7 +55,7 @@ namespace InputMaster
     [CommandTypes(CommandTypes.Visible)]
     public void ClearFlag(string flag)
     {
-      if (IsFlagSet(flag))
+      if (IsSet(flag))
       {
         ToggleFlag(flag);
       }
@@ -102,7 +101,8 @@ namespace InputMaster
           }
         }
       }
-      Flags.SymmetricExceptWith(new string[] { flag });
+      Flags.SymmetricExceptWith(new[] { flag });
+      State.Changed = true;
       if (raiseEvent)
       {
         var text = Flags.Contains(flag) ? "Enabled" : "Disabled";
@@ -111,26 +111,21 @@ namespace InputMaster
       }
     }
 
-    private class MyStateManager : State
+    private class MyState : State<FlagManager>
     {
-      private readonly FlagManager FlagManager;
-
-      public MyStateManager(FlagManager flagManager) : base(nameof(FlagManager))
-      {
-        FlagManager = flagManager;
-      }
+      public MyState(FlagManager flagManager) : base(nameof(FlagManager), flagManager) { }
 
       protected override void Load(BinaryReader reader)
       {
         while (reader.BaseStream.Position < reader.BaseStream.Length)
         {
-          FlagManager.Flags.Add(reader.ReadString());
+          Parent.Flags.Add(reader.ReadString());
         }
       }
 
       protected override void Save(BinaryWriter writer)
       {
-        foreach (var flag in FlagManager.Flags)
+        foreach (var flag in Parent.Flags)
         {
           writer.Write(flag);
         }

@@ -2,7 +2,7 @@
 
 namespace InputMaster.Parsers
 {
-  struct Location : IEquatable<Location>
+  internal struct Location : IEquatable<Location>
   {
     public static readonly Location Unknown = new Location();
 
@@ -15,11 +15,8 @@ namespace InputMaster.Parsers
       {
         throw new ArgumentOutOfRangeException(nameof(line));
       }
-      else
-      {
-        LineField = line;
-        ColumnField = 0;
-      }
+      LineField = line;
+      ColumnField = 0;
     }
 
     public Location(int line, int column)
@@ -28,15 +25,12 @@ namespace InputMaster.Parsers
       {
         throw new ArgumentOutOfRangeException(nameof(line));
       }
-      else if (column < 1)
+      if (column < 1)
       {
         throw new ArgumentOutOfRangeException(nameof(column));
       }
-      else
-      {
-        LineField = line;
-        ColumnField = column;
-      }
+      LineField = line;
+      ColumnField = column;
     }
 
     public bool HasLine => LineField > 0;
@@ -51,10 +45,7 @@ namespace InputMaster.Parsers
         {
           return LineField;
         }
-        else
-        {
-          throw new InvalidOperationException();
-        }
+        throw new InvalidOperationException();
       }
     }
 
@@ -66,57 +57,15 @@ namespace InputMaster.Parsers
         {
           return ColumnField;
         }
-        else
-        {
-          throw new InvalidOperationException();
-        }
+        throw new InvalidOperationException();
       }
     }
 
-    public Location NextColumn
-    {
-      get
-      {
-        if (HasColumn)
-        {
-          return new Location(LineField, ColumnField + 1);
-        }
-        else
-        {
-          return this;
-        }
-      }
-    }
+    public Location NextColumn => HasColumn ? new Location(LineField, ColumnField + 1) : this;
 
-    public Location NextLine
-    {
-      get
-      {
-        if (HasLine)
-        {
-          return new Location(LineField + 1, 1);
-        }
-        else
-        {
-          return this;
-        }
-      }
-    }
+    public Location NextLine => HasLine ? new Location(LineField + 1, 1) : this;
 
-    public Location WithoutColumnInfo
-    {
-      get
-      {
-        if (HasColumn)
-        {
-          return new Location(LineField);
-        }
-        else
-        {
-          return this;
-        }
-      }
-    }
+    public Location WithoutColumnInfo => HasColumn ? new Location(LineField) : this;
 
     public static bool operator ==(Location a, Location b)
     {
@@ -134,14 +83,7 @@ namespace InputMaster.Parsers
       {
         throw new ArgumentOutOfRangeException(nameof(count));
       }
-      else if (HasColumn)
-      {
-        return new Location(LineField, ColumnField + count);
-      }
-      else
-      {
-        return this;
-      }
+      return HasColumn ? new Location(LineField, ColumnField + count) : this;
     }
 
     public override string ToString()
@@ -150,14 +92,7 @@ namespace InputMaster.Parsers
       {
         return $"line {Line}, column {Column}";
       }
-      else if (HasLine)
-      {
-        return $"line {Line}";
-      }
-      else
-      {
-        return "(no position information)";
-      }
+      return HasLine ? $"line {Line}" : "(no position information)";
     }
 
     public override int GetHashCode()

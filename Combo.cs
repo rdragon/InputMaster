@@ -2,7 +2,7 @@
 
 namespace InputMaster
 {
-  struct Combo : IEquatable<Combo>
+  internal struct Combo : IEquatable<Combo>
   {
     public static readonly Combo None = new Combo();
     public static readonly Combo Backspace = new Combo(Input.Bs);
@@ -93,18 +93,11 @@ namespace InputMaster
       {
         return true;
       }
-      else if (other != None && Input == Input.Any && other.Modifiers.HasFlag(Modifiers) && !other.Input.IsModifierKey() && !other.Input.IsMouseInput())
+      if (other != None && Input == Input.Any && other.Modifiers.HasFlag(Modifiers) && !other.Input.IsModifierKey() && !other.Input.IsMouseInput())
       {
         return true;
       }
-      else if (other != None && other.Input == Input.Any && Modifiers.HasFlag(other.Modifiers) && !Input.IsModifierKey() && !Input.IsMouseInput())
-      {
-        return true;
-      }
-      else
-      {
-        return false;
-      }
+      return other != None && other.Input == Input.Any && Modifiers.HasFlag(other.Modifiers) && !Input.IsModifierKey() && !Input.IsMouseInput();
     }
   }
 }

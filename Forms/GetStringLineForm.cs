@@ -1,16 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace InputMaster.Forms
 {
-  partial class GetStringLineForm : ThemeForm
+  internal sealed partial class GetStringLineForm : ThemeForm
   {
     public GetStringLineForm(string title, string defaultValue = null, bool passwordForm = false)
     {
@@ -28,14 +21,7 @@ namespace InputMaster.Forms
 
     public string GetValue()
     {
-      if (DialogResult == DialogResult.OK)
-      {
-        return TextBox.Text;
-      }
-      else
-      {
-        return null;
-      }
+      return DialogResult == DialogResult.OK ? TextBox.Text : null;
     }
 
     private void Button_Click(object sender, EventArgs e)
@@ -45,15 +31,16 @@ namespace InputMaster.Forms
 
     private void TextBox_KeyDown(object sender, KeyEventArgs e)
     {
-      if (e.KeyData == Keys.Escape)
+      switch (e.KeyData)
       {
-        e.Handled = true;
-        DialogResult = DialogResult.Abort;
-      }
-      else if (e.KeyData == Keys.Return)
-      {
-        e.Handled = true;
-        DialogResult = DialogResult.OK;
+        case Keys.Escape:
+          e.Handled = true;
+          DialogResult = DialogResult.Abort;
+          break;
+        case Keys.Return:
+          e.Handled = true;
+          DialogResult = DialogResult.OK;
+          break;
       }
     }
 

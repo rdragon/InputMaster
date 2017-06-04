@@ -1,21 +1,21 @@
-﻿using InputMaster.Forms;
-using InputMaster.Hooks;
-using InputMaster.Win32;
-using InputMaster.Parsers;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Security;
+using InputMaster.Forms;
+using InputMaster.Parsers;
+using InputMaster.Win32;
+using JetBrains.Annotations;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 
 namespace InputMaster
@@ -33,10 +33,7 @@ namespace InputMaster
       {
         return locatedString.Value.Substring(1, locatedString.Length - 2);
       }
-      else
-      {
-        throw new ParseException(locatedString, "Not in correct format. Expecting an identifier token.");
-      }
+      throw new ParseException(locatedString, "Not in correct format. Expecting an identifier token.");
     }
 
     public static void SetForegroundWindowForce(IntPtr window)
@@ -64,9 +61,6 @@ namespace InputMaster
       }
     }
 
-    /// <summary>
-    /// Use only on main thread (because of <see cref="Env.Notifier"/>).
-    /// </summary>
     public static void StartProcess(string fileName, string arguments = "", string userName = null, SecureString password = null, string domain = null, bool captureForeground = false)
     {
       ForbidNull(fileName, nameof(fileName));
@@ -87,10 +81,7 @@ namespace InputMaster
         {
           p = Process.Start(fileName, arguments);
         }
-        if (p != null)
-        {
-          p.Dispose();
-        }
+        p?.Dispose();
       }
       catch (Exception ex)
       {
@@ -119,26 +110,10 @@ namespace InputMaster
         HandleFatalException(ex);
       }
     }
-
-    /// <summary>
-    /// Use only on main thread (because of <see cref="Env.Notifier"/>).
-    /// </summary>
     public static void HandleFatalException(Exception exception)
     {
       Try.SetException(exception);
-      if (Env.Notifier != null)
-      {
-        Env.Notifier.RequestExit();
-      }
-      else
-      {
-        Application.Exit();
-      }
-    }
-
-    public static void Unhook()
-    {
-      PrimaryHook.Unhook();
+      Application.Exit();
     }
 
     public static void ShowSelectableText(object value, bool scrollToBottom = false)
@@ -177,7 +152,7 @@ namespace InputMaster
 
     public static async Task<string> GetClipboardTextAsync()
     {
-      for (int i = Config.ClipboardTries; i > 0; i--)
+      for (var i = Config.ClipboardTries; i > 0; i--)
       {
         try
         {
@@ -198,7 +173,7 @@ namespace InputMaster
 
     public static async Task SetClipboardTextAsync(string text)
     {
-      for (int i = Config.ClipboardTries; i > 0; i--)
+      for (var i = Config.ClipboardTries; i > 0; i--)
       {
         try
         {
@@ -216,7 +191,7 @@ namespace InputMaster
 
     public static async Task ClearClipboardAsync()
     {
-      for (int i = Config.ClipboardTries; i > 0; i--)
+      for (var i = Config.ClipboardTries; i > 0; i--)
       {
         try
         {
@@ -234,14 +209,14 @@ namespace InputMaster
 
     public static void Swap<T>(ref T val1, ref T val2)
     {
-      T swap = val1;
+      var swap = val1;
       val1 = val2;
       val2 = swap;
     }
 
     public static async Task<T> TryAsync<T>(Func<T> action, int count = 10, int pauseInterval = 100)
     {
-      for (int i = 0; i < count - 1; i++)
+      for (var i = 0; i < count - 1; i++)
       {
         try
         {
@@ -271,14 +246,11 @@ namespace InputMaster
       {
         return n == 1;
       }
-      else if (n != 0)
+      if (n != 0)
       {
         return IsPowerOfTwo(n >> 1);
       }
-      else
-      {
-        return false;
-      }
+      return false;
     }
 
     public static int CountOnes(int i)
@@ -288,16 +260,14 @@ namespace InputMaster
       return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
     }
 
+    [ContractAnnotation("value:null => halt")]
     public static T ForbidNull<T>(T value, string name)
     {
       if (value == null)
       {
         throw new ArgumentNullException(name);
       }
-      else
-      {
-        return value;
-      }
+      return value;
     }
 
     public static string ForbidNullOrEmpty(string str, string name)
@@ -307,10 +277,7 @@ namespace InputMaster
       {
         throw new ArgumentException("Unexpected empty string.", name);
       }
-      else
-      {
-        return str;
-      }
+      return str;
     }
 
     public static string ForbidNullOrWhitespace(string str, string name)
@@ -320,10 +287,7 @@ namespace InputMaster
       {
         throw new ArgumentException("String consists of whitespace only.", name);
       }
-      else
-      {
-        return str;
-      }
+      return str;
     }
 
     public static bool IsCriticalException(Exception ex)
@@ -340,13 +304,13 @@ namespace InputMaster
     {
       string[] labels = { "B", "KB", "MB", "GB", "TB" };
       double length = byteCount;
-      int i = 0;
+      var i = 0;
       while (length >= 1024 && i < labels.Length - 1)
       {
         i++;
         length = length / 1024;
       }
-      return string.Format("{0:0.##} {1}", length, labels[i]);
+      return $"{length:0.##} {labels[i]}";
     }
 
     public static void RequireExists(FileSystemInfo fsi)
@@ -357,10 +321,7 @@ namespace InputMaster
         {
           throw new FileNotFoundException($"File '{fsi.FullName}' not found.");
         }
-        else
-        {
-          throw new DirectoryNotFoundException($"Directory '{fsi.FullName}' not found.");
-        }
+        throw new DirectoryNotFoundException($"Directory '{fsi.FullName}' not found.");
       }
     }
 
@@ -372,10 +333,7 @@ namespace InputMaster
         {
           throw new FileNotFoundException($"File '{fsi.FullName}' already exists.");
         }
-        else
-        {
-          throw new DirectoryNotFoundException($"Directory '{fsi.FullName}' already exists.");
-        }
+        throw new DirectoryNotFoundException($"Directory '{fsi.FullName}' already exists.");
       }
     }
 
@@ -398,29 +356,21 @@ namespace InputMaster
           {
             return replacement.Value;
           }
-          else
-          {
-            return c;
-          }
+          return c;
         }).ToArray());
       }
-      else
+      var s = new string(name.Where(c => !invalidChars.Contains(c)).ToArray());
+      if (string.IsNullOrWhiteSpace(s))
       {
-        var s = new string(name.Where(c => !invalidChars.Contains(c)).ToArray());
-        if (string.IsNullOrWhiteSpace(s))
-        {
-          return "New File";
-        }
-        else
-        {
-          return s;
-        }
+        return "New File";
       }
+      return s;
     }
 
     public static string RequireValidPath(string path)
     {
       ForbidNull(path, nameof(path));
+      // ReSharper disable once ReturnValueOfPureMethodIsNotUsed
       Path.GetFullPath(path); // throws exception on non-valid path
       return path;
     }
@@ -432,10 +382,7 @@ namespace InputMaster
       {
         throw new ArgumentException($"The path '{path}' does not point to a file.");
       }
-      else
-      {
-        return path;
-      }
+      return path;
     }
 
     public static string RequireValidFileName(string name)
@@ -444,10 +391,7 @@ namespace InputMaster
       {
         throw new ArgumentException($"The name '{name}' is not a valid file name.");
       }
-      else
-      {
-        return name;
-      }
+      return name;
     }
 
     public static bool IsValidPath(string path)
@@ -514,11 +458,11 @@ namespace InputMaster
       }
       targetDir.Create();
       var targetPath = targetDir.FullName;
-      foreach (FileInfo file in sourceDir.GetFiles())
+      foreach (var file in sourceDir.GetFiles())
       {
         Copy(file, new FileInfo(Path.Combine(targetPath, file.Name)), overwrite);
       }
-      foreach (DirectoryInfo dir in sourceDir.GetDirectories())
+      foreach (var dir in sourceDir.GetDirectories())
       {
         Copy(dir, new DirectoryInfo(Path.Combine(targetPath, dir.Name)), overwrite);
       }
@@ -544,7 +488,7 @@ namespace InputMaster
     public static async Task<string> ReadAllTextAsync(FileInfo file)
     {
       ForbidNull(file, nameof(file));
-      return await TryAsync(() => { return File.ReadAllText(file.FullName).Replace("\r\n", "\n"); });
+      return await TryAsync(() => File.ReadAllText(file.FullName).Replace("\r\n", "\n"));
     }
 
     public static bool TryReadJson<T>(FileInfo file, out T val)
@@ -575,29 +519,26 @@ namespace InputMaster
       {
         return path;
       }
+      string basePath;
+      string extension;
+      if (file.Exists)
+      {
+        basePath = Path.Combine(file.DirectoryName, Path.GetFileNameWithoutExtension(file.Name));
+        extension = file.Extension;
+      }
       else
       {
-        string basePath;
-        string extension;
-        if (file.Exists)
+        basePath = dir.FullName;
+        extension = "";
+      }
+      var i = 0;
+      while (true)
+      {
+        i++;
+        var newPath = $"{basePath} ({i}){extension}";
+        if (!File.Exists(newPath) && !Directory.Exists(newPath))
         {
-          basePath = Path.Combine(file.DirectoryName, Path.GetFileNameWithoutExtension(file.Name));
-          extension = file.Extension;
-        }
-        else
-        {
-          basePath = dir.FullName;
-          extension = "";
-        }
-        int i = 0;
-        while (true)
-        {
-          i++;
-          var newPath = $"{basePath} ({i}){extension}";
-          if (!File.Exists(newPath) && !Directory.Exists(newPath))
-          {
-            return newPath;
-          }
+          return newPath;
         }
       }
     }
@@ -613,10 +554,7 @@ namespace InputMaster
       {
         return 0;
       }
-      else
-      {
-        return text.LastIndexOf('\n', index - 1) + 1;
-      }
+      return text.LastIndexOf('\n', index - 1) + 1;
     }
 
     /// <summary>
@@ -645,23 +583,20 @@ namespace InputMaster
       {
         return null;
       }
-      else if (text.Length <= length)
+      if (text.Length <= length)
       {
         return text;
       }
-      else if (length < 3)
+      if (length < 3)
       {
         throw new ArgumentOutOfRangeException(nameof(length), length, "Length should be at least 3.");
       }
-      else
+      var i = length - 3;
+      if (char.IsLowSurrogate(text[i]))
       {
-        int i = length - 3;
-        if (char.IsLowSurrogate(text[i]))
-        {
-          i--;
-        }
-        return text.Substring(0, i) + "...";
+        i--;
       }
+      return text.Substring(0, i) + "...";
     }
 
     /// <summary>
@@ -699,10 +634,7 @@ namespace InputMaster
       {
         return m.Groups[1].Value;
       }
-      else
-      {
-        return null;
-      }
+      return null;
     }
 
     public static string GetAltChordText(string text)
@@ -713,10 +645,7 @@ namespace InputMaster
       {
         return m.Groups[1].Value;
       }
-      else
-      {
-        return null;
-      }
+      return null;
     }
 
     public static byte[] GetSecureHash(string text)
@@ -757,7 +686,7 @@ namespace InputMaster
       {
         ForbidNull(lines[i], $"lines[{i}]");
         indents[i] = lines[i].Length - lines[i].TrimStart(' ').Length;
-        columns[i] = lines[i].IndexOf(spaces, indents[i]);
+        columns[i] = lines[i].IndexOf(spaces, indents[i], StringComparison.Ordinal);
       }
       i = 0;
       while (i < lines.Length)
@@ -771,7 +700,7 @@ namespace InputMaster
         }
         if (j > i)
         {
-          for (int k = i; k < j; k++)
+          for (var k = i; k < j; k++)
           {
             var suffix = lines[k].Substring(columns[k]).TrimStart(' ');
             lines[k] = lines[k].Substring(0, columns[k]) + new string(' ', maxColumn + minSpaceCount - columns[k]) + suffix;
@@ -799,7 +728,7 @@ namespace InputMaster
       }
       var n = arguments.Length / 2;
       var bindings = new string[n];
-      for (int i = 0; i < n; i++)
+      for (var i = 0; i < n; i++)
       {
         bindings[i] = $"{arguments[2 * i + 1]} = {arguments[2 * i]}";
       }

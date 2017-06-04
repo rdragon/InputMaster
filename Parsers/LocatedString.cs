@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace InputMaster.Parsers
 {
-  struct LocatedString
+  internal struct LocatedString : IEquatable<LocatedString>
   {
     public static readonly LocatedString None = new LocatedString();
     public static readonly LocatedString Empty = new LocatedString("");
@@ -54,52 +54,41 @@ namespace InputMaster.Parsers
       return TrimStart().TrimEnd();
     }
 
-    public LocatedString Require(string delimiter, int targetCount = -1, int minCount = -1, int maxCount = -1)
+    public LocatedString Require(string delimiter, int targetCount = -1)
     {
       Helper.ForbidNullOrEmpty(delimiter, nameof(delimiter));
       var count = Split(delimiter).Length;
       if (targetCount != -1 && count != targetCount)
       {
-        throw GetException(targetCount: targetCount);
-      }
-      else if (minCount != -1 && count < minCount)
-      {
-        throw GetException(targetCount: targetCount);
-      }
-      else if (maxCount != -1 && count > maxCount)
-      {
-        throw GetException(targetCount: targetCount);
+        throw GetException(targetCount);
       }
       return this;
     }
 
-    public Exception GetException(int targetCount = -1, int minCount = -1, int maxCount = -1)
+    private Exception GetException(int targetCount = -1, int minCount = -1, int maxCount = -1)
     {
       if (targetCount != -1)
       {
         throw CreateException($"Wrong number of arguments given, expecting {targetCount} arguments.");
       }
-      else if (minCount != -1)
+      if (minCount != -1)
       {
         throw CreateException($"Not enough arguments given, expecting at least {minCount}.");
       }
-      else if (maxCount != -1)
+      if (maxCount != -1)
       {
         throw CreateException($"Too many arguments given, expecting at most {maxCount}.");
       }
-      else
-      {
-        throw new ArgumentException();
-      }
+      throw new ArgumentException();
     }
 
     public LocatedString[] Split(string s)
     {
       Helper.ForbidNullOrEmpty(s, nameof(s));
-      var parts = Value.Length == 0 ? new string[0] : Value.Split(new string[] { s }, StringSplitOptions.None);
+      var parts = Value.Length == 0 ? new string[0] : Value.Split(new[] { s }, StringSplitOptions.None);
       var column = 0;
       var ar = new LocatedString[parts.Length];
-      for (int i = 0; i < parts.Length; i++)
+      for (var i = 0; i < parts.Length; i++)
       {
         ar[i] = new LocatedString(parts[i], Location.AddColumns(column)).Trim();
         column += parts[i].Length + s.Length;
@@ -131,14 +120,7 @@ namespace InputMaster.Parsers
 
     public override string ToString()
     {
-      if (Location == Location.Unknown)
-      {
-        return $"\"{Value}\"";
-      }
-      else
-      {
-        return $"\"{Value}\", {Location}";
-      }
+      return Location == Location.Unknown ? $"\"{Value}\"" : $"\"{Value}\", {Location}";
     }
 
     public override bool Equals(object obj)
@@ -158,10 +140,10 @@ namespace InputMaster.Parsers
 
     public IEnumerable<object> ReadArguments(IEnumerable<ParameterInfo> parameterInfos)
     {
-      Helper.ForbidNull(parameterInfos, nameof(parameterInfos));
+      var myParameterInfos = parameterInfos.ToList();
       var arguments = new List<object>();
       var current = Trim();
-      foreach (var parameterInfo in parameterInfos)
+      foreach (var parameterInfo in myParameterInfos)
       {
         Helper.ForbidNull(parameterInfo, nameof(parameterInfo));
         if (current.Length == 0)
@@ -170,37 +152,28 @@ namespace InputMaster.Parsers
           {
             break;
           }
-          else
-          {
-            throw GetException(minCount: parameterInfos.TakeWhile(z => !z.IsOptional).Count());
-          }
+          throw GetException(minCount: myParameterInfos.TakeWhile(z => !z.IsOptional).Count());
+        }
+        var regex = parameterInfo.IsDefined(typeof(AllowSpacesAttribute)) ? DelimiterRegexAllowSpace : DelimiterRegex;
+        var match = regex.Match(current.Value);
+        LocatedString argument;
+        if (match.Success)
+        {
+          argument = current.Substring(0, match.Index);
+          current = current.Substring(match.Index + match.Length);
         }
         else
         {
-          var regex = parameterInfo.IsDefined(typeof(AllowSpacesAttribute)) ? DelimiterRegexAllowSpace : DelimiterRegex;
-          var match = regex.Match(current.Value);
-          LocatedString argument;
-          if (match.Success)
-          {
-            argument = current.Substring(0, match.Index);
-            current = current.Substring(match.Index + match.Length);
-          }
-          else
-          {
-            argument = current;
-            current = Empty;
-          }
-          arguments.Add(argument.ReadArgument(parameterInfo));
+          argument = current;
+          current = Empty;
         }
+        arguments.Add(argument.ReadArgument(parameterInfo));
       }
       if (current.Length > 0)
       {
-        throw GetException(maxCount: parameterInfos.Count());
+        throw GetException(maxCount: myParameterInfos.Count);
       }
-      else
-      {
-        return arguments.Concat(Enumerable.Repeat(Type.Missing, parameterInfos.Count() - arguments.Count));
-      }
+      return arguments.Concat(Enumerable.Repeat(Type.Missing, myParameterInfos.Count - arguments.Count));
     }
 
     private object ReadArgument(ParameterInfo parameterInfo)
@@ -208,106 +181,88 @@ namespace InputMaster.Parsers
       var type = parameterInfo.ParameterType;
       if (type == typeof(bool) || type == typeof(bool?))
       {
-        if (Value == "true")
+        switch (Value)
         {
-          return true;
-        }
-        else if (Value == "false")
-        {
-          return false;
-        }
-        else
-        {
-          throw CreateException("Failed to parse as bool.");
+          case "true": return true;
+          case "false": return false;
+          default: throw CreateException("Failed to parse as bool.");
         }
       }
-      else if (type == typeof(int) || type == typeof(int?))
+      if (type == typeof(int) || type == typeof(int?))
       {
-        int x;
-        if (int.TryParse(Value, out x))
+        if (!int.TryParse(Value, out var x))
         {
-          if (parameterInfo != null && parameterInfo.IsDefined(typeof(ValidRangeAttribute)))
-          {
-            var range = parameterInfo.GetCustomAttribute<ValidRangeAttribute>();
-            if (x < range.Minimum || x > range.Maximum)
-            {
-              throw CreateException($"Argument out of range" + Helper.GetBindingsSuffix(x, nameof(x), range.Minimum, "min", range.Maximum, "max"));
-            }
-          }
-          return x;
+          throw CreateException("Failed to parse as int.");
         }
-        else
-        {
-          throw CreateException($"Failed to parse as int.");
-        }
-      }
-      else if (type == typeof(TimeSpan) || type == typeof(TimeSpan?))
-      {
-        TimeSpan x;
-        if (TimeSpan.TryParse(Value, out x))
+        if (!parameterInfo.IsDefined(typeof(ValidRangeAttribute)))
         {
           return x;
         }
-        else
+        var range = parameterInfo.GetCustomAttribute<ValidRangeAttribute>();
+        if (x < range.Minimum || x > range.Maximum)
         {
-          throw CreateException($"Failed to parse as TimeSpan.");
+          throw CreateException("Argument out of range" + Helper.GetBindingsSuffix(x, nameof(x), range.Minimum, "min", range.Maximum, "max"));
         }
+        return x;
       }
-      else if (type == typeof(DirectoryInfo))
+      if (type == typeof(TimeSpan) || type == typeof(TimeSpan?))
+      {
+        if (TimeSpan.TryParse(Value, out var x))
+        {
+          return x;
+        }
+        throw CreateException("Failed to parse as TimeSpan.");
+      }
+      if (type == typeof(DirectoryInfo))
       {
         return new DirectoryInfo(Value);
       }
-      else if (type == typeof(FileInfo))
+      if (type == typeof(FileInfo))
       {
         return new FileInfo(Value);
       }
-      else if (type == typeof(Action))
+      if (type == typeof(Action))
       {
         return Env.CreateInjector().Add(this, Config.DefaultInputReader).Compile();
       }
-      else if (type == typeof(IInjector))
+      if (type == typeof(IInjector))
       {
         return Env.CreateInjector().Add(this, Config.DefaultInputReader);
       }
-      else if (type == typeof(string))
+      if (type == typeof(string))
       {
-        if (parameterInfo != null && parameterInfo.IsDefined(typeof(ValidFlagsAttribute)))
+        if (!parameterInfo.IsDefined(typeof(ValidFlagsAttribute)))
         {
-          var flagsString = parameterInfo.GetCustomAttribute<ValidFlagsAttribute>().FlagsString;
-          foreach (var c in Value.Where(z => !char.IsWhiteSpace(z)))
+          return Value;
+        }
+        var flagsString = parameterInfo.GetCustomAttribute<ValidFlagsAttribute>().FlagsString;
+        foreach (var c in Value.Where(z => !char.IsWhiteSpace(z)))
+        {
+          if (!flagsString.Contains(c))
           {
-            if (!flagsString.Contains(c))
-            {
-              throw CreateException($"Invalid flag '{c}', expecting one of \"{flagsString}\".");
-            }
+            throw CreateException($"Invalid flag '{c}', expecting one of \"{flagsString}\".");
           }
         }
         return Value;
       }
-      else if (type == typeof(LocatedString) || type == typeof(LocatedString?))
+      if (type == typeof(LocatedString) || type == typeof(LocatedString?))
       {
         return this;
       }
-      else if (type == typeof(Chord))
+      if (type == typeof(Chord))
       {
         return Config.DefaultChordReader.CreateChord(this);
       }
-      else if (type == typeof(Input) || type == typeof(Input?))
+      if (type == typeof(Input) || type == typeof(Input?))
       {
         var chord = Config.DefaultChordReader.CreateChord(this);
         if (chord.Length > 1 || chord.Length == 0 || chord.First().Modifiers != Modifiers.None)
         {
           throw CreateException("Failed to parse as a single Input.");
         }
-        else
-        {
-          return chord.First().Input;
-        }
+        return chord.First().Input;
       }
-      else
-      {
-        throw CreateException($"Argument type '{type.Name}' not supported.");
-      }
+      throw CreateException($"Argument type '{type.Name}' not supported.");
     }
 
     private ParseException CreateException(string text)

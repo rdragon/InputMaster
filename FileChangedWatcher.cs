@@ -1,11 +1,10 @@
 ﻿using System;
-using System.ComponentModel;
 using System.IO;
 using System.Threading.Tasks;
 
 namespace InputMaster
 {
-  class FileChangedWatcher : IDisposable
+  internal class FileChangedWatcher : IDisposable
   {
     private readonly FileSystemWatcher FileSystemWatcher;
     private readonly FileInfo File;
@@ -14,21 +13,16 @@ namespace InputMaster
     public FileChangedWatcher(FileInfo file)
     {
       File = Helper.ForbidNull(file, nameof(file));
-      FileSystemWatcher = new FileSystemWatcher(file.DirectoryName, file.Name);
-
+      Helper.ForbidNull(File.DirectoryName, nameof(File.DirectoryName));
+      FileSystemWatcher = new FileSystemWatcher(File.DirectoryName, File.Name)
+      {
+        SynchronizingObject = Env.Notifier.SynchronizingObject,
+        EnableRaisingEvents = true
+      };
       FileSystemWatcher.Changed += Changed;
     }
 
     public event Action<string> TextChanged = delegate { };
-
-    public void Enable(ISynchronizeInvoke synchronizingObject = null)
-    {
-      if (synchronizingObject != null)
-      {
-        FileSystemWatcher.SynchronizingObject = synchronizingObject;
-      }
-      FileSystemWatcher.EnableRaisingEvents = true;
-    }
 
     public void Dispose()
     {

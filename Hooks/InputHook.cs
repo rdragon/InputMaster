@@ -1,11 +1,11 @@
-﻿using InputMaster.Parsers;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using InputMaster.Parsers;
 
 namespace InputMaster.Hooks
 {
-  class InputHook : IInputHook
+  internal class InputHook : Actor, IInputHook
   {
     /// <summary>
     /// All virtually active modifiers. Some can have a key that is up (the stuck modifiers).
@@ -30,15 +30,15 @@ namespace InputMaster.Hooks
     /// <summary>
     /// All non-modifier keys for which the key down was captured and for which the next key up event will be captured.
     /// </summary>
-    private HashSet<Input> Captured = new HashSet<Input>();
-    private IComboHook TargetHook;
+    private readonly HashSet<Input> Captured = new HashSet<Input>();
+    private readonly IComboHook TargetHook;
+    private Action BackspaceAction;
 
     public InputHook(IComboHook targetHook)
     {
       TargetHook = targetHook;
     }
 
-    public Action BackspaceAction { get; set; }
 
     public void Handle(InputArgs e)
     {
@@ -77,15 +77,12 @@ namespace InputMaster.Hooks
           TargetHook.Handle(comboArgs);
           e.Capture = comboArgs.Capture;
           // Capture a key down event that does not trigger an action when custom modifiers are active.
-          if (!e.Capture && Modifiers.HasCustomModifiers() && !e.Input.IsModifierKey())
-          {
-            e.Capture = true;
-          }
+          e.Capture = e.Capture || (Modifiers.HasCustomModifiers() && !e.Input.IsModifierKey());
         }
       }
 
-      bool doNotAddToCaptured = false;
-      bool isModifier = e.Input.IsModifierKey();
+      var doNotAddToCaptured = false;
+      var isModifier = e.Input.IsModifierKey();
 
       // If there are standard modifiers virtually active and a non-modifier key down event is not captured, these modifiers need to be injected.
       var standardModifiers = Modifiers.ToStandardModifiers();
@@ -240,24 +237,24 @@ namespace InputMaster.Hooks
         deleteCount = count.RightCount;
       }
       var replaceAction = Env.CreateInjector()
-        .Add(Input.Bs, count: backspaceCount)
-        .Add(Input.Del, count: deleteCount)
-        .Add(Input.Space, count: surroundWithSpaces ? 1 : 0)
+        .Add(Input.Bs, backspaceCount)
+        .Add(Input.Del, deleteCount)
+        .Add(Input.Space, surroundWithSpaces ? 1 : 0)
         .Add(argument, Config.DefaultInputReader)
-        .Add(Input.Space, count: surroundWithSpaces ? 1 : 0)
+        .Add(Input.Space, surroundWithSpaces ? 1 : 0)
         .Compile();
       var count1 = new InputCounter(true).Add(argument, Config.DefaultInputReader);
       var backspaceAction = Env.CreateInjector()
-        .Add(Input.Bs, count: count1.LeftCount + (surroundWithSpaces ? 2 : 0))
-        .Add(Input.Del, count: count1.RightCount)
+        .Add(Input.Bs, count1.LeftCount + (surroundWithSpaces ? 2 : 0))
+        .Add(Input.Del, count1.RightCount)
         .Compile();
-      Action<Combo> action = (combo) =>
+      var description = chord + " " + nameof(Replace) + " " + argument.Value;
+      void Action(Combo dummy)
       {
         BackspaceAction = backspaceAction;
         replaceAction();
-      };
-      var description = chord + " " + nameof(Replace) + " " + argument.Value;
-      data.ParserOutput.AddHotkey(data.Section, chord, action, description);
+      }
+      data.ParserOutput.AddHotkey(data.Section, chord, Action, description);
     }
 
     enum ReleaseTime

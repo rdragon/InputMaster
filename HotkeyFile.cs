@@ -1,13 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace InputMaster
+﻿namespace InputMaster
 {
-  class HotkeyFile
+  internal class HotkeyFile
   {
     public HotkeyFile(string name, string text)
     {

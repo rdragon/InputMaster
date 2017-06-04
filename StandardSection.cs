@@ -4,14 +4,14 @@ using System.Threading;
 
 namespace InputMaster
 {
-  class StandardSection : Section
+  internal class StandardSection : Section
   {
     private static int IdCounter;
 
     private readonly StandardSection Parent;
     private int Counter = -1;
     private bool Enabled;
-    private int Id;
+    private readonly int Id;
 
     public StandardSection(StandardSection parent)
     {
@@ -31,10 +31,10 @@ namespace InputMaster
     {
       get
       {
-        if (Counter < Env.ForegroundListener.Counter)
+        if (Counter < Env.StateCounter)
         {
-          Counter = Env.ForegroundListener.Counter;
-          Enabled = (IsTopLevel ? true : Parent.IsEnabled) && ComputeEnabled();
+          Counter = Env.StateCounter;
+          Enabled = (IsTopLevel || Parent.IsEnabled) && ComputeEnabled();
         }
         return Enabled;
       }
@@ -51,10 +51,7 @@ namespace InputMaster
       {
         return d;
       }
-      else
-      {
-        return Parent.GetDepth(d + 1);
-      }
+      return Parent.GetDepth(d + 1);
     }
 
     public int CompareTo(StandardSection other)
@@ -63,15 +60,12 @@ namespace InputMaster
       {
         return 1;
       }
-      else
-      {
-        int x = GetDepth() - other.GetDepth();
-        return x == 0 ? Id - other.Id : x;
-      }
+      var x = GetDepth() - other.GetDepth();
+      return x == 0 ? Id - other.Id : x;
     }
   }
 
-  class FlagSection : StandardSection
+  internal class FlagSection : StandardSection
   {
     private readonly string Flag;
 
@@ -82,11 +76,11 @@ namespace InputMaster
 
     protected override bool ComputeEnabled()
     {
-      return Env.ForegroundListener.IsFlagSet(Flag);
+      return Env.FlagManager.IsSet(Flag);
     }
   }
 
-  class RegexSection : StandardSection
+  internal class RegexSection : StandardSection
   {
     private readonly Regex Regex;
     private readonly RegexSectionType Type;
@@ -113,5 +107,5 @@ namespace InputMaster
     }
   }
 
-  enum RegexSectionType { Window, Process }
+  internal enum RegexSectionType { Window, Process }
 }

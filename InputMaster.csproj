@@ -61,6 +61,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="JetBrains.Annotations, Version=10.4.0.0, Culture=neutral, PublicKeyToken=1010a0d8d6380325, processorArchitecture=MSIL">
+      <HintPath>packages\JetBrains.Annotations.10.4.0\lib\net\JetBrains.Annotations.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
     <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>packages\Newtonsoft.Json.10.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
@@ -82,12 +85,14 @@
   <ItemGroup>
     <Compile Include="Account.cs" />
     <Compile Include="AccountManager.cs" />
+    <Compile Include="Actor.cs" />
+    <Compile Include="App.cs" />
     <Compile Include="Attributes.cs" />
     <Compile Include="DynamicHotkeyCollection.cs" />
-    <Compile Include="Brain.cs" />
     <Compile Include="Chord.cs" />
     <Compile Include="ComboArgs.cs" />
     <Compile Include="Extensions\VarActor.cs" />
+    <Compile Include="Factory.cs" />
     <Compile Include="Forms\GetStringLineForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -95,9 +100,7 @@
       <DependentUpon>GetStringLineForm.cs</DependentUpon>
     </Compile>
     <Compile Include="HotkeyFile.cs" />
-    <Compile Include="InstanceCollection.cs" />
     <Compile Include="FileChangedWatcher.cs" />
-    <Compile Include="ForegroundListenerBase.cs" />
     <Compile Include="DynamicHotkey.cs" />
     <Compile Include="InputCounter.cs" />
     <Compile Include="InputArgs.cs" />
@@ -110,7 +113,7 @@
     <Compile Include="Parsers\ExecuteAtParseTimeData.cs" />
     <Compile Include="Parsers\ParseException.cs" />
     <Compile Include="Parsers\CharReader.cs" />
-    <Compile Include="Parsers\CommandCollection.cs" />
+    <Compile Include="CommandCollection.cs" />
     <Compile Include="Parsers\Location.cs" />
     <Compile Include="Extensions\CustomActor.cs" />
     <Compile Include="HotkeyCollection.cs" />
@@ -132,7 +135,7 @@
     </Compile>
     <Compile Include="Parsers\LocatedString.cs" />
     <Compile Include="Env.cs" />
-    <Compile Include="HiddenProcessManager.cs" />
+    <Compile Include="ProcessManager.cs" />
     <Compile Include="Hotkey.cs" />
     <Compile Include="Mode.cs" />
     <Compile Include="Extensions\ColorTracker.cs" />
@@ -140,8 +143,7 @@
     <Compile Include="Helper.cs" />
     <Compile Include="Combo.cs" />
     <Compile Include="Parsers\InputReader.cs" />
-    <Compile Include="Actor.cs" />
-    <Compile Include="Notifier.cs" />
+    <Compile Include="MiscActor.cs" />
     <Compile Include="Parsers\Parser.cs" />
     <Compile Include="Hooks\ModeHook.cs" />
     <Compile Include="StandardSection.cs" />
@@ -187,8 +189,6 @@
       <DependentUpon>ShowStringForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Config.cs" />
-    <Compile Include="SafeMutex.cs" />
-    <Compile Include="Timeout.cs" />
     <EmbeddedResource Include="Forms\GetStringForm.resx">
       <DependentUpon>GetStringForm.cs</DependentUpon>
     </EmbeddedResource>

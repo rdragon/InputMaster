@@ -6,7 +6,7 @@ namespace InputMaster.Forms
   /// <summary>
   /// Simple form for getting string data from the user.
   /// </summary>
-  partial class GetStringForm : ThemeForm
+  internal sealed partial class GetStringForm : ThemeForm
   {
     public GetStringForm(string title, string defaultValue, bool selectAll)
     {
@@ -25,10 +25,7 @@ namespace InputMaster.Forms
       {
         return RichTextBox.Text;
       }
-      else
-      {
-        return null;
-      }
+      return null;
     }
 
     private void Button_Click(object sender, EventArgs e)

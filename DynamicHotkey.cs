@@ -2,10 +2,9 @@
 
 namespace InputMaster
 {
-  class DynamicHotkey : IComparable<DynamicHotkey>
+  internal class DynamicHotkey : IComparable<DynamicHotkey>
   {
-    public Action<IInjectorStream<object>> Action { get; }
-    public StandardSection Section { get; }
+    private readonly StandardSection Section;
     public bool Enabled => Section.IsEnabled;
 
     public DynamicHotkey(Action<IInjectorStream<object>> action, StandardSection section)
@@ -13,6 +12,8 @@ namespace InputMaster
       Action = action;
       Section = section;
     }
+
+    public Action<IInjectorStream<object>> Action { get; }
 
     public int CompareTo(DynamicHotkey other)
     {

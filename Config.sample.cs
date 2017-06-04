@@ -1,20 +1,32 @@
-﻿using InputMaster.Extensions;
-using InputMaster.Parsers;
-using InputMaster.Win32;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using InputMaster.Extensions;
+using InputMaster.Parsers;
+using InputMaster.Rik;
+using InputMaster.Win32;
+using JetBrains.Annotations;
+
+// ReSharper disable CollectionNeverUpdated.Global
+// ReSharper disable ConvertToConstant.Global
 
 namespace InputMaster
 {
-  static class Config
+  internal static class Config
   {
     // Paths
-    public static readonly DirectoryInfo DataDir = new DirectoryInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "InputMaster", "Data"));
-    public static readonly DirectoryInfo CacheDir = new DirectoryInfo(Path.Combine(DataDir.Parent.FullName, "Cache"));
+    private static readonly string InputMasterPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "InputMaster");
+    public static readonly DirectoryInfo DataDir = new DirectoryInfo(Path.Combine(InputMasterPath, "Data"));
+    public static readonly DirectoryInfo CacheDir = new DirectoryInfo(Path.Combine(InputMasterPath, "Cache"));
     public static readonly FileInfo HotkeyFile = new FileInfo(Path.Combine(DataDir.FullName, "Hotkeys.im"));
     public static readonly FileInfo WindowHandleFile = new FileInfo(Path.Combine(CacheDir.FullName, "WindowHandle"));
     public static readonly FileInfo ErrorLogFile = new FileInfo(Path.Combine(CacheDir.FullName, "ErrorLog.txt"));
@@ -35,7 +47,7 @@ namespace InputMaster
     public const string InnerIdentifierTokenPattern = "[A-Z][a-zA-Z0-9_]+";
     public static readonly string TokenPattern = CreateTokenPattern($@"({InnerIdentifierTokenPattern}|(0|[1-9][0-9]*)x)");
     public static readonly string IdentifierTokenPattern = CreateTokenPattern(InnerIdentifierTokenPattern);
-    public static readonly InputReader DefaultInputReader = new InputReader(InputReaderFlags.AllowCustomCharacter | InputReaderFlags.AllowHoldRelease | InputReaderFlags.AllowMultiplier | InputReaderFlags.AllowCustomToken);
+    public static readonly InputReader DefaultInputReader = new InputReader(InputReaderFlags.AllowCustomCharacter | InputReaderFlags.AllowHoldRelease | InputReaderFlags.AllowMultiplier);
     public static readonly InputReader DefaultChordReader = new InputReader(InputReaderFlags.AllowCustomModifier);
     public static readonly InputReader DefaultModeChordReader = new InputReader(InputReaderFlags.AllowCustomModifier | InputReaderFlags.AllowKeywordAny);
     public static readonly InputReader LiteralInputReader = new InputReader(InputReaderFlags.ParseLiteral);
@@ -44,17 +56,17 @@ namespace InputMaster
     // English US keyboard layout
     public const string Keyboard = "`-=[];'\\,./0123456789abcdefghijklmnopqrstuvwxyz";
     public const string ShiftedKeyboard = "~_+{}:\"|<>?)!@#$%^&*(ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    public static readonly Input[] KeyboardInputs = new Input[] { Input.Grave, Input.Dash, Input.Is, Input.LBracket, Input.RBracket, Input.Semicolon, Input.Quote, Input.Backslash, Input.Comma, Input.Period, Input.Slash, Input.D0, Input.D1, Input.D2, Input.D3, Input.D4, Input.D5, Input.D6, Input.D7, Input.D8, Input.D9, Input.A, Input.B, Input.C, Input.D, Input.E, Input.F, Input.G, Input.H, Input.I, Input.J, Input.K, Input.L, Input.M, Input.N, Input.O, Input.P, Input.Q, Input.R, Input.S, Input.T, Input.U, Input.V, Input.W, Input.X, Input.Y, Input.Z };
+    public static readonly Input[] KeyboardInputs = { Input.Grave, Input.Dash, Input.Is, Input.LBracket, Input.RBracket, Input.Semicolon, Input.Quote, Input.Backslash, Input.Comma, Input.Period, Input.Slash, Input.D0, Input.D1, Input.D2, Input.D3, Input.D4, Input.D5, Input.D6, Input.D7, Input.D8, Input.D9, Input.A, Input.B, Input.C, Input.D, Input.E, Input.F, Input.G, Input.H, Input.I, Input.J, Input.K, Input.L, Input.M, Input.N, Input.O, Input.P, Input.Q, Input.R, Input.S, Input.T, Input.U, Input.V, Input.W, Input.X, Input.Y, Input.Z };
 
     // Rest
     public const Input CloseKey = Input.Esc;
     public const Input ToggleHookKey = Input.NumLock;
     public static readonly Combo ClearModeCombo = new Combo(Input.Bs);
     public static readonly Combo ShowModeCombo = new Combo(Input.Space);
-    public static readonly Combo[] ClearModeCombos = new Combo[] { new Combo(CloseKey), new Combo(Input.Comma) };
+    public static readonly Combo[] ClearModeCombos = { new Combo(CloseKey), new Combo(Input.Comma) };
     public static readonly Dictionary<string, Input> CustomInputs = new Dictionary<string, Input>();
     public static readonly Dictionary<string, Combo> CustomCombos = new Dictionary<string, Combo>();
-    public static readonly TimeSpan ExitRunningInputMasterTimeout = TimeSpan.FromSeconds(1);
+    public static readonly TimeSpan ExitOtherInputMasterTimeout = TimeSpan.FromSeconds(1);
     public static readonly TimeSpan NotifierTextLifetime = TimeSpan.FromSeconds(1.5);
     public static readonly TimeSpan SchedulerInterval = TimeSpan.FromSeconds(1);
     public static readonly TimeSpan ProcessManagerInterval = TimeSpan.FromMinutes(1);
@@ -67,7 +79,7 @@ namespace InputMaster
     public static readonly bool InsertSpaceAfterComma = true;
     public const int MaxChordLength = 10;
     public const string NotifierWindowTitle = "Notifier - InputMaster";
-    public const bool CaptureLmb = false;
+    public static readonly bool CaptureLmb = false;
     public const string EmailSuffix = "@example.com";
     public const int DefaultPasswordLength = 12;
     public const string OpenAccountModeName = "OpenAccount";
@@ -78,10 +90,10 @@ namespace InputMaster
     public static readonly FileInfo AccountsOutputFile = new FileInfo(Path.Combine(CacheDir.FullName, "Accounts.txt"));
 
     // Text Editor
-    public static bool EnableTextEditor = false;
+    public static readonly bool EnableTextEditor = false;
     public const string TextEditorSectionIdentifier = "¶";
     public static readonly TimeSpan SaveTimerInterval = TimeSpan.FromSeconds(30);
-    public static readonly TimeSpan UpdatePanelDelay = TimeSpan.FromSeconds(1);
+    public static readonly TimeSpan UpdatePanelInterval = TimeSpan.FromSeconds(1);
     public const int SplitterDistance = 300;
     public const int MaxTextEditorTabs = 3;
     public const string TextEditorWindowTitle = "Text Editor - InputMaster";
@@ -122,9 +134,9 @@ namespace InputMaster
       return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
     }
 
-    public static readonly Input[] LeftModifierKeys = new Input[] { Input.LShift, Input.LCtrl, Input.LAlt, Input.LWin };
+    public static readonly Input[] LeftModifierKeys = { Input.LShift, Input.LCtrl, Input.LAlt, Input.LWin };
 
-    public static void Initialize(InstanceCollection instanceCollection)
+    public static void Run(Factory factory)
     {
       PreprocessorReplaces.Add(nameof(DataDir), DataDir.FullName);
       PreprocessorReplaces.Add(nameof(CacheDir), CacheDir.FullName);
@@ -134,27 +146,16 @@ namespace InputMaster
       PreprocessorReplaces.Add(nameof(TextEditorDir), TextEditorDir.FullName);
       PreprocessorReplaces.Add(nameof(AccountsOutputFile), AccountsOutputFile.FullName);
 
-      var colorTracker = new ColorTracker(instanceCollection.FlagManager);
-      instanceCollection.Brain.AddDisposable(colorTracker);
-      var processManager = new HiddenProcessManager(instanceCollection.Brain);
-      instanceCollection.Brain.AddDisposable(processManager);
-      var scheduler = new Scheduler(instanceCollection.Brain, processManager);
-      instanceCollection.Brain.AddDisposable(scheduler);
-      instanceCollection.CommandCollection.AddActors(new SecondClipboard(instanceCollection.ForegroundInteractor), new CustomActor(), colorTracker);
+      Env.AddActor(new SecondClipboard());
+      Env.AddActor(new CustomActor());
+      Env.AddActor(new ColorTracker());
+      Env.AddActor(new VarActor());
 
-    }
-
-    public static void Start(InstanceCollection instances)
-    {
       if ((NativeMethods.GetKeyState(Input.NumLock) & 1) == 1)
       {
         Env.CreateInjector().Add(Input.NumLock).Run();
       }
-    }
 
-    public static bool HandleCustomToken(string text, IInjectorStream<object> injectorStream)
-    {
-      return false;
     }
 
     public static string GetChordText(string title)
@@ -169,7 +170,7 @@ namespace InputMaster
   }
 
   [Flags]
-  enum Modifiers
+  internal enum Modifiers
   {
     None = 0,
     Shift = 1,
@@ -179,7 +180,8 @@ namespace InputMaster
     StandardModifiers = 15,
   }
 
-  enum DynamicHotkeyEnum
+  [UsedImplicitly(ImplicitUseTargetFlags.Members)]
+  internal enum DynamicHotkeyEnum
   {
     None, Cut, Copy, Paste, LineUp, LineDown, RemoveLine, SaveAll, CloseTab,
   }

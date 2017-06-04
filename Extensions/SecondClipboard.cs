@@ -1,59 +1,39 @@
 ﻿using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace InputMaster.Extensions
 {
   [CommandTypes(CommandTypes.Visible)]
-  class SecondClipboard
+  internal class SecondClipboard : Actor
   {
     private readonly List<string> Values = new List<string>();
-    private readonly ForegroundInteractor ForegroundInteractor;
-
-    public SecondClipboard(ForegroundInteractor foregroundInteractor)
-    {
-      ForegroundInteractor = foregroundInteractor;
-    }
 
     public async Task SecondClipboardCopy()
     {
-      var s = await ForegroundInteractor.GetSelectedText();
-      lock (Values)
-      {
-        Values.Add(s);
-      }
-      Env.Notifier.Write($"'{Helper.Truncate(s, 20)}' copied");
+      var text = await ForegroundInteractor.GetSelectedText();
+      Values.Add(text);
+      Env.Notifier.Write($"'{Helper.Truncate(text, 20)}' copied");
     }
 
     public async Task SecondClipboardPaste()
     {
-      string s;
-      lock (Values)
+      var text = string.Join("  ", Values);
+      if (text.Length > 0)
       {
-        s = string.Join("  ", Values);
-      }
-      if (s.Length > 0)
-      {
-        await ForegroundInteractor.Paste(s);
+        await ForegroundInteractor.Paste(text);
       }
     }
 
     public async Task SecondClipboardPasteReverse()
     {
-      string s;
-      lock (Values)
-      {
-        s = string.Join("  ", Values.Reverse<string>());
-      }
-      await ForegroundInteractor.Paste(s);
+      var text = string.Join("  ", Values.Reverse<string>());
+      await ForegroundInteractor.Paste(text);
     }
 
     public void SecondClipboardClear()
     {
-      lock (Values)
-      {
-        Values.Clear();
-      }
+      Values.Clear();
     }
   }
 }

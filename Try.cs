@@ -4,7 +4,7 @@ using System.Windows.Forms;
 
 namespace InputMaster
 {
-  static class Try
+  internal static class Try
   {
     private static Exception Exception;
 
@@ -29,6 +29,7 @@ namespace InputMaster
           Env.Notifier.WriteError(exception.ToString());
         }
       }
+      // ReSharper disable once EmptyGeneralCatchClause
       catch (Exception) { }
     }
 
@@ -42,7 +43,7 @@ namespace InputMaster
       var exception = Exception;
       if (exception != null)
       {
-        MessageBox.Show("Fatal Error: " + exception, "Fatal Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        MessageBox.Show($"Fatal Error: {exception}", "Fatal Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
       }
     }
 

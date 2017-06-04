@@ -159,6 +159,6 @@
     NumEnter = 151,
     WheelUp,
     WheelDown,
-    Any,
+    Any
   }
 }

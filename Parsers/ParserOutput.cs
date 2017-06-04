@@ -4,10 +4,8 @@ using System.Linq;
 
 namespace InputMaster.Parsers
 {
-  class ParserOutput
+  internal class ParserOutput
   {
-    private int FlagSetCounter;
-
     public HotkeyCollection HotkeyCollection { get; } = new HotkeyCollection();
     public List<Mode> Modes { get; } = new List<Mode>();
     public DynamicHotkeyCollection DynamicHotkeyCollection { get; } = new DynamicHotkeyCollection();

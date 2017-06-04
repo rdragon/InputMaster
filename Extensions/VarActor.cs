@@ -1,26 +1,21 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using System;
 
 namespace InputMaster.Extensions
 {
   [CommandTypes(CommandTypes.Visible)]
-  class VarActor
+  internal class VarActor : Actor
   {
     private readonly Dictionary<string, string> Dict = new Dictionary<string, string>();
-    private readonly ForegroundInteractor ForegroundInteractor;
+    private readonly MyState State;
 
-    public VarActor(Brain brain, ForegroundInteractor foregroundInteractor)
+    public VarActor()
     {
-      Helper.ForbidNull(brain, nameof(brain));
-      Helper.ForbidNull(foregroundInteractor, nameof(foregroundInteractor));
-      ForegroundInteractor = foregroundInteractor;
-      var state = new MyStateManager(nameof(VarActor), this);
-      state.Load();
-      state.Changed = true;
-      brain.Exiting += Try.Wrap(state.Save);
+      State = new MyState(this);
+      State.Load();
     }
 
     public async Task SetVar(string name, string value = null)
@@ -35,6 +30,7 @@ namespace InputMaster.Extensions
         value = await ForegroundInteractor.GetSelectedText();
       }
       Dict[name] = string.Format(format, value);
+      State.Changed = true;
       Env.Notifier.Write($"{name}: {Dict[name]}");
     }
 
@@ -68,20 +64,17 @@ namespace InputMaster.Extensions
       }
     }
 
-    private class MyStateManager : State
+    private class MyState : State<VarActor>
     {
-      private readonly VarActor Parent;
-
-      public MyStateManager(string name, VarActor parent) : base(name, Config.DataDir)
-      {
-        Parent = parent;
-      }
+      public MyState(VarActor varActor) : base(nameof(VarActor), varActor, Config.DataDir) { }
 
       protected override void Load(BinaryReader reader)
       {
         while (reader.BaseStream.Position < reader.BaseStream.Length)
         {
-          Parent.Dict.Add(reader.ReadString(), reader.ReadString());
+          var key = reader.ReadString();
+          var value = reader.ReadString();
+          Parent.Dict.Add(key, value);
         }
       }
 

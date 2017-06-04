@@ -3,9 +3,9 @@ using System.Collections.Generic;
 
 namespace InputMaster
 {
-  class Hotkey
+  internal class Hotkey
   {
-    public static IComparer<Hotkey> SectionComparer = new MySectionComparer();
+    public static readonly IComparer<Hotkey> SectionComparer = new MySectionComparer();
 
     public Action<Combo> Action { get; }
     public StandardSection Section { get; }
@@ -25,10 +25,7 @@ namespace InputMaster
         {
           return y == null ? 0 : -1;
         }
-        else
-        {
-          return y == null ? 1 : x.Section.CompareTo(y.Section);
-        }
+        return y == null ? 1 : x.Section.CompareTo(y.Section);
       }
     }
   }

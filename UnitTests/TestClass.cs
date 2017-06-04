@@ -9,7 +9,7 @@ namespace UnitTests
     [TestMethod]
     public void Test()
     {
-      new TestBrain().Run();
+      new TestFactory().Run();
     }
 
     [TestMethod]

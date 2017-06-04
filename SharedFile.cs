@@ -1,10 +1,10 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.IO;
+using Newtonsoft.Json;
 
 namespace InputMaster
 {
-  class SharedFile
+  internal class SharedFile
   {
     public SharedFile(string title, FileInfo nameFile, FileInfo dataFile)
     {
@@ -21,7 +21,7 @@ namespace InputMaster
     public FileInfo DataFile { get; }
   }
 
-  class SharedFileTimestamp
+  internal class SharedFileTimestamp
   {
     public SharedFileTimestamp() { }
 
@@ -37,7 +37,7 @@ namespace InputMaster
     public DateTime DataFileTimestamp { get; private set; }
   }
 
-  class TitleTextPair
+  internal class TitleTextPair
   {
     public TitleTextPair() { }
 

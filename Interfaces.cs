@@ -1,28 +1,35 @@
-﻿using InputMaster.Parsers;
-using System;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.IO;
+using InputMaster.Parsers;
 
 namespace InputMaster
 {
-  interface INotifier
+  internal interface IFactory
   {
-    void Write(string text);
-    void WriteWarning(string text);
-    void WriteError(string text);
-    void SetPersistentText(string text);
-    void ShowLog();
-    void CaptureForeground();
-    void RequestExit();
-    void Disable();
+    T Create<T>() where T : class;
   }
 
-  interface IInputHook
+  internal interface INotifier
+  {
+    void Write(string message);
+    void WriteWarning(string message);
+    void WriteError(string message);
+    void SetPersistentText(string text);
+    string GetLog();
+    void CaptureForeground();
+    ISynchronizeInvoke SynchronizingObject { get; }
+  }
+
+  internal interface IInputHook
   {
     void Handle(InputArgs e);
     void Reset();
     string GetStateInfo();
   }
 
-  interface IComboHook
+  internal interface IComboHook
   {
     void Handle(ComboArgs e);
     void Reset();
@@ -30,41 +37,69 @@ namespace InputMaster
     bool Active { get; }
   }
 
-  interface IInjectorStream<out T>
+  internal interface IInjectorStream<out T>
   {
     T Add(Input input, bool down);
     T Add(char c);
   }
 
-  interface IInjectorStream : IInjectorStream<IInjectorStream> { }
+  internal interface IInjectorStream : IInjectorStream<IInjectorStream> { }
 
-  interface IInjector<out T> : IInjectorStream<T>
+  internal interface IInjector<out T> : IInjectorStream<T>
   {
     void Run();
     Action Compile();
     T CreateInjector();
   }
 
-  interface IInjector : IInjector<IInjector> { }
+  internal interface IInjector : IInjector<IInjector> { }
 
-  interface IForegroundListener : IFlagViewer
+  internal interface IForegroundListener
   {
     string ForegroundWindowTitle { get; }
     string ForegroundProcessName { get; }
-    DynamicHotkeyCollection DynamicHotkeyCollection { get; }
-    int Counter { get; }
     void Update();
-    string GetForegroundInfoSuffix();
   }
 
-  interface IFlagViewer
+  internal interface IFlagManager
   {
-    bool IsFlagSet(string flag);
+    bool IsSet(string flag);
+    void ToggleFlag(string flag);
+    void ClearFlags();
     event Action FlagsChanged;
+    IEnumerable<string> GetFlags();
   }
 
-  interface IParserOutputProvider
+  internal interface IParser
   {
+    void UpdateHotkeyFile(HotkeyFile hotkeyFile);
+    void UpdateParseAction(string name, ParseAction action);
+    void Run();
+    bool TryGetAction(string name, bool complainIfNotFound, out Action<IInjectorStream<object>> action);
+    void FireNewParserOutput(ParserOutput parserOutput); // For unit tests.
+    bool Enabled { get; set; }
     event Action<ParserOutput> NewParserOutput;
+  }
+
+  internal interface IScheduler
+  {
+    void AddJob(string name, Action action, TimeSpan delay);
+    void AddFileJob(FileInfo file, string arguments, TimeSpan delay);
+  }
+
+  internal interface IProcessManager
+  {
+    void StartHiddenProcess(FileInfo file, string arguments = "", TimeSpan? timeout = null);
+  }
+
+  internal interface ICommandCollection
+  {
+    void AddActor(object actor);
+    Command GetCommand(LocatedString locatedName);
+  }
+
+  internal interface IApp
+  {
+    event Action Exiting;
   }
 }

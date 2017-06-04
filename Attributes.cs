@@ -1,9 +1,11 @@
 ﻿using System;
+using JetBrains.Annotations;
 
 namespace InputMaster
 {
+  [MeansImplicitUse(ImplicitUseTargetFlags.WithMembers)]
   [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-  sealed class CommandTypesAttribute : Attribute
+  internal sealed class CommandTypesAttribute : Attribute
   {
     public CommandTypes CommandTypes { get; }
 
@@ -14,7 +16,7 @@ namespace InputMaster
   }
 
   [AttributeUsage(AttributeTargets.Parameter)]
-  public sealed class ValidRangeAttribute : Attribute
+  internal sealed class ValidRangeAttribute : Attribute
   {
     public int Minimum { get; }
     public int Maximum { get; }
@@ -27,7 +29,7 @@ namespace InputMaster
   }
 
   [AttributeUsage(AttributeTargets.Parameter)]
-  public sealed class ValidFlagsAttribute : Attribute
+  internal sealed class ValidFlagsAttribute : Attribute
   {
     public string FlagsString { get; }
 
@@ -38,5 +40,5 @@ namespace InputMaster
   }
 
   [AttributeUsage(AttributeTargets.Parameter)]
-  public sealed class AllowSpacesAttribute : Attribute { }
+  internal sealed class AllowSpacesAttribute : Attribute { }
 }

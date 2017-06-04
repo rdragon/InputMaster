@@ -1,8 +1,8 @@
-﻿using InputMaster.Win32;
-using InputMaster.Parsers;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using InputMaster.Parsers;
+using InputMaster.Win32;
 
 namespace InputMaster
 {
@@ -66,7 +66,7 @@ namespace InputMaster
 
     public static string ToTokenString(this Modifiers modifiers)
     {
-      StringBuilder sb = new StringBuilder();
+      var sb = new StringBuilder();
       foreach (Modifiers m in Enum.GetValues(typeof(Modifiers)))
       {
         if (Helper.IsPowerOfTwo((int)m) && modifiers.HasFlag(m))
@@ -100,7 +100,7 @@ namespace InputMaster
     public static T Add<T>(this IInjectorStream<T> stream, Input input, int count = 1)
     {
       Helper.RequireInInterval(count, nameof(count), 0, 9999);
-      for (int i = 0; i < count; i++)
+      for (var i = 0; i < count; i++)
       {
         stream.Add(input, true);
         stream.Add(input, false);
@@ -111,7 +111,7 @@ namespace InputMaster
     public static T Add<T>(this IInjectorStream<T> stream, char c, int count = 1)
     {
       Helper.RequireInInterval(count, nameof(count), 0, 9999);
-      for (int i = 0; i < count; i++)
+      for (var i = 0; i < count; i++)
       {
         stream.Add(c);
       }
@@ -172,6 +172,11 @@ namespace InputMaster
     {
       action(stream);
       return (T)stream;
+    }
+
+    public static bool TryGetAction(this IParser parser, DynamicHotkeyEnum key, bool complainIfNotFound, out Action<IInjectorStream<object>> action)
+    {
+      return parser.TryGetAction(key.ToString(), complainIfNotFound, out action);
     }
   }
 }

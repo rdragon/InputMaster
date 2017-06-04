@@ -1,6 +1,6 @@
 ﻿namespace InputMaster
 {
-  class ComboArgs
+  internal class ComboArgs
   {
     public ComboArgs(Combo combo)
     {

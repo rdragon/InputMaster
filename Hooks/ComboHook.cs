@@ -2,7 +2,7 @@
 
 namespace InputMaster.Hooks
 {
-  class ComboHook : IComboHook
+  internal class ComboHook : IComboHook
   {
     private readonly Combo[] Buffer = new Combo[Config.MaxChordLength];
     private readonly Chord Chord = new Chord(Config.MaxChordLength);
@@ -11,9 +11,9 @@ namespace InputMaster.Hooks
 
     public bool Active => HotkeyCollection != null;
 
-    public ComboHook(IParserOutputProvider parserOutputProvider)
+    public ComboHook()
     {
-      Helper.ForbidNull(parserOutputProvider, nameof(parserOutputProvider)).NewParserOutput += (parserOutput) =>
+      Env.Parser.NewParserOutput += parserOutput =>
       {
         HotkeyCollection = parserOutput.HotkeyCollection;
       };
@@ -38,12 +38,12 @@ namespace InputMaster.Hooks
       var combo = e.Combo;
       if (!combo.Input.IsModifierKey())
       {
-        Buffer[(Length++) % Buffer.Length] = combo;
+        Buffer[Length++ % Buffer.Length] = combo;
         var i = Length;
         var k = Math.Min(HotkeyCollection.MaxChordLength, Length);
-        for (int j = 0; j < k; j++)
+        for (var j = 0; j < k; j++)
         {
-          Chord.InsertAtStart(Buffer[(--i) % Buffer.Length]);
+          Chord.InsertAtStart(Buffer[--i % Buffer.Length]);
           action = HotkeyCollection.TryGetAction(Chord) ?? action;
         }
       }

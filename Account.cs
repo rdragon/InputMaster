@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace InputMaster
 {
-  class Account
+  internal class Account
   {
     [JsonProperty]
     private List<TitleFilter> TitleFilters = new List<TitleFilter>();
@@ -16,11 +16,15 @@ namespace InputMaster
     private string Password = "";
     [JsonProperty]
     private string Email = "";
+    [JsonIgnore]
+    private AccountManager AccountManager;
 
     public Account() { }
 
-    /// <param name="sensitiveDataAccount">An Account instance which supplies the username, password and email when these are missing from the given account.</param>
-    public Account(Account account, bool exludePassword = false, bool excludeUsernameAndEmail = false, Account sensitiveDataAccount = null)
+    /// <summary>
+    /// The last argument supplies the username, password and email when these are missing from the given account.
+    /// </summary>
+    public Account(Account account, bool excludePassword = false, bool excludeUsernameAndEmail = false, Account sensitiveDataAccount = null)
     {
       Id = account.Id;
       Title = account.Title;
@@ -30,7 +34,7 @@ namespace InputMaster
         Username = account.Username;
         Email = account.Email;
       }
-      if (!exludePassword)
+      if (!excludePassword)
       {
         Password = account.Password;
       }
@@ -80,8 +84,6 @@ namespace InputMaster
     public bool Hidden { get; private set; }
     [JsonProperty]
     public int Order { get; private set; }
-    [JsonIgnore]
-    public AccountManager AccountManager { get; set; }
 
     public string GetUsername()
     {
@@ -104,6 +106,11 @@ namespace InputMaster
       return TitleFilters.Any(z => z.IsEnabled());
     }
 
+    public void SetAccountManager(AccountManager accountManager)
+    {
+      AccountManager = accountManager;
+    }
+
     private Account GetLinkedAccount()
     {
       Account account = null;
@@ -111,7 +118,7 @@ namespace InputMaster
       {
         foreach (var pair in LinkedAccounts)
         {
-          if (Env.ForegroundListener.IsFlagSet(pair.Key) && account == null)
+          if (Env.FlagManager.IsSet(pair.Key) && account == null)
           {
             AccountManager.TryGetAccount(pair.Value, out account);
           }

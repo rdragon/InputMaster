@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace InputMaster.Hooks
 {
-  class ModeHook : IComboHook
+  internal class ModeHook : Actor, IComboHook
   {
     /// <summary>
     /// Collection of all available modes.
@@ -25,12 +25,10 @@ namespace InputMaster.Hooks
     private int InputCount;
     private bool Hidden;
 
-    public ModeHook(IParserOutputProvider parserOutputProvider)
+    public ModeHook()
     {
-      Helper.ForbidNull(parserOutputProvider, nameof(parserOutputProvider));
       ModeViewer = new ModeViewer();
-
-      parserOutputProvider.NewParserOutput += (parserOutput) =>
+      Env.Parser.NewParserOutput += parserOutput =>
       {
         Modes.Clear();
         foreach (var mode in parserOutput.Modes)
@@ -65,10 +63,9 @@ namespace InputMaster.Hooks
       ClearActiveMode();
     }
 
-    public void EnterMode(string name, Input input = Input.None)
+    private void EnterMode(string name, Input input = Input.None)
     {
-      Mode mode;
-      if (Modes.TryGetValue(name, out mode))
+      if (Modes.TryGetValue(name, out var mode))
       {
         EnterMode(mode, input);
       }
@@ -87,7 +84,7 @@ namespace InputMaster.Hooks
       {
         if (!mode.IsComposeMode)
         {
-          Handle(new ComboArgs(new Combo(input, Modifiers.None)));
+          Handle(new ComboArgs(new Combo(input)));
         }
         else
         {
@@ -101,21 +98,13 @@ namespace InputMaster.Hooks
       LeaveMode();
     }
 
-    public void ClearModes()
-    {
-      Modes.Clear();
-    }
-
     public string GetTestStateInfo()
     {
       if (Active)
       {
         return nameof(ModeHook) + Helper.GetBindingsSuffix(Active, nameof(Active));
       }
-      else
-      {
-        return "";
-      }
+      return "";
     }
 
     public void Handle(ComboArgs e)
@@ -258,7 +247,7 @@ namespace InputMaster.Hooks
     private string GetDisplayText()
     {
       var modeHotkeys = new List<ModeHotkey>(ModeHotkeys).Where(z => z.Description != null && !z.Description.Contains("[hidden]")).ToList();
-      modeHotkeys.Sort((a, b) => { return a.Description.CompareTo(b.Description); });
+      modeHotkeys.Sort((a, b) => string.CompareOrdinal(a.Description, b.Description));
       return string.Join("\n", modeHotkeys.Select(z => z.Description));
     }
   }

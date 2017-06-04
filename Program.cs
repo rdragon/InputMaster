@@ -2,50 +2,82 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Windows.Forms;
+using InputMaster.Forms;
+using InputMaster.Win32;
 
 [assembly: InternalsVisibleTo("unitTests")]
 [assembly: CLSCompliant(true)]
 
 namespace InputMaster
 {
-  static class Program
+  internal class Program
   {
-    public static bool ShouldRestart { get; set; }
+    private Mutex Mutex;
+    private bool MutexAcquired;
 
     [STAThread]
     private static void Main(string[] arguments)
     {
-      try
+      Application.EnableVisualStyles();
+      Application.SetCompatibleTextRenderingDefault(false);
+      Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+      Application.ThreadException += (s, e) =>
       {
-        Application.EnableVisualStyles();
-        Application.SetCompatibleTextRenderingDefault(false);
-        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+        // Warning: the argument only contains the innermost exception (see http://stackoverflow.com/questions/347502/why-does-the-inner-exception-reach-the-threadexception-handler-and-not-the-actual).
+        Helper.HandleAnyException(e.Exception);
+      };
+      Thread.CurrentThread.Priority = ThreadPriority.AboveNormal;
+      new Program().Run(arguments);
+    }
 
-        Application.ThreadException += (s, e) =>
-        {
-          // Warning: the argument only contains the innermost exception (see http://stackoverflow.com/questions/347502/why-does-the-inner-exception-reach-the-threadexception-handler-and-not-the-actual).
-          Helper.HandleAnyException(e.Exception);
-        };
+    /// <summary>
+    /// Returns whether application should exit.
+    /// </summary>
+    private static bool HandleArguments(string[] arguments)
+    {
+      if (arguments.Length == 0)
+      {
+        return false;
+      }
+      if (arguments.Length > 1 || arguments[0] != "exit")
+      {
+        ShowError("Expecting no arguments or the single argument 'exit'.");
+      }
+      return true;
+    }
 
-        var exitFlag = arguments.Length == 1 && arguments[0] == "exit";
-        if (!exitFlag && arguments.Length > 0)
-        {
-          ShowError("Expecting no arguments or the single argument 'exit'.");
-        }
-        else
-        {
-          Run(exitFlag);
-        }
-      }
-      catch (Exception ex)
+    private static void CloseOtherInstance()
+    {
+      Config.WindowHandleFile.Refresh();
+      if (!Config.WindowHandleFile.Exists)
       {
-        Try.SetException(ex);
+        throw new FileNotFoundException($"File '{Config.WindowHandleFile.FullName}' not found.");
       }
-      finally
+      var text = File.ReadAllText(Config.WindowHandleFile.FullName);
+      if (!long.TryParse(text, out var handle))
       {
-        Try.Execute(RestartIfNeeded);
-        Try.ShowException();
+        throw new Exception($"Failed to parse contents of '{Config.WindowHandleFile.FullName}' as long.");
+      }
+      NativeMethods.SendNotifyMessage(new IntPtr(handle), WindowMessage.Close, IntPtr.Zero, IntPtr.Zero);
+    }
+
+    private static void RestartIfNeeded()
+    {
+      if (!Env.ShouldRestart && !Debugger.IsAttached)
+      {
+        return;
+      }
+      var path = Application.ExecutablePath;
+      if (Debugger.IsAttached)
+      {
+        path = path.Replace(".vshost", "");
+        path = path.Replace("Debug", "Release");
+      }
+      if (File.Exists(path))
+      {
+        Process.Start(path)?.Dispose();
       }
     }
 
@@ -54,58 +86,75 @@ namespace InputMaster
       MessageBox.Show("Error", text, MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
 
-    private static void Run(bool exitFlag)
+    private void Run(string[] arguments)
     {
-      using (var mutex = new SafeMutex("InputMasterSingleInstance"))
+      try
       {
-        try
+        Mutex = new Mutex(false, "InputMasterSingleInstance");//4dy9fbflg2ct
+        AcquireMutex();
+        MutexAcquired = true;
+        if (HandleArguments(arguments))
         {
-          if (!mutex.Acquire())
-          {
-            Helper.RequireExists(Config.WindowHandleFile);
-            var handle = new IntPtr(Convert.ToInt64(File.ReadAllText(Config.WindowHandleFile.FullName)));
-            Helper.CloseWindow(handle);
-            if (!mutex.Acquire(Config.ExitRunningInputMasterTimeout))
-            {
-              throw new TimeoutException("Running InputMaster instance could not be closed.");
-            }
-          }
-          if (!exitFlag)
-          {
-            new Brain().Start();
-          }
+          return;
         }
-        finally
+        var notifyForm = new NotifyForm();
+        notifyForm.Shown += (s, e) =>
         {
-          if (Env.Notifier != null)
-          {
-            Try.Execute(Env.Notifier.RequestExit);
-            Try.Execute(Env.Notifier.Disable);
-          }
-          Try.Execute(mutex.Release);
-        }
+          new Factory(notifyForm).Run();
+        };
+        Application.Run(notifyForm);
+      }
+      catch (Exception ex)
+      {
+        Try.SetException(ex);
+      }
+      finally
+      {
+        Try.Execute(OnExit);
+        Try.ShowException();
       }
     }
 
-    public static void RestartIfNeeded()
+    private void AcquireMutex()
     {
-      if (ShouldRestart || Debugger.IsAttached)
+      if (AcquireMutex(TimeSpan.Zero))
       {
-        var path = Application.ExecutablePath;
-        if (Debugger.IsAttached)
+        return;
+      }
+      try
+      {
+        CloseOtherInstance();
+        if (!AcquireMutex(Config.ExitOtherInputMasterTimeout))
         {
-          path = path.Replace(".vshost", "");
-          path = path.Replace("Debug", "Release");
-        }
-        if (File.Exists(path))
-        {
-          var process = Process.Start(path);
-          if (process != null)
-          {
-            process.Dispose();
-          }
+          throw new Exception("Timeout while waiting for mutex to be released.");
         }
       }
+      catch (Exception ex)
+      {
+        throw new Exception("Failed to close other InputMaster instance.", ex);
+      }
+    }
+
+    private bool AcquireMutex(TimeSpan timespan)
+    {
+      try
+      {
+        return Mutex.WaitOne(timespan);
+      }
+      catch (AbandonedMutexException)
+      {
+        return true;
+      }
+    }
+
+    private void OnExit()
+    {
+      if (MutexAcquired)
+      {
+        Mutex.ReleaseMutex();
+      }
+      Mutex?.Dispose();
+      RestartIfNeeded();
     }
   }
 }

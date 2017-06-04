@@ -1,15 +1,14 @@
-﻿using InputMaster.Parsers;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using InputMaster.Parsers;
 
 namespace InputMaster
 {
-  class Mode : Section
+  internal class Mode : Section
   {
-    private List<ModeHotkey> Hotkeys = new List<ModeHotkey>();
-    private List<string> Includes = new List<string>();
+    private readonly List<ModeHotkey> Hotkeys = new List<ModeHotkey>();
+    private readonly List<string> Includes = new List<string>();
     private MyIncludeState IncludeState = MyIncludeState.Idle;
 
     public Mode(string name, bool isComposeMode)
@@ -69,7 +68,7 @@ namespace InputMaster
             {
               throw new ParseException($"Cannot find mode '{name}' (an include of mode '{Name}').");
             }
-            else if (mode.IsComposeMode != IsComposeMode)
+            if (mode.IsComposeMode != IsComposeMode)
             {
               throw new ParseException($"Cannot include mode '{name}' in mode '{Name}' as they are not of the same kind.");
             }

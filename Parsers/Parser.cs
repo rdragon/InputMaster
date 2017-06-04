@@ -9,33 +9,38 @@ using System.Threading.Tasks;
 
 namespace InputMaster.Parsers
 {
-  class Parser : IParserOutputProvider
+  internal class Parser : IParser
   {
     private static readonly Regex CommentRegex = new Regex($"{Regex.Escape(Config.CommentIdentifier)}.*$", RegexOptions.Multiline);
     private static readonly Regex PreprocessorReplaceRegex = new Regex($@"{Config.SpecialChar}\((?<ident>{Config.InnerIdentifierTokenPattern})\)");
-    private readonly CommandCollection CommandCollection;
     private readonly Dictionary<string, HotkeyFile> HotkeyFiles = new Dictionary<string, HotkeyFile>();
     private readonly Dictionary<string, ParseAction> ParseActions = new Dictionary<string, ParseAction>();
+    private DynamicHotkeyCollection DynamicHotkeyCollection = new DynamicHotkeyCollection();
 
-    public Parser(CommandCollection commandCollection, FileChangedWatcher hotkeyFileWatcher = null)
+    public Parser()
     {
-      CommandCollection = Helper.ForbidNull(commandCollection, nameof(commandCollection));
-      if (hotkeyFileWatcher != null)
+      if (Env.TestRun)
       {
-        hotkeyFileWatcher.TextChanged += (text) =>
-        {
-          UpdateHotkeyFile(new HotkeyFile("default", text));
-          Parse();
-        };
+        return;
       }
+      var hotkeyFileWatcher = new FileChangedWatcher(Config.HotkeyFile);
+      hotkeyFileWatcher.TextChanged += text =>
+      {
+        UpdateHotkeyFile(new HotkeyFile("default", text));
+        Run();
+      };
+      hotkeyFileWatcher.RaiseChangedEvent();
+      Env.App.Exiting += hotkeyFileWatcher.Dispose;
     }
+
+    public bool Enabled { get; set; }
 
     public event Action<ParserOutput> NewParserOutput = delegate { };
 
     public static string RunPreprocessor(string text)
     {
       var sb = new StringBuilder(text.Length * 2);
-      int i = 0;
+      var i = 0;
       while (true)
       {
         var match = PreprocessorReplaceRegex.Match(text, i);
@@ -44,7 +49,7 @@ namespace InputMaster.Parsers
           sb.Append(text.Substring(i, match.Index - i));
           i = match.Index + match.Length;
           var name = match.Groups["ident"].Value;
-          if (!Config.PreprocessorReplaces.TryGetValue(name, out string s))
+          if (!Config.PreprocessorReplaces.TryGetValue(name, out var s))
           {
             Env.Notifier.WriteWarning($"Use of undefined preprocessor variable '{name}'.");
             s = "(undefined)";
@@ -60,6 +65,45 @@ namespace InputMaster.Parsers
       return sb.ToString();
     }
 
+    private static Func<Combo, T> CreateFunc<T>(object actor, MethodInfo methodInfo, object[] arguments, bool insertTrigger)
+    {
+      if (insertTrigger)
+      {
+        return combo => (T)methodInfo.Invoke(actor, new object[] { new HotkeyTrigger(combo) }.Concat(arguments).ToArray());
+      }
+      return combo => (T)methodInfo.Invoke(actor, arguments);
+    }
+
+    private static Action<Combo> CreateAction(object actor, MethodInfo methodInfo, object[] arguments, bool insertTrigger)
+    {
+      if (methodInfo.GetCustomAttribute(typeof(AsyncStateMachineAttribute)) != null)
+      {
+        if (methodInfo.ReturnType == typeof(Task))
+        {
+          var func = CreateFunc<Task>(actor, methodInfo, arguments, insertTrigger);
+          return async combo =>
+          {
+            await func(combo);
+          };
+        }
+        Env.Notifier.WriteWarning($"Async function '{actor.GetType()}.{methodInfo.Name}' has a return type other than 'Task'. Any exceptions thrown by this function will cause the program to exit.");
+      }
+      var func1 = CreateFunc<object>(actor, methodInfo, arguments, insertTrigger);
+      return combo => func1(combo);
+    }
+
+    private static Action<Combo> CreateAction(IEnumerable<Action<Combo>> actions)
+    {
+      var actionArray = actions.ToArray();
+      return combo =>
+      {
+        foreach (var action in actionArray)
+        {
+          action(combo);
+        }
+      };
+    }
+
     public void UpdateHotkeyFile(HotkeyFile hotkeyFile)
     {
       HotkeyFiles[hotkeyFile.Name] = hotkeyFile;
@@ -70,15 +114,19 @@ namespace InputMaster.Parsers
       ParseActions[name] = action;
     }
 
-    public void Parse()
+    public void Run()
     {
+      if (!Enabled)
+      {
+        return;
+      }
       var parserOutput = new ParserOutput();
       try
       {
         foreach (var hotkeyFile in HotkeyFiles)
         {
           var text = CommentRegex.Replace(hotkeyFile.Value.Text, "");
-          new MyCharReader(new LocatedString(RunPreprocessor(text), new Location(1, 1)), this, parserOutput).Run();
+          new MyCharReader(new LocatedString(RunPreprocessor(text), new Location(1, 1)), parserOutput).Run();
         }
         foreach (var action in ParseActions)
         {
@@ -94,6 +142,39 @@ namespace InputMaster.Parsers
         Env.Notifier.WriteError(ex, "Failed to parse hotkeys.");
         return;
       }
+      FireNewParserOutput(parserOutput);
+    }
+
+    public bool TryGetAction(string name, bool complainIfNotFound, out Action<IInjectorStream<object>> action)
+    {
+      action = null;
+      if (DynamicHotkeyCollection.TryGetValue(name, out var set))
+      {
+        foreach (var dynamicHotkey in set)
+        {
+          if (dynamicHotkey.Enabled)
+          {
+            action = dynamicHotkey.Action;
+          }
+        }
+        if (action != null)
+        {
+          return true;
+        }
+      }
+      if (complainIfNotFound)
+      {
+        Env.Notifier.WriteError($"No dynamic hotkey named '{name}' found" + Helper.GetBindingsSuffix(
+          Env.ForegroundListener.ForegroundProcessName, nameof(Env.ForegroundListener.ForegroundProcessName),
+          Env.ForegroundListener.ForegroundWindowTitle, nameof(Env.ForegroundListener.ForegroundWindowTitle),
+          string.Join("|", Env.FlagManager.GetFlags()), "Flags"));
+      }
+      return false;
+    }
+
+    public void FireNewParserOutput(ParserOutput parserOutput)
+    {
+      DynamicHotkeyCollection = parserOutput.DynamicHotkeyCollection;
       NewParserOutput(parserOutput);
     }
 
@@ -101,18 +182,16 @@ namespace InputMaster.Parsers
     {
       private readonly Stack<Section> Sections = new Stack<Section>();
       private readonly ParserOutput ParserOutput;
-      private readonly Parser Parser;
       private readonly InputReader ChordReader = Config.DefaultChordReader;
       private readonly InputReader ModeChordReader = Config.DefaultModeChordReader;
       private Chord Chord;
 
-      public MyCharReader(LocatedString text, Parser parser, ParserOutput parserOutput) : base(text)
+      public MyCharReader(LocatedString text, ParserOutput parserOutput) : base(text)
       {
-        Parser = parser;
         ParserOutput = parserOutput;
       }
 
-      public ParserOutput Run()
+      public void Run()
       {
         Sections.Clear();
         Sections.Push(new StandardSection());
@@ -140,7 +219,6 @@ namespace InputMaster.Parsers
             }
           }
         }
-        return ParserOutput;
       }
 
       private void HandleColumn(int column)
@@ -170,17 +248,22 @@ namespace InputMaster.Parsers
         {
           return Helper.GetRegex(argument.Value, regexOptions, fullMatchIfLiteral: true);
         }
-        catch (Exception ex) when (ex is ArgumentException || ex is ArgumentOutOfRangeException)
+        catch (Exception ex) when (ex is ArgumentException)
         {
           throw new ParseException(argument.Location, ex);
         }
+      }
+
+      private static Exception CreateException(CommandToken token, string message)
+      {
+        return new ParseException(token.LocatedName, message);
       }
 
       private void ReadSectionHeader()
       {
         if (Sections.Peek().IsMode)
         {
-          throw new ParseException(Location, $"Cannot start section inside mode.");
+          throw new ParseException(Location, "Cannot start section inside mode.");
         }
         ReadSome(' ');
         var sectionType = ReadIdentifier();
@@ -259,31 +342,31 @@ namespace InputMaster.Parsers
           {
             throw CreateException(token, "This command cannot be bound to a chord.");
           }
-          else if (!token.HasFlag(CommandTypes.Chordless) && Chord == null)
+          if (!token.HasFlag(CommandTypes.Chordless) && Chord == null)
           {
             throw CreateException(token, "This command has to be bound to a chord.");
           }
-          else if (token.HasFlag(CommandTypes.TopLevelOnly) && Sections.Count > 1)
+          if (token.HasFlag(CommandTypes.TopLevelOnly) && Sections.Count > 1)
           {
             throw CreateException(token, "This command is only valid at the top level.");
           }
-          else if (token.HasFlag(CommandTypes.ModeOnly) && !Sections.Peek().IsMode)
+          if (token.HasFlag(CommandTypes.ModeOnly) && !Sections.Peek().IsMode)
           {
             throw CreateException(token, $"This command is only valid in a {Config.InputModeSectionIdentifier} or {Config.ComposeModeSectionIdentifier} section.");
           }
-          else if (token.HasFlag(CommandTypes.ComposeModeOnly) && (!Sections.Peek().IsMode || !Sections.Peek().AsMode.IsComposeMode))
+          if (token.HasFlag(CommandTypes.ComposeModeOnly) && (!Sections.Peek().IsMode || !Sections.Peek().AsMode.IsComposeMode))
           {
             throw CreateException(token, $"This command is only valid in a {Config.ComposeModeSectionIdentifier} section.");
           }
-          else if (token.HasFlag(CommandTypes.InputModeOnly) && (!Sections.Peek().IsMode || Sections.Peek().AsMode.IsComposeMode))
+          if (token.HasFlag(CommandTypes.InputModeOnly) && (!Sections.Peek().IsMode || Sections.Peek().AsMode.IsComposeMode))
           {
             throw CreateException(token, $"This command is only valid in a {Config.InputModeSectionIdentifier} section.");
           }
-          else if (token.HasFlag(CommandTypes.StandardSectionOnly) && !Sections.Peek().IsStandardSection)
+          if (token.HasFlag(CommandTypes.StandardSectionOnly) && !Sections.Peek().IsStandardSection)
           {
             throw CreateException(token, "This command is only valid in a standard section.");
           }
-          else if (token.HasFlag(CommandTypes.ExecuteAtParseTime) && tokens.Count > 1)
+          if (token.HasFlag(CommandTypes.ExecuteAtParseTime) && tokens.Count > 1)
           {
             throw CreateException(token, "This command cannot be combined with other commands.");
           }
@@ -294,23 +377,10 @@ namespace InputMaster.Parsers
         }
         else
         {
-          Action<Combo> action;
-          if (tokens.Count > 1)
-          {
-            action = CreateAction(tokens.Select(z => z.Action));
-          }
-          else
-          {
-            action = tokens[0].Action;
-          }
+          var action = tokens.Count > 1 ? CreateAction(tokens.Select(z => z.Action)) : tokens[0].Action;
           var description = Chord + " " + tokens[0].LocatedName.Value + " " + tokens[0].LocatedArguments.Value;
           ParserOutput.AddHotkey(Sections.Peek(), Chord, action, description);
         }
-      }
-
-      private Exception CreateException(CommandToken token, string message)
-      {
-        return new ParseException(token.LocatedName, message);
       }
 
       private CommandToken ReadCommand()
@@ -323,7 +393,7 @@ namespace InputMaster.Parsers
         ReadMany(' ');
         var locatedArguments = ReadArguments();
         Read('\n');
-        var command = Parser.CommandCollection.GetCommand(locatedName);
+        var command = Env.CommandCollection.GetCommand(locatedName);
         var action = GetAction(command, locatedName, locatedArguments);
         return new CommandToken(command, locatedName, locatedArguments, action);
       }
@@ -331,7 +401,7 @@ namespace InputMaster.Parsers
       private IEnumerable<CommandToken> ReadCommands()
       {
         var commandTokens = new List<CommandToken>();
-        int column = -1;
+        var column = -1;
         while (!EndOfStream)
         {
           ReadMany(' ');
@@ -347,10 +417,7 @@ namespace InputMaster.Parsers
               {
                 throw new ParseException(Location, "Incorrect indentation.");
               }
-              else
-              {
-                column = Location.Column;
-              }
+              column = Location.Column;
             }
             else if (Location.Column > column)
             {
@@ -375,7 +442,7 @@ namespace InputMaster.Parsers
         var insertTrigger = false;
         if (command.CommandTypes.HasFlag(CommandTypes.ExecuteAtParseTime) && parameters.Count > 0 && parameters[0].ParameterType == typeof(ExecuteAtParseTimeData))
         {
-          arguments.Add(new ExecuteAtParseTimeData(ParserOutput, Sections.Peek(), Chord, locatedName, locatedArguments));
+          arguments.Add(new ExecuteAtParseTimeData(ParserOutput, Sections.Peek(), Chord, locatedName));
           parameters.RemoveAt(0);
         }
         if (!command.CommandTypes.HasFlag(CommandTypes.ExecuteAtParseTime) && parameters.Count > 0 && parameters[0].ParameterType == typeof(HotkeyTrigger))
@@ -387,57 +454,6 @@ namespace InputMaster.Parsers
         return CreateAction(command.Actor, command.MethodInfo, arguments.ToArray(), insertTrigger);
       }
 
-      private Action<Combo> CreateAction(object actor, MethodInfo methodInfo, object[] arguments, bool insertTrigger)
-      {
-        if (methodInfo.GetCustomAttribute(typeof(AsyncStateMachineAttribute)) != null)
-        {
-          if (methodInfo.ReturnType == typeof(Task))
-          {
-            var func = CreateFunc<Task>(actor, methodInfo, arguments, insertTrigger);
-            return async (combo) =>
-            {
-              await func(combo);
-            };
-          }
-          else
-          {
-            Env.Notifier.WriteWarning($"Async function '{actor.GetType().ToString()}.{methodInfo.Name}' has a return type other than 'Task'. Any exceptions thrown by this function will cause the program to exit.");
-          }
-        }
-        var func1 = CreateFunc<object>(actor, methodInfo, arguments, insertTrigger);
-        return (combo) => func1(combo);
-      }
-
-      private Func<Combo, T> CreateFunc<T>(object actor, MethodInfo methodInfo, object[] arguments, bool insertTrigger)
-      {
-        if (insertTrigger)
-        {
-          return (combo) =>
-          {
-            return (T)methodInfo.Invoke(actor, new object[] { new HotkeyTrigger(combo) }.Concat(arguments).ToArray());
-          };
-        }
-        else
-        {
-          return (combo) =>
-          {
-            return (T)methodInfo.Invoke(actor, arguments);
-          };
-        }
-      }
-
-      private Action<Combo> CreateAction(IEnumerable<Action<Combo>> actions)
-      {
-        var actionArray = actions.ToArray();
-        return (combo) =>
-        {
-          foreach (var action in actionArray)
-          {
-            action(combo);
-          }
-        };
-      }
-
       private Chord ReadChord()
       {
         var locatedString = ReadUntil(' ', '\n');
@@ -446,5 +462,5 @@ namespace InputMaster.Parsers
     }
   }
 
-  delegate void ParseAction(ParserOutput parserOutput);
+  internal delegate void ParseAction(ParserOutput parserOutput);
 }

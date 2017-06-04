@@ -1,13 +1,13 @@
-﻿using InputMaster.Forms;
-using Newtonsoft.Json;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
+using InputMaster.Forms;
+using Newtonsoft.Json;
 
 namespace InputMaster
 {
-  class SharedFileManager
+  internal class SharedFileManager
   {
-    private TextEditorForm TextEditorForm;
+    private readonly TextEditorForm TextEditorForm;
     private readonly List<SharedFile> SharedFiles = new List<SharedFile>();
     private const string TimestampSuffix = "_timestamp";
 
@@ -87,7 +87,7 @@ namespace InputMaster
 
       Helper.ForbidNull(TextEditorForm.SafePassword, nameof(TextEditorForm.SafePassword));
       var text = TextEditorForm.Decrypt(sharedFile.DataFile);
-      targetFile.Directory.Create();
+      targetFile.Directory?.Create();
       Cipher.Encrypt(targetFile, JsonConvert.SerializeObject(new TitleTextPair(sharedFile.Title, text)), TextEditorForm.SafePassword);
       var timestamp = new SharedFileTimestamp(sharedFile.NameFile.LastWriteTimeUtc, sharedFile.DataFile.LastWriteTimeUtc);
       File.WriteAllText(targetTimestampFile.FullName, JsonConvert.SerializeObject(timestamp));

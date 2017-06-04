@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace InputMaster
 {
-  class ModeHotkey
+  internal class ModeHotkey
   {
     public Chord Chord { get; }
     public Action<Combo> Action { get; }

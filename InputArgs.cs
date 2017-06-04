@@ -1,6 +1,6 @@
 ﻿namespace InputMaster
 {
-  class InputArgs
+  internal class InputArgs
   {
     public InputArgs(Input input, bool down)
     {

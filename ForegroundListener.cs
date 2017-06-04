@@ -1,63 +1,58 @@
-﻿using InputMaster.Win32;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using InputMaster.Win32;
 
 namespace InputMaster
 {
-  class ForegroundListener : ForegroundListenerBase
+  internal class ForegroundListener : IForegroundListener
   {
-    private const int MaxNameCacheCount = 100;
+    private const int MaxNameCacheCount = 500;
     private const int MaxCaptionLength = 1000;
-
     private readonly Dictionary<int, string> NameCache = new Dictionary<int, string>();
     private readonly StringBuilder CaptionBuffer = new StringBuilder(MaxCaptionLength);
-    private IntPtr ForegroundWindow;
     private int ForegroundProcessId;
 
-    public ForegroundListener(IFlagViewer flagViewer, IParserOutputProvider parserOutputProvider) : base(flagViewer, parserOutputProvider) { }
+    public string ForegroundWindowTitle { get; private set; } = "";
+    public string ForegroundProcessName { get; private set; } = "";
 
     private static int GetProcessId(IntPtr window)
     {
-      int id;
-      NativeMethods.GetWindowThreadProcessId(window, out id);
+      NativeMethods.GetWindowThreadProcessId(window, out var id);
       return id;
     }
 
-    public override void Update()
+    public void Update()
     {
       var window = NativeMethods.GetForegroundWindow();
-      if (window != ForegroundWindow)
-      {
-        ForegroundWindow = window;
-        var id = GetProcessId(window);
-        if (id != ForegroundProcessId)
-        {
-          ForegroundProcessId = id;
-          string name;
-          if (!NameCache.TryGetValue(id, out name))
-          {
-            if (NameCache.Count == MaxNameCacheCount)
-            {
-              NameCache.Clear();
-            }
-            using (var p = Process.GetProcessById(id))
-            {
-              name = p.ProcessName;
-              NameCache[id] = name;
-            }
-          }
-          ForegroundProcessName = name;
-          Counter++;
-        }
-      }
       var title = GetWindowTitle(window);
-      if (title != ForegroundWindowTitle)
+      var id = GetProcessId(window);
+      if (id == ForegroundProcessId && title == ForegroundWindowTitle)
       {
-        ForegroundWindowTitle = title;
-        Counter++;
+        return;
       }
+      Env.StateCounter++;
+      ForegroundWindowTitle = title;
+      if (id == ForegroundProcessId)
+      {
+        return;
+      }
+      ForegroundProcessId = id;
+      if (NameCache.TryGetValue(id, out var name))
+      {
+        ForegroundProcessName = name;
+        return;
+      }
+      if (NameCache.Count == MaxNameCacheCount)
+      {
+        NameCache.Clear();
+      }
+      using (var process = Process.GetProcessById(id))
+      {
+        ForegroundProcessName = process.ProcessName;
+      }
+      NameCache[id] = ForegroundProcessName;
     }
 
     private string GetWindowTitle(IntPtr window)

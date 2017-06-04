@@ -1,11 +1,10 @@
-﻿using System;
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 
 namespace InputMaster.Forms
 {
-  class ThemeForm : Form
+  internal abstract class ThemeForm : Form
   {
-    public ThemeForm()
+    protected ThemeForm()
     {
       Load += (s, e) =>
       {
@@ -29,7 +28,7 @@ namespace InputMaster.Forms
       SetHandlerRecursive(e.Control);
     }
 
-    public void ApplyThemeRecursive(Control control)
+    private static void ApplyThemeRecursive(Control control)
     {
       if (control is RichTextBox || control is TextBox)
       {
@@ -52,7 +51,7 @@ namespace InputMaster.Forms
       }
     }
 
-    public void ForceToForeground()
+    protected void ForceToForeground()
     {
       Helper.SetForegroundWindowForce(Handle);
     }

@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Security;
-using InputMaster.Win32;
+using System.Text;
 using System.Windows.Forms;
 
 namespace InputMaster.Win32
 {
   [SuppressUnmanagedCodeSecurity]
-  class NativeMethods
+  internal static class NativeMethods
   {
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -22,9 +21,6 @@ namespace InputMaster.Win32
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, BestFitMapping = false)]
     public static extern int GetWindowText(IntPtr window, StringBuilder text, int maxLength);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    public static extern int GetWindowTextLength(IntPtr window);
 
     [DllImport("user32.dll")]
     public static extern int GetWindowThreadProcessId(IntPtr window, out int id);
@@ -63,13 +59,14 @@ namespace InputMaster.Win32
     [DllImport("user32.dll")]
     public static extern short GetKeyState(Input input);
 
-    [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool QueryPerformanceCounter(out long count);
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetDC(IntPtr window);
 
-    [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool QueryPerformanceFrequency(out long frequency);
+    [DllImport("user32.dll")]
+    public static extern int ReleaseDC(IntPtr window, IntPtr deviceContext);
+
+    [DllImport("gdi32.dll")]
+    public static extern int GetPixel(IntPtr deviceContext, int x, int y);
 
     #region overloads
     public static IntPtr SendMessage(IntPtr window, int message, int wParam, int lParam)

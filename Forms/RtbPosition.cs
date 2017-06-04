@@ -2,7 +2,7 @@
 
 namespace InputMaster.Forms
 {
-  class RtbPosition
+  internal class RtbPosition
   {
     public int SelectionStart { get; }
     public int ScrollPosition { get; }

@@ -2,12 +2,9 @@
 
 namespace InputMaster.Parsers
 {
-  class CommandToken
+  internal class CommandToken
   {
-    public Command Command { get; }
-    public LocatedString LocatedName { get; }
-    public LocatedString LocatedArguments { get; }
-    public Action<Combo> Action { get; }
+    private readonly Command Command;
 
     public CommandToken(Command command, LocatedString locatedName, LocatedString locatedArguments, Action<Combo> action)
     {
@@ -16,6 +13,10 @@ namespace InputMaster.Parsers
       LocatedArguments = locatedArguments;
       Action = action;
     }
+
+    public LocatedString LocatedName { get; }
+    public LocatedString LocatedArguments { get; }
+    public Action<Combo> Action { get; }
 
     public bool HasFlag(CommandTypes commandTypes)
     {

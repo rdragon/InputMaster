@@ -1,11 +1,12 @@
 ﻿using System;
-using Microsoft.Win32.SafeHandles;
 using InputMaster.Win32;
+using JetBrains.Annotations;
+using Microsoft.Win32.SafeHandles;
 
 namespace InputMaster
 {
   [Flags]
-  enum CommandTypes
+  internal enum CommandTypes
   {
     None = 0,
     /// <summary>
@@ -19,14 +20,13 @@ namespace InputMaster
     Chordless = 32,
     Visible = 64,
     ExecuteAtParseTime = 128,
-    Invisible = 256,
+    Invisible = 256
   }
 
-  class HookHandle : SafeHandleZeroOrMinusOneIsInvalid
+  [UsedImplicitly]
+  internal class HookHandle : SafeHandleZeroOrMinusOneIsInvalid
   {
     public HookHandle() : base(true) { }
-
-    public HookHandle(bool ownsHandle) : base(ownsHandle) { }
 
     protected override bool ReleaseHandle()
     {
@@ -34,7 +34,7 @@ namespace InputMaster
     }
   }
 
-  class HotkeyTrigger
+  internal class HotkeyTrigger
   {
     public Combo Combo { get; }
 
