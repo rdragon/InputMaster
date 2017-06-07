@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -10,7 +9,7 @@ namespace InputMaster
   internal class ProcessManager : IProcessManager
   {
     private readonly HashSet<MyProcess> Processes = new HashSet<MyProcess>();
-    private readonly Timer Timer = new Timer { Interval = (int)Config.ProcessManagerInterval.TotalMilliseconds, Enabled = true };
+    private readonly Timer Timer = new Timer { Interval = (int)Env.Config.ProcessManagerInterval.TotalMilliseconds, Enabled = true };
 
     public ProcessManager()
     {
@@ -38,9 +37,9 @@ namespace InputMaster
       };
     }
 
-    public void StartHiddenProcess(FileInfo file, string arguments = "", TimeSpan? timeout = null)
+    public void StartHiddenProcess(string file, string arguments = "", TimeSpan? timeout = null)
     {
-      var startInfo = new ProcessStartInfo(Helper.ForbidNull(file, nameof(file)).FullName, arguments ?? "") { WindowStyle = ProcessWindowStyle.Hidden };
+      var startInfo = new ProcessStartInfo(file, arguments ?? "") { WindowStyle = ProcessWindowStyle.Hidden };
       var process = Process.Start(startInfo);
       if (process != null)
       {

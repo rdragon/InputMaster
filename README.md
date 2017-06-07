@@ -6,10 +6,9 @@ InputMaster also makes all modifier keys [sticky](https://en.wikipedia.org/wiki/
 ## Requirements
 - Windows 7/8/10
 - .NET Framework 4.5.2
-- Visual Studio 2015
+- Visual Studio 2017
 
 ## Build process
-- Copy `Config.sample.cs` to `Config.cs`.
 - Open `InputMaster.sln` in Visual Studio.
 - Build.
 
@@ -27,7 +26,7 @@ First we create a hotkey to simulate the original Caps Lock key (to toggle ALL C
 Next we create a hotkey to quickly open our hotkeys file (where we define these hotkeys). We choose to trigger it by pressing the H key while our custom modifier is active:
 
 ```
-{Caps}h  Run C:\Users\<UserName>\AppData\Roaming\InputMaster\Hotkeys.txt
+{Caps}h  Run C:\Users\<UserName>\AppData\Roaming\InputMaster\Data\Hotkeys.txt
 ```
 
 Finally we create hotkeys to open a webpage, insert a special character, and insert multiple characters:
@@ -68,7 +67,7 @@ Because this feature allows you to never having to hold down a key while typing 
 - Needs to be run as administrator, or it will not function when a program with administrator rights has the foreground.
 - Due to the way modifier keys are handled some applications that listen to modifier key presses will not function correctly.
 - The program expects a single fixed keyboard layout. Switching between keyboard layouts is not supported.
-- Has only been tested with the standard US keyboard layout that comes with Windows together with an ISO 105-key keyboard. There is no support for other keyboard layouts, but adding an extra layout should not be too hard.
+- Has only been tested with the standard US keyboard layout that comes with Windows together with an ISO 105-key keyboard. There is no support for other keyboard layouts, but adding an extra layout is fairly easy.
 
 ## Technical information
 Behind the scenes a [low level keyboard hook](https://msdn.microsoft.com/en-us/library/windows/desktop/ms644985(v=vs.85).aspx) and a [low level mouse hook](https://msdn.microsoft.com/en-us/library/windows/desktop/ms644986(v=vs.85).aspx) are used to register and capture user input. The simulation of user input is done with the [SendInput function](https://msdn.microsoft.com/nl-nl/library/windows/desktop/ms646310(v=vs.85).aspx).

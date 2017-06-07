@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Text;
 using InputMaster.Parsers;
 using InputMaster.Win32;
+using System.Linq;
 
 namespace InputMaster
 {
-  static class ExtensionMethods
+  internal static partial class ExtensionMethods
   {
     public static bool IsMouseMessage(this WindowMessage message)
     {
@@ -29,6 +30,11 @@ namespace InputMaster
       }
     }
 
+    public static bool IsCharacterKey(this Input input)
+    {
+      return input == Input.Space || Env.Config.KeyboardLayout.IsCharacterKey(input);
+    }
+
     public static bool IsMouseInput(this Input input)
     {
       switch (input)
@@ -42,6 +48,11 @@ namespace InputMaster
         default:
           return false;
       }
+    }
+
+    public static Modifiers ToModifier(this Input input)
+    {
+      return Env.Config.TryGetModifier(input, out var modifier) ? modifier : Modifiers.None;
     }
 
     public static Modifiers ToStandardModifier(this Input input)
@@ -67,24 +78,21 @@ namespace InputMaster
     public static string ToTokenString(this Modifiers modifiers)
     {
       var sb = new StringBuilder();
-      foreach (Modifiers m in Enum.GetValues(typeof(Modifiers)))
+      foreach (var modifier in Helper.Modifiers.Where(z => modifiers.HasFlag(z)))
       {
-        if (Helper.IsPowerOfTwo((int)m) && modifiers.HasFlag(m))
-        {
-          sb.Append(Helper.CreateTokenString(m.ToString()));
-        }
+        sb.Append(Helper.CreateTokenString(modifier.ToString()));
       }
       return sb.ToString();
     }
 
     public static Modifiers ToStandardModifiers(this Modifiers modifiers)
     {
-      return modifiers & Modifiers.StandardModifiers;
+      return modifiers & ConfigHelper.StandardModifiers;
     }
 
     public static bool HasCustomModifiers(this Modifiers modifiers)
     {
-      return (modifiers & ~Modifiers.StandardModifiers) != 0;
+      return (modifiers & ~ConfigHelper.StandardModifiers) != 0;
     }
 
     public static void WriteError(this INotifier notifier, Exception ex, string text)
@@ -120,9 +128,9 @@ namespace InputMaster
 
     public static T Add<T>(this IInjectorStream<T> stream, Modifiers modifiers, bool down)
     {
-      foreach (var input in Config.LeftModifierKeys)
+      foreach (var modifier in Helper.Modifiers.Where(z => modifiers.HasFlag(z)))
       {
-        if (modifiers.HasFlag(input.ToModifier()))
+        if (Env.Config.TryGetModifierKey(modifier, out var input))
         {
           stream.Add(input, down);
         }

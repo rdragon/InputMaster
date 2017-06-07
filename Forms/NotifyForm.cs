@@ -26,7 +26,7 @@ namespace InputMaster.Forms
       AutoSizeMode = AutoSizeMode.GrowAndShrink;
       FormBorderStyle = FormBorderStyle.None;
       ShowInTaskbar = false;
-      Text = Config.NotifierWindowTitle;
+      Text = Env.Config.NotifierWindowTitle;
       TopMost = true;
       StartPosition = FormStartPosition.Manual;
       Left = 99999;
@@ -37,7 +37,7 @@ namespace InputMaster.Forms
         // This method is used instead of setting `this.Enabled` to false, so that the visuals are not affected.
         NativeMethods.EnableWindow(Handle, false);
 
-        File.WriteAllText(Config.WindowHandleFile.FullName, Handle.ToString());
+        File.WriteAllText(Env.Config.WindowHandleFile, Handle.ToString());
       };
 
       SizeChanged += (s, e) =>
@@ -53,7 +53,7 @@ namespace InputMaster.Forms
         }
         Alive = false;
         Application.Exit();
-        Config.WindowHandleFile.Delete();
+        File.Delete(Env.Config.WindowHandleFile);
       };
     }
 
@@ -61,7 +61,7 @@ namespace InputMaster.Forms
 
     private static string AppendTimestamp(string text)
     {
-      var date = DateTime.Now.ToString(Config.LogDateTimeFormat);
+      var date = DateTime.Now.ToString(Env.Config.LogDateTimeFormat);
       return $"{date} {text}";
     }
 
@@ -71,7 +71,7 @@ namespace InputMaster.Forms
       WriteToLog(message);
       Messages.Enqueue(message);
       UpdateLabel();
-      Task.Delay(Config.NotifierTextLifetime)
+      Task.Delay(Env.Config.NotifierTextLifetime)
         .ContinueWith(t => DequeueMessage(), TaskScheduler.FromCurrentSynchronizationContext());
     }
 
@@ -118,7 +118,7 @@ namespace InputMaster.Forms
     private void WriteToFile(string message)
     {
       message = AppendTimestamp(message);
-      File.AppendAllLines(Config.ErrorLogFile.FullName, new[] { message });
+      File.AppendAllLines(Env.Config.ErrorLogFile, new[] { message });
     }
 
     private void UpdateLabel()

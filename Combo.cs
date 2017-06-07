@@ -18,23 +18,7 @@ namespace InputMaster
 
     public static bool TryConvertFromChar(char c, out Combo combo)
     {
-      int i;
-      if (c == ' ')
-      {
-        combo = new Combo(Input.Space);
-      }
-      else if ((i = Config.Keyboard.IndexOf(c)) >= 0)
-      {
-        combo = new Combo(Config.KeyboardInputs[i]);
-      }
-      else if ((i = Config.ShiftedKeyboard.IndexOf(c)) >= 0)
-      {
-        combo = new Combo(Config.KeyboardInputs[i], Modifiers.Shift);
-      }
-      else
-      {
-        combo = None;
-      }
+      combo = Env.Config.KeyboardLayout.GetCombo(c);
       return combo != None;
     }
 
@@ -65,26 +49,7 @@ namespace InputMaster
 
     public override string ToString()
     {
-      var modifiers = Modifiers;
-      string text;
-      var i = Array.IndexOf(Config.KeyboardInputs, Input);
-      if (i >= 0)
-      {
-        if (modifiers.HasFlag(Modifiers.Shift))
-        {
-          modifiers &= ~Modifiers.Shift;
-          text = Config.ShiftedKeyboard[i].ToString();
-        }
-        else
-        {
-          text = Config.Keyboard[i].ToString();
-        }
-      }
-      else
-      {
-        text = Config.TokenStart + Input.ToString() + Config.TokenEnd;
-      }
-      return modifiers.ToTokenString() + text;
+      return Env.Config.KeyboardLayout.ConvertComboToString(this);
     }
 
     public bool ModeEquals(Combo other)

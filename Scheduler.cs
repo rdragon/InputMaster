@@ -10,7 +10,7 @@ namespace InputMaster
   {
     private readonly Dictionary<string, DateTime> LastRuns = new Dictionary<string, DateTime>();
     private readonly SortedDictionary<DateTime, Job> Jobs = new SortedDictionary<DateTime, Job>();
-    private readonly Timer Timer = new Timer { Interval = (int)Config.SchedulerInterval.TotalMilliseconds, Enabled = true };
+    private readonly Timer Timer = new Timer { Interval = (int)Env.Config.SchedulerInterval.TotalMilliseconds, Enabled = true };
     private MyState State;
 
     public Scheduler()
@@ -45,7 +45,7 @@ namespace InputMaster
     {
       Helper.ForbidNull(name, nameof(name));
       Helper.ForbidNull(action, nameof(action));
-      Helper.RequireInInterval(delay, nameof(delay), Config.SchedulerInterval, TimeSpan.MaxValue);
+      Helper.RequireInInterval(delay, nameof(delay), Env.Config.SchedulerInterval, TimeSpan.MaxValue);
       if (Jobs.Any(z => z.Value.Name == name))
       {
         throw new ArgumentException($"A job with name '{name}' already exists.", nameof(name));
@@ -62,9 +62,9 @@ namespace InputMaster
       AddToJobs(date.Add(delay), new Job(name, action, delay));
     }
 
-    public void AddFileJob(FileInfo file, string arguments, TimeSpan delay)
+    public void AddFileJob(string file, string arguments, TimeSpan delay)
     {
-      var taskName = file.FullName;
+      var taskName = file;
       if (arguments.Length > 0)
       {
         taskName = $"\"{taskName}\" {arguments}";

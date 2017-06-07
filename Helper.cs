@@ -20,16 +20,16 @@ using Newtonsoft.Json;
 
 namespace InputMaster
 {
-  static class Helper
+  internal static partial class Helper
   {
     public static string CreateTokenString(string text)
     {
-      return Config.TokenStart + text + Config.TokenEnd;
+      return ParserConfig.TokenStart + text + ParserConfig.TokenEnd;
     }
 
     public static string ReadIdentifierTokenString(LocatedString locatedString)
     {
-      if (Regex.IsMatch(locatedString.Value, "^" + Config.IdentifierTokenPattern + "$"))
+      if (Regex.IsMatch(locatedString.Value, "^" + ParserConfig.IdentifierTokenPattern + "$"))
       {
         return locatedString.Value.Substring(1, locatedString.Length - 2);
       }
@@ -152,7 +152,7 @@ namespace InputMaster
 
     public static async Task<string> GetClipboardTextAsync()
     {
-      for (var i = Config.ClipboardTries; i > 0; i--)
+      for (var i = Env.Config.ClipboardTries; i > 0; i--)
       {
         try
         {
@@ -165,7 +165,7 @@ namespace InputMaster
         catch (ExternalException) { }
         if (i > 1)
         {
-          await Task.Delay(Config.ClipboardDelay);
+          await Task.Delay(Env.Config.ClipboardDelay);
         }
       }
       throw new IOException("Failed to retrieve text data from the clipboard.");
@@ -173,7 +173,7 @@ namespace InputMaster
 
     public static async Task SetClipboardTextAsync(string text)
     {
-      for (var i = Config.ClipboardTries; i > 0; i--)
+      for (var i = Env.Config.ClipboardTries; i > 0; i--)
       {
         try
         {
@@ -183,7 +183,7 @@ namespace InputMaster
         catch (ExternalException) { }
         if (i > 1)
         {
-          await Task.Delay(Config.ClipboardDelay);
+          await Task.Delay(Env.Config.ClipboardDelay);
         }
       }
       throw new IOException("Failed to write text data to the clipboard.");
@@ -191,7 +191,7 @@ namespace InputMaster
 
     public static async Task ClearClipboardAsync()
     {
-      for (var i = Config.ClipboardTries; i > 0; i--)
+      for (var i = Env.Config.ClipboardTries; i > 0; i--)
       {
         try
         {
@@ -201,17 +201,10 @@ namespace InputMaster
         catch (ExternalException) { }
         if (i > 1)
         {
-          await Task.Delay(Config.ClipboardDelay);
+          await Task.Delay(Env.Config.ClipboardDelay);
         }
       }
       throw new IOException("Failed to clear the clipboard.");
-    }
-
-    public static void Swap<T>(ref T val1, ref T val2)
-    {
-      var swap = val1;
-      val1 = val2;
-      val2 = swap;
     }
 
     public static async Task<T> TryAsync<T>(Func<T> action, int count = 10, int pauseInterval = 100)
@@ -240,7 +233,10 @@ namespace InputMaster
       Task.Run(() => { Console.Beep(); });
     }
 
-    public static bool IsPowerOfTwo(int n)
+    public static IReadOnlyCollection<Modifiers> Modifiers { get; } =
+      Enum.GetValues(typeof(Modifiers)).Cast<Modifiers>().Where(z => IsPowerOfTwo((int)z)).ToList().AsReadOnly();
+
+    private static bool IsPowerOfTwo(int n)
     {
       if ((n & 1) != 0)
       {
@@ -313,29 +309,19 @@ namespace InputMaster
       return $"{length:0.##} {labels[i]}";
     }
 
-    public static void RequireExists(FileSystemInfo fsi)
+    public static void RequireExistsDir(string dir)
     {
-      fsi.Refresh();
-      if (!fsi.Exists)
+      if (!Directory.Exists(dir))
       {
-        if (fsi is FileInfo)
-        {
-          throw new FileNotFoundException($"File '{fsi.FullName}' not found.");
-        }
-        throw new DirectoryNotFoundException($"Directory '{fsi.FullName}' not found.");
+        throw new DirectoryNotFoundException($"Directory '{dir}' not found.");
       }
     }
 
-    public static void ForbidExists(FileSystemInfo fsi)
+    public static void RequireExistsFile(string file)
     {
-      fsi.Refresh();
-      if (fsi.Exists)
+      if (!File.Exists(file))
       {
-        if (fsi is FileInfo)
-        {
-          throw new FileNotFoundException($"File '{fsi.FullName}' already exists.");
-        }
-        throw new DirectoryNotFoundException($"Directory '{fsi.FullName}' already exists.");
+        throw new FileNotFoundException($"File '{file}' not found.");
       }
     }
 
@@ -415,96 +401,43 @@ namespace InputMaster
       return GetValidFileName(name) == name;
     }
 
-    /// <summary>
-    /// Returns the sum of the lengths of all files in the directory.
-    /// </summary>
-    public static long GetLength(DirectoryInfo dir)
+    public static void ForceDeleteDir(string dir)
     {
-      ForbidNull(dir, nameof(dir));
-      long size = 0;
-      foreach (var item in dir.EnumerateFiles("*", SearchOption.AllDirectories))
+      var info = new DirectoryInfo(dir);
+      if (info.Exists)
       {
-        size += item.Length;
-      }
-      return size;
-    }
-
-    public static void Delete(DirectoryInfo dir)
-    {
-      dir.Refresh();
-      if (dir.Exists)
-      {
-        foreach (var file in dir.GetFiles("*", SearchOption.AllDirectories))
+        foreach (var file in info.GetFiles("*", SearchOption.AllDirectories))
         {
           file.Attributes = FileAttributes.Normal;
         }
-        dir.Delete(true);
+        info.Delete(true);
       }
     }
 
-    public static void Delete(FileInfo file)
+    public static void ForceDeleteFile(string file)
     {
-      file.Attributes = FileAttributes.Normal;
-      file.Delete();
-    }
-
-    /// <summary>
-    /// Copies a complete directory.
-    /// Assumption: <paramref name="targetDir"/>  is not a subdirectory of <paramref name="sourceDir"/>.
-    /// </summary>
-    public static void Copy(DirectoryInfo sourceDir, DirectoryInfo targetDir, bool overwrite = false)
-    {
-      RequireExists(sourceDir);
-      if (sourceDir.FullName.ToLower() == targetDir.FullName.ToLower())
+      var info = new FileInfo(file);
+      if (info.Exists)
       {
-        return;
+        info.Attributes = FileAttributes.Normal;
+        info.Delete();
       }
-      targetDir.Create();
-      var targetPath = targetDir.FullName;
-      foreach (var file in sourceDir.GetFiles())
-      {
-        Copy(file, new FileInfo(Path.Combine(targetPath, file.Name)), overwrite);
-      }
-      foreach (var dir in sourceDir.GetDirectories())
-      {
-        Copy(dir, new DirectoryInfo(Path.Combine(targetPath, dir.Name)), overwrite);
-      }
-    }
-
-    public static void Copy(FileInfo sourceFile, FileInfo targetFile, bool overwrite = false)
-    {
-      targetFile.Refresh();
-      if (!overwrite)
-      {
-        ForbidExists(targetFile);
-      }
-      if (targetFile.Exists)
-      {
-        targetFile.Attributes = FileAttributes.Normal;
-      }
-      File.Copy(sourceFile.FullName, targetFile.FullName, overwrite);
-      targetFile.Refresh();
     }
 
     /// <summary>
     /// Asynchronously reads the contents of a file. Throws an exception after a certain number of tries.
     /// </summary>
-    public static async Task<string> ReadAllTextAsync(FileInfo file)
+    public static async Task<string> ReadAllTextAsync(string file)
     {
-      ForbidNull(file, nameof(file));
-      return await TryAsync(() => File.ReadAllText(file.FullName).Replace("\r\n", "\n"));
+      return await TryAsync(() => File.ReadAllText(file).Replace("\r\n", "\n"));
     }
 
-    public static bool TryReadJson<T>(FileInfo file, out T val)
+    public static bool TryReadJson<T>(string file, out T val)
     {
       try
       {
-        if (file.Exists)
-        {
-          var s = File.ReadAllText(file.FullName);
-          val = JsonConvert.DeserializeObject<T>(s);
-          return true;
-        }
+        val = JsonConvert.DeserializeObject<T>(File.ReadAllText(file));
+        return true;
       }
       catch (Exception ex) when (!IsCriticalException(ex)) { }
       val = default(T);
@@ -627,24 +560,13 @@ namespace InputMaster
     }
 
     /// <summary>
-    /// Example: "some string (ss)" -> "ss".
+    /// Example: "some string (ab)" -> "ab".
     /// Example: "some other string" -> null.
     /// </summary>
     public static string GetChordText(string text)
     {
       ForbidNull(text, nameof(text));
       var m = Regex.Match(text, @"\(([^)]+)\) *$");
-      if (m.Success)
-      {
-        return m.Groups[1].Value;
-      }
-      return null;
-    }
-
-    public static string GetAltChordText(string text)
-    {
-      ForbidNull(text, nameof(text));
-      var m = Regex.Match(text, @"\(([^)]+)\) *\(([^)]+)\) *$");
       if (m.Success)
       {
         return m.Groups[1].Value;
@@ -775,6 +697,22 @@ namespace InputMaster
       if (value.CompareTo(max) > 0)
       {
         throw new ArgumentOutOfRangeException(name, "Argument out of range" + GetBindingsSuffix(value, name, max, nameof(max)));
+      }
+    }
+
+    public static IEnumerable<(T1, T2, T3)> Zip3<T1, T2, T3>(
+      IEnumerable<T1> first,
+      IEnumerable<T2> second,
+      IEnumerable<T3> third)
+    {
+      using (var e1 = first.GetEnumerator())
+      using (var e2 = second.GetEnumerator())
+      using (var e3 = third.GetEnumerator())
+      {
+        while (e1.MoveNext() && e2.MoveNext() && e3.MoveNext())
+        {
+          yield return (e1.Current, e2.Current, e3.Current);
+        }
       }
     }
   }

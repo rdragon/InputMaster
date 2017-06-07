@@ -6,11 +6,11 @@ namespace InputMaster
   internal abstract class State<T>
   {
     protected readonly T Parent;
-    private readonly FileInfo DataFile;
+    private readonly string DataFile;
 
-    protected State(string name, T parent) : this(name, parent, Config.CacheDir) { }
+    protected State(string name, T parent) : this(name, parent, Env.Config.CacheDir) { }
 
-    protected State(string name, T parent, DirectoryInfo dir)
+    protected State(string name, T parent, string dir)
     {
       Helper.RequireValidFileName(name);
       Helper.ForbidNull(parent, nameof(parent));
@@ -19,8 +19,8 @@ namespace InputMaster
       {
         return;
       }
-      DataFile = new FileInfo(Path.Combine(dir.FullName, name));
-      Env.Scheduler.AddJob($"State<{name}>", Save, Config.SaveTimerInterval);
+      DataFile = Path.Combine(dir, name);
+      Env.Scheduler.AddJob($"State<{name}>", Save, Env.Config.SaveTimerInterval);
       Env.App.Exiting += Try.Wrap(Save);
     }
 
@@ -28,11 +28,11 @@ namespace InputMaster
 
     public void Load()
     {
-      if (Env.TestRun || !DataFile.Exists)
+      if (Env.TestRun || !File.Exists(DataFile))
       {
         return;
       }
-      using (var stream = DataFile.OpenRead())
+      using (var stream = File.OpenRead(DataFile))
       using (var reader = new BinaryReader(stream))
       {
         try
@@ -52,7 +52,7 @@ namespace InputMaster
       {
         return;
       }
-      using (var stream = File.Open(DataFile.FullName, FileMode.Create))
+      using (var stream = File.Open(DataFile, FileMode.Create))
       using (var writer = new BinaryWriter(stream))
       {
         Save(writer);

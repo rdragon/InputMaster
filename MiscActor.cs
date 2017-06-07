@@ -26,14 +26,7 @@ namespace InputMaster
 
     public static void EditElevated([AllowSpaces]string filePath)
     {
-      if (Config.PreprocessorReplaces.TryGetValue("Notepadpp", out var exePath))
-      {
-        RunElevated(exePath, $"-multiInst \"{filePath}\"");
-      }
-      else
-      {
-        Env.Notifier.WriteError("Notepad++ path not set.");
-      }
+      RunElevated(Env.Config.Notepadpp, $"-multiInst \"{filePath}\"");
     }
 
     public static void WriteLine([AllowSpaces] string text)
@@ -59,7 +52,7 @@ namespace InputMaster
 
     public void SendDynamic([AllowSpaces] LocatedString located)
     {
-      Env.CreateInjector().Add(located, new InputReader(Config.DefaultInputReader.Flags | InputReaderFlags.AllowDynamicHotkey)).Run();
+      Env.CreateInjector().Add(located, new InputReader(Env.Config.DefaultInputReader.Flags | InputReaderFlags.AllowDynamicHotkey)).Run();
     }
 
     [CommandTypes(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime | CommandTypes.StandardSectionOnly)]
@@ -68,7 +61,7 @@ namespace InputMaster
       var name = Helper.ReadIdentifierTokenString(token);
       void Action(IInjectorStream<object> stream)
       {
-        stream.Add(argument, Config.DefaultInputReader);
+        stream.Add(argument, Env.Config.DefaultInputReader);
       }
       Action(Env.CreateInjector()); // Test if argument is in correct format.
       data.ParserOutput.DynamicHotkeyCollection.AddDynamicHotkey(name, Action, data.Section.AsStandardSection);
@@ -88,7 +81,7 @@ namespace InputMaster
 
     public static void PrintInput(HotkeyTrigger trigger)
     {
-      Env.CreateInjector().Add(trigger.Combo.ToString(), Config.LiteralInputReader).Run();
+      Env.CreateInjector().Add(trigger.Combo.ToString(), Env.Config.LiteralInputReader).Run();
     }
 
     public static void WriteMousePosition()
@@ -131,8 +124,8 @@ namespace InputMaster
         }
         if (s.Length > 0)
         {
-          var chord = Config.DefaultChordReader.CreateChord(s.Substring(0, s.Value.Length - 1));
-          var action = Env.CreateInjector().Add(s.Value[s.Length - 1].ToString(), Config.DefaultInputReader).Compile();
+          var chord = Env.Config.DefaultChordReader.CreateChord(s.Substring(0, s.Value.Length - 1));
+          var action = Env.CreateInjector().Add(s.Value[s.Length - 1].ToString(), Env.Config.DefaultInputReader).Compile();
           data.ParserOutput.AddHotkey(data.Section, chord, combo => action(), null);
         }
       }

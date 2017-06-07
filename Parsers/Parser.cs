@@ -11,8 +11,8 @@ namespace InputMaster.Parsers
 {
   internal class Parser : IParser
   {
-    private static readonly Regex CommentRegex = new Regex($"{Regex.Escape(Config.CommentIdentifier)}.*$", RegexOptions.Multiline);
-    private static readonly Regex PreprocessorReplaceRegex = new Regex($@"{Config.SpecialChar}\((?<ident>{Config.InnerIdentifierTokenPattern})\)");
+    private static readonly Regex CommentRegex = new Regex($"{Regex.Escape(ParserConfig.CommentIdentifier)}.*$", RegexOptions.Multiline);
+    private static readonly Regex PreprocessorReplaceRegex = new Regex($@"{ParserConfig.SpecialChar}\((?<ident>{ParserConfig.InnerIdentifierTokenPattern})\)");
     private readonly Dictionary<string, HotkeyFile> HotkeyFiles = new Dictionary<string, HotkeyFile>();
     private readonly Dictionary<string, ParseAction> ParseActions = new Dictionary<string, ParseAction>();
     private DynamicHotkeyCollection DynamicHotkeyCollection = new DynamicHotkeyCollection();
@@ -23,7 +23,7 @@ namespace InputMaster.Parsers
       {
         return;
       }
-      var hotkeyFileWatcher = new FileChangedWatcher(Config.HotkeyFile);
+      var hotkeyFileWatcher = new FileChangedWatcher(Env.Config.HotkeyFile);
       hotkeyFileWatcher.TextChanged += text =>
       {
         UpdateHotkeyFile(new HotkeyFile("default", text));
@@ -49,7 +49,7 @@ namespace InputMaster.Parsers
           sb.Append(text.Substring(i, match.Index - i));
           i = match.Index + match.Length;
           var name = match.Groups["ident"].Value;
-          if (!Config.PreprocessorReplaces.TryGetValue(name, out var s))
+          if (!Env.Config.TryGetPreprocessorReplace(name, out var s))
           {
             Env.Notifier.WriteWarning($"Use of undefined preprocessor variable '{name}'.");
             s = "(undefined)";
@@ -172,6 +172,8 @@ namespace InputMaster.Parsers
       return false;
     }
 
+    public bool IsDynamicHotkey(string name) => DynamicHotkeyCollection.ContainsKey(name);
+
     public void FireNewParserOutput(ParserOutput parserOutput)
     {
       DynamicHotkeyCollection = parserOutput.DynamicHotkeyCollection;
@@ -182,8 +184,8 @@ namespace InputMaster.Parsers
     {
       private readonly Stack<Section> Sections = new Stack<Section>();
       private readonly ParserOutput ParserOutput;
-      private readonly InputReader ChordReader = Config.DefaultChordReader;
-      private readonly InputReader ModeChordReader = Config.DefaultModeChordReader;
+      private readonly InputReader ChordReader = Env.Config.DefaultChordReader;
+      private readonly InputReader ModeChordReader = Env.Config.DefaultModeChordReader;
       private Chord Chord;
 
       public MyCharReader(LocatedString text, ParserOutput parserOutput) : base(text)
@@ -205,11 +207,11 @@ namespace InputMaster.Parsers
           else
           {
             HandleColumn(Location.Column);
-            if (TryRead(Config.SectionIdentifier))
+            if (TryRead(ParserConfig.SectionIdentifier))
             {
               ReadSectionHeader();
             }
-            else if (TryRead(Config.SpecialCommandIdentifier))
+            else if (TryRead(ParserConfig.SpecialCommandIdentifier))
             {
               ReadSpecialCommand();
             }
@@ -268,7 +270,7 @@ namespace InputMaster.Parsers
         ReadSome(' ');
         var sectionType = ReadIdentifier();
         ReadSome(' ');
-        var argument = ReadArguments().Require(targetCount: 1, delimiter: Config.ArgumentDelimiter);
+        var argument = ReadArguments().Require(targetCount: 1, delimiter: ParserConfig.ArgumentDelimiter);
         Read('\n');
         var section = CreateSection(sectionType, argument);
         if (section.IsMode)
@@ -284,22 +286,25 @@ namespace InputMaster.Parsers
 
       private Section CreateSection(LocatedString type, LocatedString argument)
       {
-        switch (type.Value)
+        if (type.Value == nameof(RegexSectionType.Process) || type.Value == nameof(RegexSectionType.Window))
         {
-          case nameof(RegexSectionType.Process):
-          case nameof(RegexSectionType.Window):
-            var sectionType = (RegexSectionType)Enum.Parse(typeof(RegexSectionType), type.Value);
-            var regexOptions = sectionType == RegexSectionType.Process ? RegexOptions.IgnoreCase : RegexOptions.None;
-            return new RegexSection(Sections.Peek().AsStandardSection, CreateRegex(argument, regexOptions), sectionType);
-          case Config.FlagSectionIdentifier:
-            return new FlagSection(Sections.Peek().AsStandardSection, argument.Value);
-          case Config.InputModeSectionIdentifier:
-            return new Mode(argument.Value, false);
-          case Config.ComposeModeSectionIdentifier:
-            return new Mode(argument.Value, true);
-          default:
-            throw new ParseException(type.Location, $"Unrecognized section type '{type.Value}'.");
+          var sectionType = (RegexSectionType)Enum.Parse(typeof(RegexSectionType), type.Value);
+          var regexOptions = sectionType == RegexSectionType.Process ? RegexOptions.IgnoreCase : RegexOptions.None;
+          return new RegexSection(Sections.Peek().AsStandardSection, CreateRegex(argument, regexOptions), sectionType);
         }
+        if (type.Value == ParserConfig.FlagSectionIdentifier)
+        {
+          return new FlagSection(Sections.Peek().AsStandardSection, argument.Value);
+        }
+        if (type.Value == ParserConfig.InputModeSectionIdentifier)
+        {
+          return new Mode(argument.Value, false);
+        }
+        if (type.Value == ParserConfig.ComposeModeSectionIdentifier)
+        {
+          return new Mode(argument.Value, true);
+        }
+        throw new ParseException(type.Location, $"Unrecognized section type '{type.Value}'.");
       }
 
       private LocatedString ReadArguments()
@@ -352,15 +357,15 @@ namespace InputMaster.Parsers
           }
           if (token.HasFlag(CommandTypes.ModeOnly) && !Sections.Peek().IsMode)
           {
-            throw CreateException(token, $"This command is only valid in a {Config.InputModeSectionIdentifier} or {Config.ComposeModeSectionIdentifier} section.");
+            throw CreateException(token, $"This command is only valid in a {ParserConfig.InputModeSectionIdentifier} or {ParserConfig.ComposeModeSectionIdentifier} section.");
           }
           if (token.HasFlag(CommandTypes.ComposeModeOnly) && (!Sections.Peek().IsMode || !Sections.Peek().AsMode.IsComposeMode))
           {
-            throw CreateException(token, $"This command is only valid in a {Config.ComposeModeSectionIdentifier} section.");
+            throw CreateException(token, $"This command is only valid in a {ParserConfig.ComposeModeSectionIdentifier} section.");
           }
           if (token.HasFlag(CommandTypes.InputModeOnly) && (!Sections.Peek().IsMode || Sections.Peek().AsMode.IsComposeMode))
           {
-            throw CreateException(token, $"This command is only valid in a {Config.InputModeSectionIdentifier} section.");
+            throw CreateException(token, $"This command is only valid in a {ParserConfig.InputModeSectionIdentifier} section.");
           }
           if (token.HasFlag(CommandTypes.StandardSectionOnly) && !Sections.Peek().IsStandardSection)
           {
@@ -427,7 +432,7 @@ namespace InputMaster.Parsers
             {
               break;
             }
-            Read(Config.MultipleCommandsIdentifier);
+            Read(ParserConfig.MultipleCommandsIdentifier);
             ReadSome(' ');
             commandTokens.Add(ReadCommand());
           }

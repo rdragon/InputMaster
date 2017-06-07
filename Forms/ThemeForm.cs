@@ -32,17 +32,17 @@ namespace InputMaster.Forms
     {
       if (control is RichTextBox || control is TextBox)
       {
-        control.ForeColor = Config.ForegroundColor;
-        control.BackColor = Config.BackgroundColor;
-        control.Font = Config.Font;
+        control.ForeColor = Env.Config.ForegroundColor;
+        control.BackColor = Env.Config.BackgroundColor;
+        control.Font = Env.Config.Font;
       }
       else if (control is SplitContainer)
       {
-        control.BackColor = Config.BackgroundColor;
+        control.BackColor = Env.Config.BackgroundColor;
       }
       else if (control is Label)
       {
-        control.Font = Config.Font;
+        control.Font = Env.Config.Font;
       }
 
       foreach (Control child in control.Controls)

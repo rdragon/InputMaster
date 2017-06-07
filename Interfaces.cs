@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
 using InputMaster.Parsers;
+using InputMaster.Win32;
 
 namespace InputMaster
 {
@@ -76,6 +76,7 @@ namespace InputMaster
     void UpdateParseAction(string name, ParseAction action);
     void Run();
     bool TryGetAction(string name, bool complainIfNotFound, out Action<IInjectorStream<object>> action);
+    bool IsDynamicHotkey(string name);
     void FireNewParserOutput(ParserOutput parserOutput); // For unit tests.
     bool Enabled { get; set; }
     event Action<ParserOutput> NewParserOutput;
@@ -84,12 +85,12 @@ namespace InputMaster
   internal interface IScheduler
   {
     void AddJob(string name, Action action, TimeSpan delay);
-    void AddFileJob(FileInfo file, string arguments, TimeSpan delay);
+    void AddFileJob(string file, string arguments, TimeSpan delay);
   }
 
   internal interface IProcessManager
   {
-    void StartHiddenProcess(FileInfo file, string arguments = "", TimeSpan? timeout = null);
+    void StartHiddenProcess(string file, string arguments = "", TimeSpan? timeout = null);
   }
 
   internal interface ICommandCollection
@@ -101,5 +102,13 @@ namespace InputMaster
   internal interface IApp
   {
     event Action Exiting;
+  }
+
+  internal interface IKeyboardLayout
+  {
+    InputArgs ReadKeyboardMessage(WindowMessage message, IntPtr data);
+    Combo GetCombo(char c);
+    string ConvertComboToString(Combo combo);
+    bool IsCharacterKey(Input input);
   }
 }

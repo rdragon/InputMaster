@@ -13,6 +13,9 @@ namespace InputMaster
     public static bool ShouldRestart { get; set; }
     public static int StateCounter { get; set; }
     public static bool TestRun { get; set; }
+    public static Config Config { get; set; }
+
+    public static event Action<object> LoadingExtensions = delegate { };
 
     private static INotifier _notifier;
     public static INotifier Notifier
@@ -137,6 +140,11 @@ namespace InputMaster
       {
         throw new Exception("You won the jackpot.");
       }
+    }
+
+    public static void LoadExtensions(object arg)
+    {
+      LoadingExtensions(arg);
     }
 
     private static T Create<T>() where T : class

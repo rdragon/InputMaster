@@ -48,7 +48,7 @@ b ReplaceOp x
 √: Test {Hold}{RShift}c{Release}{RShift} C
 
 √: Reset
-√: Test , ,{Space}  √# Check if Config.InsertSpaceAfterComma is working.
+√: Test , ,{Space}  √# Check if Env.Config.InsertSpaceAfterComma is working.
 ,a Replace x
 √: Test ,a ,{Space}{Bs}{Bs}x  √# The command Replace should take into account the inserted space.
 

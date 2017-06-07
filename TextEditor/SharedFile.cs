@@ -2,14 +2,14 @@
 using System.IO;
 using Newtonsoft.Json;
 
-namespace InputMaster
+namespace InputMaster.TextEditor
 {
   internal class SharedFile
   {
-    public SharedFile(string title, FileInfo nameFile, FileInfo dataFile)
+    public SharedFile(string title, string nameFile, string dataFile)
     {
       Title = title;
-      var match = Config.SharedFileRegex.Match(title);
+      var match = Env.Config.SharedFileRegex.Match(title);
       Id = match.Groups["id"].Value;
       NameFile = nameFile;
       DataFile = dataFile;
@@ -17,18 +17,18 @@ namespace InputMaster
 
     public string Id { get; }
     public string Title { get; }
-    public FileInfo NameFile { get; }
-    public FileInfo DataFile { get; }
+    public string NameFile { get; }
+    public string DataFile { get; }
   }
 
   internal class SharedFileTimestamp
   {
     public SharedFileTimestamp() { }
 
-    public SharedFileTimestamp(DateTime nameFileTimestamp, DateTime dataFileTimestamp)
+    public SharedFileTimestamp(string nameFile, string dataFile)
     {
-      NameFileTimestamp = nameFileTimestamp;
-      DataFileTimestamp = dataFileTimestamp;
+      NameFileTimestamp = File.GetLastWriteTimeUtc(nameFile);
+      DataFileTimestamp = File.GetLastWriteTimeUtc(dataFile);
     }
 
     [JsonProperty]

@@ -30,7 +30,7 @@ namespace InputMaster
         var big = chord;
         if (small.Length > big.Length)
         {
-          Helper.Swap(ref small, ref big);
+          (small, big) = (big, small);
         }
         if (big.HasPrefix(small))
         {

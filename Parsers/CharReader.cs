@@ -139,9 +139,9 @@ namespace InputMaster.Parsers
     protected LocatedString ReadToken(out string text)
     {
       var location = Location;
-      Read(Config.TokenStart);
-      text = ReadUntil(Config.TokenEnd).Value;
-      Read(Config.TokenEnd);
+      Read(ParserConfig.TokenStart);
+      text = ReadUntil(ParserConfig.TokenEnd).Value;
+      Read(ParserConfig.TokenEnd);
       return new LocatedString(Helper.CreateTokenString(text), location);
     }
 
@@ -152,7 +152,7 @@ namespace InputMaster.Parsers
       {
         throw CreateException($"Unexpected character '{Current}'. An identifier should start with an upper case letter.");
       }
-      return ReadWhile(Config.IsIdentifierCharacter);
+      return ReadWhile(ParserConfig.IsIdentifierCharacter);
     }
   }
 }

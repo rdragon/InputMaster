@@ -24,9 +24,9 @@ namespace InputMaster
       }
       var added = set.Add(new Hotkey(action, section));
       Debug.Assert(added);
-      if (chord.Length > Math.Max(Config.MaxChordLength, MaxChordLength))
+      if (chord.Length > Math.Max(Env.Config.MaxChordLength, MaxChordLength))
       {
-        Env.Notifier.WriteError($"Chord with length '{chord.Length}' found, while maximum allowed length is '{Config.MaxChordLength}'. To change the maximum allowed length, update the config variable '{nameof(Config.MaxChordLength)}'.");
+        Env.Notifier.WriteError($"Chord with length '{chord.Length}' found, while maximum allowed length is '{Env.Config.MaxChordLength}'. To change the maximum allowed length, update the config variable '{nameof(Env.Config.MaxChordLength)}'.");
       }
       MaxChordLength = Math.Max(MaxChordLength, chord.Length);
     }

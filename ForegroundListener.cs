@@ -8,11 +8,16 @@ namespace InputMaster
 {
   internal class ForegroundListener : IForegroundListener
   {
-    private const int MaxNameCacheCount = 500;
-    private const int MaxCaptionLength = 1000;
+    private readonly int MaxNameCacheCount = 500;
+    private readonly int MaxCaptionLength = 1000;
     private readonly Dictionary<int, string> NameCache = new Dictionary<int, string>();
-    private readonly StringBuilder CaptionBuffer = new StringBuilder(MaxCaptionLength);
+    private readonly StringBuilder CaptionBuffer;
     private int ForegroundProcessId;
+
+    public ForegroundListener()
+    {
+      CaptionBuffer = new StringBuilder(MaxCaptionLength);
+    }
 
     public string ForegroundWindowTitle { get; private set; } = "";
     public string ForegroundProcessName { get; private set; } = "";

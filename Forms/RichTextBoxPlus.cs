@@ -39,7 +39,7 @@ namespace InputMaster.Forms
     /// <summary>
     /// Speed at which the control can be scrolled with the mouse wheel.
     /// </summary>
-    private const int ScrollDelta = 200;
+    private readonly int ScrollDelta = 200;
     private Regex FindRegex;
     private Regex FindPrevRegex;
     private string LastSearchString = "";
@@ -235,11 +235,11 @@ namespace InputMaster.Forms
       var i = SelectionStart;
       var text = Text;
       var j = i;
-      while (j < text.Length && Config.IsIdentifierCharacter(text[j]))
+      while (j < text.Length && ParserConfig.IsIdentifierCharacter(text[j]))
       {
         j++;
       }
-      while (i >= 0 && Config.IsIdentifierCharacter(text[i]))
+      while (i >= 0 && ParserConfig.IsIdentifierCharacter(text[i]))
       {
         i--;
       }

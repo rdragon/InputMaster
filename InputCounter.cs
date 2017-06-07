@@ -42,11 +42,11 @@
       {
         RightCount--;
       }
-      else if (Config.InsertSpaceAfterComma && input == Input.Comma && !IsInjectedInput)
+      else if (Env.Config.InsertSpaceAfterComma && input == Input.Comma && !IsInjectedInput)
       {
         LeftCount += 2;
       }
-      else if (input.IsCharacterKey())
+      else if (input.IsCharacterKey() || input == Input.Space)
       {
         LeftCount++;
       }

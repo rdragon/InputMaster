@@ -7,14 +7,13 @@ namespace InputMaster
   internal class FileChangedWatcher : IDisposable
   {
     private readonly FileSystemWatcher FileSystemWatcher;
-    private readonly FileInfo File;
+    private readonly string File;
     private string PreviousContents;
 
-    public FileChangedWatcher(FileInfo file)
+    public FileChangedWatcher(string file)
     {
       File = Helper.ForbidNull(file, nameof(file));
-      Helper.ForbidNull(File.DirectoryName, nameof(File.DirectoryName));
-      FileSystemWatcher = new FileSystemWatcher(File.DirectoryName, File.Name)
+      FileSystemWatcher = new FileSystemWatcher(Path.GetDirectoryName(File), Path.GetFileName(File))
       {
         SynchronizingObject = Env.Notifier.SynchronizingObject,
         EnableRaisingEvents = true

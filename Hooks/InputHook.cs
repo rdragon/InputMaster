@@ -66,7 +66,7 @@ namespace InputMaster.Hooks
           e.Capture = true;
         }
         // Clear the stuck modifiers with the close key.
-        else if (StuckModifiers != Modifiers.None && e.Input == Config.CloseKey)
+        else if (StuckModifiers != Modifiers.None && e.Input == Env.Config.CloseKey)
         {
           e.Capture = true;
         }
@@ -220,8 +220,8 @@ namespace InputMaster.Hooks
 
     private void ResetStandardModifierKeys()
     {
-      Config.LeftModifierKeys
-        .Concat(Config.RightModifierKeys)
+      ConfigHelper
+        .ModifierKeys.Select(z => z.Item1)
         .Where(z => z.IsStandardModifierKey())
         .Aggregate(Env.CreateInjector(), (x, y) => x.Add(y, false))
         .Run();
@@ -246,10 +246,10 @@ namespace InputMaster.Hooks
         .Add(Input.Bs, backspaceCount)
         .Add(Input.Del, deleteCount)
         .Add(Input.Space, surroundWithSpaces ? 1 : 0)
-        .Add(argument, Config.DefaultInputReader)
+        .Add(argument, Env.Config.DefaultInputReader)
         .Add(Input.Space, surroundWithSpaces ? 1 : 0)
         .Compile();
-      var count1 = new InputCounter(true).Add(argument, Config.DefaultInputReader);
+      var count1 = new InputCounter(true).Add(argument, Env.Config.DefaultInputReader);
       var backspaceAction = Env.CreateInjector()
         .Add(Input.Bs, count1.LeftCount + (surroundWithSpaces ? 2 : 0))
         .Add(Input.Del, count1.RightCount)

@@ -4,8 +4,8 @@ namespace InputMaster.Hooks
 {
   internal class ComboHook : IComboHook
   {
-    private readonly Combo[] Buffer = new Combo[Config.MaxChordLength];
-    private readonly Chord Chord = new Chord(Config.MaxChordLength);
+    private readonly Combo[] Buffer = new Combo[Env.Config.MaxChordLength];
+    private readonly Chord Chord = new Chord(Env.Config.MaxChordLength);
     private int Length;
     private HotkeyCollection HotkeyCollection = new HotkeyCollection();
 
@@ -65,7 +65,7 @@ namespace InputMaster.Hooks
         }
         e.Capture = true;
       }
-      else if (Config.InsertSpaceAfterComma && e.Combo == new Combo(Input.Comma))
+      else if (Env.Config.InsertSpaceAfterComma && e.Combo == new Combo(Input.Comma))
       {
         e.Capture = true;
         Env.CreateInjector().Add(Input.Comma).Add(Input.Space).Run();

@@ -17,6 +17,12 @@ namespace InputMaster
     private Mutex Mutex;
     private bool MutexAcquired;
 
+    public Program()
+    {
+      ConfigHelper.SetConfig();
+      Env.Config.Initialize();
+    }
+
     [STAThread]
     private static void Main(string[] arguments)
     {
@@ -50,15 +56,14 @@ namespace InputMaster
 
     private static void CloseOtherInstance()
     {
-      Config.WindowHandleFile.Refresh();
-      if (!Config.WindowHandleFile.Exists)
+      if (!File.Exists(Env.Config.WindowHandleFile))
       {
-        throw new FileNotFoundException($"File '{Config.WindowHandleFile.FullName}' not found.");
+        throw new FileNotFoundException($"File '{Env.Config.WindowHandleFile}' not found.");
       }
-      var text = File.ReadAllText(Config.WindowHandleFile.FullName);
+      var text = File.ReadAllText(Env.Config.WindowHandleFile);
       if (!long.TryParse(text, out var handle))
       {
-        throw new Exception($"Failed to parse contents of '{Config.WindowHandleFile.FullName}' as long.");
+        throw new Exception($"Failed to parse contents of '{Env.Config.WindowHandleFile}' as long.");
       }
       NativeMethods.SendNotifyMessage(new IntPtr(handle), WindowMessage.Close, IntPtr.Zero, IntPtr.Zero);
     }
@@ -90,7 +95,7 @@ namespace InputMaster
     {
       try
       {
-        Mutex = new Mutex(false, "InputMasterSingleInstance");//4dy9fbflg2ct
+        Mutex = new Mutex(false, "InputMasterSingleInstance");//todo: 4dy9fbflg2ct
         AcquireMutex();
         MutexAcquired = true;
         if (HandleArguments(arguments))
@@ -124,7 +129,7 @@ namespace InputMaster
       try
       {
         CloseOtherInstance();
-        if (!AcquireMutex(Config.ExitOtherInputMasterTimeout))
+        if (!AcquireMutex(Env.Config.ExitOtherInputMasterTimeout))
         {
           throw new Exception("Timeout while waiting for mutex to be released.");
         }

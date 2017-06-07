@@ -29,45 +29,7 @@ namespace InputMaster.Hooks
 
     private static InputArgs ReadMessage(WindowMessage message, IntPtr data)
     {
-      return message.IsMouseMessage() ? ReadMouseMessage(message, data) : ReadKeyboardMessage(message, data);
-    }
-
-    private static InputArgs ReadKeyboardMessage(WindowMessage message, IntPtr data)
-    {
-      var keyProcedureData = (KeyProcedureData)Marshal.PtrToStructure(data, typeof(KeyProcedureData));
-      if (keyProcedureData.Flags.HasFlag(KeyProcedureDataFlags.Injected))
-      {
-        return null; // Ignore injected messages (e.g. the events we simulate).
-      }
-      var down = message == WindowMessage.KeyDown || message == WindowMessage.SystemKeyDown;
-      var input = keyProcedureData.VirtualKey;
-      if (keyProcedureData.Flags.HasFlag(KeyProcedureDataFlags.Extended))
-      {
-        switch (input)
-        {
-          case Input.Cancel: input = Input.Pause; break;
-          case Input.Enter: input = Input.NumEnter; break;
-          case Input.Pause: input = Input.NumLock; break;
-        }
-      }
-      else
-      {
-        switch (input)
-        {
-          case Input.Del: input = Input.Dec; break;
-          case Input.Ins: input = Input.Num0; break;
-          case Input.End: input = Input.Num1; break;
-          case Input.Down: input = Input.Num2; break;
-          case Input.PgDn: input = Input.Num3; break;
-          case Input.Left: input = Input.Num4; break;
-          case Input.Clear: input = Input.Num5; break;
-          case Input.Right: input = Input.Num6; break;
-          case Input.Home: input = Input.Num7; break;
-          case Input.Up: input = Input.Num8; break;
-          case Input.PgUp: input = Input.Num9; break;
-        }
-      }
-      return new InputArgs(input, down);
+      return message.IsMouseMessage() ? ReadMouseMessage(message, data) : Env.Config.KeyboardLayout.ReadKeyboardMessage(message, data);
     }
 
     private static InputArgs ReadMouseMessage(WindowMessage message, IntPtr data)
@@ -135,7 +97,7 @@ namespace InputMaster.Hooks
           var e = ReadMessage((WindowMessage)wParam, lParam);
           if (e != null)
           {
-            if (Config.CaptureLmb && e.Input == Input.Lmb)
+            if (Env.Config.CaptureLmb && e.Input == Input.Lmb)
             {
               captured = true;
             }

@@ -72,15 +72,15 @@ namespace InputMaster
     [CommandTypes(CommandTypes.Visible)]
     public static async Task ListDirectorySizes()
     {
-      var path = await GetSelectedText();
-      var dir = new DirectoryInfo(path);
-      Helper.RequireExists(dir);
+      var dir = await GetSelectedText();
+      Helper.ForbidNull(dir, nameof(dir));
+      Helper.RequireExistsDir(dir);
       Helper.ShowSelectableText(Helper.AlignColumns(
         string.Join("\n",
-        dir.GetDirectories()
-        .Select(z => new { Dir = z, Size = Helper.GetLength(z) })
+        Directory.EnumerateDirectories(dir)
+        .Select(z => new { Dir = z, Size = Directory.EnumerateFiles(z, "*", SearchOption.AllDirectories).Aggregate(0L, (x, y) => x + y.Length) })
         .OrderBy(z => -z.Size)
-        .Select(z => z.Dir.Name + "  " + Helper.ByteCountToString(z.Size)))));
+        .Select(z => Path.GetFileName(z.Dir) + "  " + Helper.ByteCountToString(z.Size)))));
     }
 
     [CommandTypes(CommandTypes.Visible)]

@@ -5,6 +5,7 @@ using InputMaster.Forms;
 using InputMaster.Hooks;
 using InputMaster.Parsers;
 using InputMaster.Properties;
+using InputMaster.TextEditor;
 
 namespace InputMaster
 {
@@ -74,12 +75,12 @@ namespace InputMaster
 
     public void Run()
     {
-      Config.DataDir.Create();
-      Config.CacheDir.Create();
-      Config.HotkeyFile.Refresh();
-      if (!Config.HotkeyFile.Exists)
+      Directory.CreateDirectory(Env.Config.DataDir);
+      Directory.CreateDirectory(Env.Config.CacheDir);
+      Directory.CreateDirectory(Env.Config.SharedDir);
+      if (!File.Exists(Env.Config.HotkeyFile))
       {
-        File.WriteAllText(Config.HotkeyFile.FullName, "");
+        File.WriteAllText(Env.Config.HotkeyFile, "");
       }
       Env.Clear();
       Env.Factory = this;
@@ -90,16 +91,15 @@ namespace InputMaster
       var inputHook = new InputHook(comboRelay);
       var inputRelay = new InputRelay(inputHook);
       var primaryHook = new PrimaryHook(inputRelay);
-      Env.AddActor(new MiscActor());
-      Env.AddActor(new ForegroundInteractor());
-      if (Config.EnableTextEditor)
+      if (Env.Config.EnableTextEditor)
       {
         TextEditorForm = new TextEditorForm(modeHook);
         AccountManager = new AccountManager(TextEditorForm, modeHook);
         TextEditorForm.Start();
       }
       CreateNotifyIcon();
-      Config.Run(this);
+      Env.Config.Run();
+      Env.LoadExtensions(this);
       Env.Parser.Enabled = true;
       Env.Parser.Run();
       primaryHook.Register();

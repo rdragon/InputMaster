@@ -88,7 +88,7 @@ namespace InputMaster.Hooks
         }
         else
         {
-          Env.Notifier.WriteError($"Cannot use '{nameof(EnterModeHot)}' on a {Config.ComposeModeSectionIdentifier} '{mode.Name}'.");
+          Env.Notifier.WriteError($"Cannot use '{nameof(EnterModeHot)}' on a {ParserConfig.ComposeModeSectionIdentifier} '{mode.Name}'.");
         }
       }
     }
@@ -131,7 +131,7 @@ namespace InputMaster.Hooks
             return;
           }
         }
-        if (e.Combo == Config.ShowModeCombo)
+        if (e.Combo == Env.Config.ShowModeCombo)
         {
           e.Capture = true;
           ToggleViewerVisibility();
@@ -206,17 +206,17 @@ namespace InputMaster.Hooks
 
       if (hit == null)
       {
-        if (e.Combo == Config.ClearModeCombo)
+        if (e.Combo == Env.Config.ClearModeCombo)
         {
           ClearInput();
         }
-        else if (e.Combo == Config.ShowModeCombo)
+        else if (e.Combo == Env.Config.ShowModeCombo)
         {
           ModeHotkeys = oldModeHotkeys;
           InputCount = oldCount;
           ToggleViewerVisibility();
         }
-        else if (Config.ClearModeCombos.Contains(e.Combo))
+        else if (Env.Config.ClearModeCombos.Contains(e.Combo))
         {
           LeaveMode();
         }

@@ -19,7 +19,7 @@ namespace InputMaster.Extensions
       {
         return;
       }
-      const string dir = @"C:\temp\screenshots";
+      var dir = @"C:\temp\screenshots";
       Directory.CreateDirectory(dir);
       bitmap.Save(Path.Combine(dir, name + ".jpg"), ImageFormat.Jpeg);
     }

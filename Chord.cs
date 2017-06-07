@@ -142,7 +142,7 @@ namespace InputMaster
 
     public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
     {
-      return Config.DefaultChordReader.CreateChord(new LocatedString(reader.Value.ToString()));
+      return Env.Config.DefaultChordReader.CreateChord(new LocatedString(reader.Value.ToString()));
     }
 
     public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)

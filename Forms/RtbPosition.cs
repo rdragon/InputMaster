@@ -2,11 +2,8 @@
 
 namespace InputMaster.Forms
 {
-  internal class RtbPosition
+  internal struct RtbPosition
   {
-    public int SelectionStart { get; }
-    public int ScrollPosition { get; }
-
     public RtbPosition(int selectionStart, int scrollPosition)
     {
       SelectionStart = selectionStart;
@@ -19,19 +16,33 @@ namespace InputMaster.Forms
       ScrollPosition = reader.ReadInt32();
     }
 
+    public int SelectionStart { get; }
+    public int ScrollPosition { get; }
+
     public void Write(BinaryWriter writer)
     {
       writer.Write(SelectionStart);
       writer.Write(ScrollPosition);
     }
 
-    public bool Equals(RtbPosition other)
+    public static bool operator ==(RtbPosition pos1, RtbPosition pos2)
     {
-      if (other == null)
-      {
-        return false;
-      }
-      return SelectionStart == other.SelectionStart && ScrollPosition == other.ScrollPosition;
+      return pos1.ScrollPosition == pos2.ScrollPosition && pos1.SelectionStart == pos2.SelectionStart;
+    }
+
+    public static bool operator !=(RtbPosition pos1, RtbPosition pos2)
+    {
+      return !(pos1 == pos2);
+    }
+
+    public override bool Equals(object obj)
+    {
+      return obj != null && obj.GetType() == typeof(RtbPosition) && ((RtbPosition)obj) == this;
+    }
+
+    public override int GetHashCode()
+    {
+      return SelectionStart + 1000000007 * ScrollPosition;
     }
   }
 }

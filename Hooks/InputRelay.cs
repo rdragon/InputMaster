@@ -3,7 +3,7 @@
 namespace InputMaster.Hooks
 {
   /// <summary>
-  /// Very simple hook that can be switched on and off by pressing a key. It also has the capability to capture all events until <see cref="Config.CloseKey"/> is pressed.
+  /// Very simple hook that can be switched on and off by pressing a key. It also has the capability to capture all events until <see cref="Env.Config.CloseKey"/> is pressed.
   /// </summary>
   internal class InputRelay : Actor, IInputHook
   {
@@ -24,12 +24,12 @@ namespace InputMaster.Hooks
       if (CaptureAll)
       {
         e.Capture = true;
-        if (e.Input == Config.CloseKey)
+        if (e.Input == Env.Config.CloseKey)
         {
           CaptureAll = false;
         }
       }
-      else if (e.Input == Config.ToggleHookKey)
+      else if (e.Input == Env.Config.ToggleHookKey)
       {
         if (e.Down && !ToggleKeyIsDown)
         {

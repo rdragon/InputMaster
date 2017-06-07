@@ -6,9 +6,9 @@ using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using InputMaster.Forms;
 using InputMaster.Hooks;
 using Newtonsoft.Json;
+using InputMaster.TextEditor;
 
 namespace InputMaster
 {
@@ -135,7 +135,7 @@ namespace InputMaster
     public async Task CreateRandomAccount(string passwordPrefix = "")
     {
       await Task.Yield();
-      var account = new Account(GetNewId(), CreateRandomIdentifier(6), passwordPrefix + CreateRandomPassword(Config.DefaultPasswordLength), CreateRandomIdentifier(6) + Config.EmailSuffix);
+      var account = new Account(GetNewId(), CreateRandomIdentifier(6), passwordPrefix + CreateRandomPassword(Env.Config.DefaultPasswordLength), CreateRandomIdentifier(6) + Env.Config.EmailSuffix);
       account = GetModifiedAccount(account);
       AddAccount(account);
       Parse();
@@ -159,21 +159,21 @@ namespace InputMaster
     public void PrintAccountUsername()
     {
       if (CurrentAccount == null) return;
-      Env.CreateInjector().Add(CurrentAccount.GetUsername(), Config.LiteralInputReader).Run();
+      Env.CreateInjector().Add(CurrentAccount.GetUsername(), Env.Config.LiteralInputReader).Run();
     }
 
     [CommandTypes(CommandTypes.Visible)]
     public void PrintAccountPassword()
     {
       if (CurrentAccount == null) return;
-      Env.CreateInjector().Add(CurrentAccount.GetPassword(), Config.LiteralInputReader).Run();
+      Env.CreateInjector().Add(CurrentAccount.GetPassword(), Env.Config.LiteralInputReader).Run();
     }
 
     [CommandTypes(CommandTypes.Visible)]
     public void PrintAccountEmail()
     {
       if (CurrentAccount == null) return;
-      Env.CreateInjector().Add(CurrentAccount.GetEmail(), Config.LiteralInputReader).Run();
+      Env.CreateInjector().Add(CurrentAccount.GetEmail(), Env.Config.LiteralInputReader).Run();
     }
 
     [CommandTypes(CommandTypes.Visible)]
@@ -211,10 +211,10 @@ namespace InputMaster
           var injector = Env.CreateInjector();
           if (flags.Contains('u'))
           {
-            injector.Add(account.GetUsername(), Config.LiteralInputReader);
+            injector.Add(account.GetUsername(), Env.Config.LiteralInputReader);
             injector.Add(Input.Tab);
           }
-          injector.Add(account.GetPassword(), Config.LiteralInputReader);
+          injector.Add(account.GetPassword(), Env.Config.LiteralInputReader);
           injector.Add(Input.Enter);
           injector.Run();
           break;
@@ -229,7 +229,7 @@ namespace InputMaster
       id = id ?? AskId();
       if (!string.IsNullOrEmpty(id) && Accounts.TryGetValue(id, out var account))
       {
-        ModeHook.EnterMode(Config.AccountModeName);
+        ModeHook.EnterMode(Env.Config.AccountModeName);
         CurrentAccount = account;
       }
     }
@@ -237,7 +237,7 @@ namespace InputMaster
     [CommandTypes(CommandTypes.Visible)]
     public void Run([AllowSpaces] string filePath, [AllowSpaces]string arguments = "")
     {
-      if (TryGetAccount(Config.LocalAccountId, out var account))
+      if (TryGetAccount(Env.Config.LocalAccountId, out var account))
       {
         var s = new SecureString();
         foreach (var c in account.GetPassword())
@@ -255,27 +255,13 @@ namespace InputMaster
     [CommandTypes(CommandTypes.Visible)]
     public void Edit([AllowSpaces]string filePath)
     {
-      if (Config.PreprocessorReplaces.TryGetValue("DefaultTextEditor", out var exePath))
-      {
-        Run(exePath, $"\"{filePath}\"");
-      }
-      else
-      {
-        Env.Notifier.WriteError("Default text editor not set.");
-      }
+      Run(Env.Config.DefaultTextEditor, $"\"{filePath}\"");
     }
 
     [CommandTypes(CommandTypes.Visible)]
     public void Surf([AllowSpaces]string url)
     {
-      if (Config.PreprocessorReplaces.TryGetValue("DefaultWebBrowser", out var exePath))
-      {
-        Run(exePath, $"\"{url}\"");
-      }
-      else
-      {
-        Env.Notifier.WriteError("Default web browser not set.");
-      }
+      Run(Env.Config.DefaultWebBrowser, $"\"{url}\"");
     }
 
     public IEnumerable<Account> GetAccounts()
@@ -328,8 +314,8 @@ namespace InputMaster
     {
       Env.Parser.UpdateParseAction(nameof(AccountManager), parserOutput =>
       {
-        var mode = parserOutput.AddMode(new Mode(Config.OpenAccountModeName, true));
-        var modifyMode = parserOutput.AddMode(new Mode(Config.ModifyAccountModeName, true));
+        var mode = parserOutput.AddMode(new Mode(Env.Config.OpenAccountModeName, true));
+        var modifyMode = parserOutput.AddMode(new Mode(Env.Config.ModifyAccountModeName, true));
         foreach (var account in Accounts.Values)
         {
           if (account.Chord.Length == 0)
@@ -338,7 +324,7 @@ namespace InputMaster
           }
           mode.AddHotkey(new ModeHotkey(account.Chord, combo =>
           {
-            ModeHook.EnterMode(Config.AccountModeName);
+            ModeHook.EnterMode(Env.Config.AccountModeName);
             CurrentAccount = account;
           }, account.Chord + " " + account.Title + " " + account.Description));
           modifyMode.AddHotkey(new ModeHotkey(account.Chord, async combo =>
@@ -346,7 +332,7 @@ namespace InputMaster
             await ModifyAccount(account.Id);
           }, account.Chord + " " + account.Title + " " + account.Description), true);
         }
-        File.WriteAllLines(Config.AccountsOutputFile.FullName,
+        File.WriteAllLines(Env.Config.AccountsOutputFile,
           Accounts.Values.Select(z => z.Id + " " + z.Title + " " + z.Description + (z.Chord.Length == 0 ? "" : $" ({z.Chord})")).ToArray());
       });
       Env.Parser.Run();

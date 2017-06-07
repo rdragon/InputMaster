@@ -11,7 +11,7 @@ namespace InputMaster.Parsers
   {
     public static readonly LocatedString None = new LocatedString();
     public static readonly LocatedString Empty = new LocatedString("");
-    private static readonly string DelimiterPattern = $" *{Regex.Escape(Config.ArgumentDelimiter)} *";
+    private static readonly string DelimiterPattern = $" *{Regex.Escape(ParserConfig.ArgumentDelimiter)} *";
     private static readonly Regex DelimiterRegex = new Regex($"{DelimiterPattern}| +");
     private static readonly Regex DelimiterRegexAllowSpace = new Regex(DelimiterPattern);
 
@@ -223,11 +223,11 @@ namespace InputMaster.Parsers
       }
       if (type == typeof(Action))
       {
-        return Env.CreateInjector().Add(this, Config.DefaultInputReader).Compile();
+        return Env.CreateInjector().Add(this, Env.Config.DefaultInputReader).Compile();
       }
       if (type == typeof(IInjector))
       {
-        return Env.CreateInjector().Add(this, Config.DefaultInputReader);
+        return Env.CreateInjector().Add(this, Env.Config.DefaultInputReader);
       }
       if (type == typeof(string))
       {
@@ -251,11 +251,11 @@ namespace InputMaster.Parsers
       }
       if (type == typeof(Chord))
       {
-        return Config.DefaultChordReader.CreateChord(this);
+        return Env.Config.DefaultChordReader.CreateChord(this);
       }
       if (type == typeof(Input) || type == typeof(Input?))
       {
-        var chord = Config.DefaultChordReader.CreateChord(this);
+        var chord = Env.Config.DefaultChordReader.CreateChord(this);
         if (chord.Length > 1 || chord.Length == 0 || chord.First().Modifiers != Modifiers.None)
         {
           throw CreateException("Failed to parse as a single Input.");

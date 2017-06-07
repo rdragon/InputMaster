@@ -68,6 +68,7 @@ namespace UnitTests
         Env.Clear();
         Env.TestRun = true;
         Env.Factory = this;
+        Env.Config = new Config();
         Env.Build();
         new TestBrain(OutputHandler).Run();
       }

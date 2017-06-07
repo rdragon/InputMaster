@@ -43,7 +43,7 @@ namespace InputMaster.Parsers
 
     private class MyCharReader : CharReader
     {
-      private static readonly Regex TokenRegex = new Regex("^" + Config.TokenPattern);
+      private static readonly Regex TokenRegex = new Regex("^" + ParserConfig.TokenPattern);
       private readonly InputReader InputReader;
       private readonly bool CreateChord;
       private readonly bool ParseLiteral;
@@ -111,11 +111,11 @@ namespace InputMaster.Parsers
         {
           Add(input);
         }
-        else if (Config.CustomInputs.TryGetValue(text, out input))
+        else if (Env.Config.TryGetCustomInput(text, out input))
         {
           Add(input);
         }
-        else if (Config.CustomCombos.TryGetValue(text, out var combo))
+        else if (Env.Config.TryGetCustomCombo(text, out var combo))
         {
           HandleModifiers(combo.Modifiers);
           Add(combo.Input);
@@ -124,7 +124,7 @@ namespace InputMaster.Parsers
         {
           HandleHoldRelease(pressType);
         }
-        else if (Enum.TryParse(text, out DynamicHotkeyEnum dynamicHotkey) && dynamicHotkey != DynamicHotkeyEnum.None)
+        else if (Env.Parser.IsDynamicHotkey(text))
         {
           HandleDynamicHotkey(text);
         }

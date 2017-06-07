@@ -38,7 +38,7 @@ namespace InputMaster.Extensions
     {
       if (Dict.TryGetValue(name, out var value))
       {
-        Env.CreateInjector().Add(value, Config.LiteralInputReader).Run();
+        Env.CreateInjector().Add(value, Env.Config.LiteralInputReader).Run();
       }
       else
       {
@@ -66,7 +66,7 @@ namespace InputMaster.Extensions
 
     private class MyState : State<VarActor>
     {
-      public MyState(VarActor varActor) : base(nameof(VarActor), varActor, Config.DataDir) { }
+      public MyState(VarActor varActor) : base(nameof(VarActor), varActor, Env.Config.DataDir) { }
 
       protected override void Load(BinaryReader reader)
       {
