@@ -27,6 +27,7 @@ namespace InputMaster
       Helper.ForbidNull(modeHook, nameof(modeHook));
       TextEditorForm = textEditorForm;
       ModeHook = modeHook;
+      Env.Parser.DisableOnce();
       TextEditorForm.Saving += () =>
       {
         if (!Changed)
@@ -275,6 +276,12 @@ namespace InputMaster
     }
 
     private void Initialize()
+    {
+      InitializeInner();
+      Env.Parser.EnableOnce();
+    }
+
+    private void InitializeInner()
     {
       if (TextEditorForm.AccountFile == null)
       {

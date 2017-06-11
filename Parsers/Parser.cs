@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -16,6 +17,7 @@ namespace InputMaster.Parsers
     private readonly Dictionary<string, HotkeyFile> HotkeyFiles = new Dictionary<string, HotkeyFile>();
     private readonly Dictionary<string, ParseAction> ParseActions = new Dictionary<string, ParseAction>();
     private DynamicHotkeyCollection DynamicHotkeyCollection = new DynamicHotkeyCollection();
+    private int DisableCounter = 1;
 
     public Parser()
     {
@@ -32,8 +34,6 @@ namespace InputMaster.Parsers
       hotkeyFileWatcher.RaiseChangedEvent();
       Env.App.Exiting += hotkeyFileWatcher.Dispose;
     }
-
-    public bool Enabled { get; set; }
 
     public event Action<ParserOutput> NewParserOutput = delegate { };
 
@@ -114,9 +114,24 @@ namespace InputMaster.Parsers
       ParseActions[name] = action;
     }
 
+    public void DisableOnce()
+    {
+      DisableCounter++;
+    }
+
+    public void EnableOnce()
+    {
+      Assert.IsTrue(DisableCounter > 0);
+      DisableCounter--;
+      if (DisableCounter == 0)
+      {
+        Run();
+      }
+    }
+
     public void Run()
     {
-      if (!Enabled)
+      if (DisableCounter > 0)
       {
         return;
       }

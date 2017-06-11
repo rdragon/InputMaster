@@ -78,7 +78,8 @@ namespace InputMaster
     bool TryGetAction(string name, bool complainIfNotFound, out Action<IInjectorStream<object>> action);
     bool IsDynamicHotkey(string name);
     void FireNewParserOutput(ParserOutput parserOutput); // For unit tests.
-    bool Enabled { get; set; }
+    void DisableOnce();
+    void EnableOnce();
     event Action<ParserOutput> NewParserOutput;
   }
 

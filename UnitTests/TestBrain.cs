@@ -37,8 +37,7 @@ namespace UnitTests
       PrimaryHookInjector = new TestInjector(PrimaryHook);
       Env.AddActor(new MiscActor());
       Env.Parser.UpdateHotkeyFile(new HotkeyFile(nameof(TestBrain), Resources.Tests.Replace("\r\n", "\n")));
-      Env.Parser.Enabled = true;
-      Env.Parser.Run();
+      Env.Parser.EnableOnce();
     }
 
     [CommandTypes(CommandTypes.ExecuteAtParseTime | CommandTypes.Chordless | CommandTypes.Visible | CommandTypes.TopLevelOnly)]

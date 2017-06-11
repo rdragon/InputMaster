@@ -28,6 +28,7 @@ namespace InputMaster.TextEditor
 
     public TextEditorForm(ModeHook modeHook)
     {
+      Env.Parser.DisableOnce();
       HideFirstInstant();
       ModeHook = Helper.ForbidNull(modeHook, nameof(modeHook));
       SuspendLayout();
@@ -77,6 +78,7 @@ namespace InputMaster.TextEditor
         await CompileTextEditorModeAsync(true);
         Started();
         HasStarted = true;
+        Env.Parser.EnableOnce();
       };
       KeyDown += async (s, e) =>
       {

@@ -100,8 +100,7 @@ namespace InputMaster
       CreateNotifyIcon();
       Env.Config.Run();
       Env.LoadExtensions(this);
-      Env.Parser.Enabled = true;
-      Env.Parser.Run();
+      Env.Parser.EnableOnce();
       primaryHook.Register();
     }
 

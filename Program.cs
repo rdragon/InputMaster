@@ -7,7 +7,7 @@ using System.Windows.Forms;
 using InputMaster.Forms;
 using InputMaster.Win32;
 
-[assembly: InternalsVisibleTo("unitTests")]
+[assembly: InternalsVisibleTo("UnitTests")]
 [assembly: CLSCompliant(true)]
 
 namespace InputMaster
