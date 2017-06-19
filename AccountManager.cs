@@ -8,7 +8,6 @@ using System.Text;
 using System.Threading.Tasks;
 using InputMaster.Hooks;
 using Newtonsoft.Json;
-using InputMaster.TextEditor;
 
 namespace InputMaster
 {
@@ -16,19 +15,17 @@ namespace InputMaster
   {
     private readonly Dictionary<string, Account> Accounts = new Dictionary<string, Account>();
     private readonly ModeHook ModeHook;
-    private readonly TextEditorForm TextEditorForm;
     private bool Changed;
     private Account CurrentAccount;
     private bool Loaded;
+    private string AccountFile;
 
-    public AccountManager(TextEditorForm textEditorForm, ModeHook modeHook)
+    public AccountManager(ModeHook modeHook, IValueProvider<string> accountFileProvider)
     {
-      Helper.ForbidNull(textEditorForm, nameof(textEditorForm));
       Helper.ForbidNull(modeHook, nameof(modeHook));
-      TextEditorForm = textEditorForm;
       ModeHook = modeHook;
       Env.Parser.DisableOnce();
-      TextEditorForm.Saving += () =>
+      Env.App.SaveTick += async () =>
       {
         if (!Changed)
         {
@@ -36,22 +33,20 @@ namespace InputMaster
         }
         if (Loaded)
         {
-          TextEditorForm.Encrypt(TextEditorForm.AccountFile, JsonConvert.SerializeObject(Accounts.Values, Formatting.Indented));
           Changed = false;
+          await Env.Cipher.EncryptAsync(AccountFile, JsonConvert.SerializeObject(Accounts.Values, Formatting.Indented));
         }
         else
         {
           Env.Notifier.WriteError("Could not save account data. A program restart is required.");
         }
       };
-      if (TextEditorForm.HasStarted)
+      accountFileProvider.ExecuteOnce(async accountFile =>
       {
-        Initialize();
-      }
-      else
-      {
-        TextEditorForm.Started += Initialize;
-      }
+        AccountFile = accountFile;
+        await InitializeAsync();
+        Env.Parser.EnableOnce();
+      });
     }
 
     public static string CreateRandomIdentifier(int length)
@@ -132,8 +127,8 @@ namespace InputMaster
       return new string(sb.ToString().Reverse().ToArray());
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public async Task CreateRandomAccount(string passwordPrefix = "")
+    [Command]
+    private async Task CreateRandomAccountAsync(string passwordPrefix = "")
     {
       await Task.Yield();
       var account = new Account(GetNewId(), CreateRandomIdentifier(6), passwordPrefix + CreateRandomPassword(Env.Config.DefaultPasswordLength), CreateRandomIdentifier(6) + Env.Config.EmailSuffix);
@@ -142,8 +137,8 @@ namespace InputMaster
       Parse();
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public async Task ModifyAccount(string id = null)
+    [Command]
+    public async Task ModifyAccountAsync(string id = null)
     {
       await Task.Yield();
       id = id ?? AskId();
@@ -156,35 +151,35 @@ namespace InputMaster
       }
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void PrintAccountUsername()
     {
       if (CurrentAccount == null) return;
       Env.CreateInjector().Add(CurrentAccount.GetUsername(), Env.Config.LiteralInputReader).Run();
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void PrintAccountPassword()
     {
       if (CurrentAccount == null) return;
       Env.CreateInjector().Add(CurrentAccount.GetPassword(), Env.Config.LiteralInputReader).Run();
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void PrintAccountEmail()
     {
       if (CurrentAccount == null) return;
       Env.CreateInjector().Add(CurrentAccount.GetEmail(), Env.Config.LiteralInputReader).Run();
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void SetCurrentAccount(string id)
     {
       TryGetAccount(id, out CurrentAccount);
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public async Task ModifyAllAccounts(bool showUsernameAndEmail = false)
+    [Command]
+    public async Task ModifyAllAccountsAsync(bool showUsernameAndEmail = false)
     {
       await Task.Yield();
       var strippedAccounts = GetSortedAccounts().Select(a => new Account(a, excludeUsernameAndEmail: !showUsernameAndEmail, excludePassword: true)).ToList();
@@ -202,7 +197,7 @@ namespace InputMaster
       }
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void PasteAccount(int order, [ValidFlags("u")]string flags = "")
     {
       foreach (var account in Accounts.Values)
@@ -223,8 +218,8 @@ namespace InputMaster
       }
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public async Task EnterAccount(string id = null)
+    [Command]
+    public async Task EnterAccountAsync(string id = null)
     {
       await Task.Yield();
       id = id ?? AskId();
@@ -235,7 +230,7 @@ namespace InputMaster
       }
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void Run([AllowSpaces] string filePath, [AllowSpaces]string arguments = "")
     {
       if (TryGetAccount(Env.Config.LocalAccountId, out var account))
@@ -253,13 +248,13 @@ namespace InputMaster
       }
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void Edit([AllowSpaces]string filePath)
     {
       Run(Env.Config.DefaultTextEditor, $"\"{filePath}\"");
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void Surf([AllowSpaces]string url)
     {
       Run(Env.Config.DefaultWebBrowser, $"\"{url}\"");
@@ -275,28 +270,22 @@ namespace InputMaster
       return Accounts.TryGetValue(id, out account);
     }
 
-    private void Initialize()
+    private async Task InitializeAsync()
     {
-      InitializeInner();
-      Env.Parser.EnableOnce();
-    }
-
-    private void InitializeInner()
-    {
-      if (TextEditorForm.AccountFile == null)
+      if (AccountFile == null)
       {
         return;
       }
       try
       {
-        var text = TextEditorForm.Decrypt(TextEditorForm.AccountFile);
+        var text = await Env.Cipher.DecryptAsync(AccountFile);
         var accounts = JsonConvert.DeserializeObject<List<Account>>(text);
         foreach (var account in accounts)
         {
           AddAccount(account);
         }
       }
-      catch (Exception ex) when (!Helper.IsCriticalException(ex))
+      catch (Exception ex) when (!Helper.IsFatalException(ex))
       {
         Env.Notifier.WriteError(ex, "Failed to load account data.");
         return;
@@ -336,7 +325,7 @@ namespace InputMaster
           }, account.Chord + " " + account.Title + " " + account.Description));
           modifyMode.AddHotkey(new ModeHotkey(account.Chord, async combo =>
           {
-            await ModifyAccount(account.Id);
+            await ModifyAccountAsync(account.Id);
           }, account.Chord + " " + account.Title + " " + account.Description), true);
         }
         File.WriteAllLines(Env.Config.AccountsOutputFile,

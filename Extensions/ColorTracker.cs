@@ -32,7 +32,7 @@ namespace InputMaster.Extensions
       Env.App.Exiting += Timer.Dispose;
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public static void WriteColor()
     {
       Env.Notifier.Write(GetColor(Cursor.Position).ToString());

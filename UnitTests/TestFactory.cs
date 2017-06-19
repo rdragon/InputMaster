@@ -77,7 +77,7 @@ namespace UnitTests
         assertFailed = true;
         throw;
       }
-      catch (Exception ex) when (!Helper.IsCriticalException(ex))
+      catch (Exception ex) when (!Helper.IsFatalException(ex))
       {
         Env.Notifier.WriteError(ex);
       }
@@ -88,7 +88,7 @@ namespace UnitTests
         {
           Assert.Fail("Unexpected error(s): " + errorLog);
         }
-        Try.ThrowException();
+        Try.ThrowFatalExceptionIfExists();
       }
     }
   }

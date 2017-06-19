@@ -43,7 +43,7 @@ namespace InputMaster.Parsers
 
     private class MyCharReader : CharReader
     {
-      private static readonly Regex TokenRegex = new Regex("^" + ParserConfig.TokenPattern);
+      private static readonly Regex TokenRegex = new Regex("^" + Constants.TokenPattern);
       private readonly InputReader InputReader;
       private readonly bool CreateChord;
       private readonly bool ParseLiteral;
@@ -71,7 +71,7 @@ namespace InputMaster.Parsers
         }
       }
 
-      private new ParseException CreateException(string text)
+      private ParseException CreateException(string text)
       {
         return new ParseException(LocatedString, text);
       }

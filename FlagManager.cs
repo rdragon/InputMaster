@@ -43,7 +43,7 @@ namespace InputMaster
       return string.Join(", ", Flags);
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void SetFlag(string flag)
     {
       if (!IsSet(flag))
@@ -52,7 +52,7 @@ namespace InputMaster
       }
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void ClearFlag(string flag)
     {
       if (IsSet(flag))
@@ -61,14 +61,14 @@ namespace InputMaster
       }
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void ToggleFlag(string flag)
     {
       ToggleFlag(flag, true);
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public async Task SetCustomFlag()
+    [Command]
+    public async Task SetCustomFlagAsync()
     {
       await Task.Yield();
       var s = Helper.GetString("Flag");
@@ -78,8 +78,8 @@ namespace InputMaster
       }
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public async Task ClearCustomFlag()
+    [Command]
+    public async Task ClearCustomFlagAsync()
     {
       await Task.Yield();
       var s = Helper.GetString("Flag");

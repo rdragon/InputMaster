@@ -115,7 +115,7 @@ namespace InputMaster.Forms
       Log.Append($"{message}\n");
     }
 
-    private void WriteToFile(string message)
+    private static void WriteToFile(string message)
     {
       message = AppendTimestamp(message);
       File.AppendAllLines(Env.Config.ErrorLogFile, new[] { message });

@@ -65,7 +65,7 @@ namespace InputMaster.Hooks
           input = Input.Mmb;
           break;
         case WindowMessage.MouseWheel:
-          input = (mouseProcedureData.MouseData >> 16) > 0 ? Input.WheelUp : Input.WheelDown;
+          input = mouseProcedureData.MouseData >> 16 > 0 ? Input.WheelUp : Input.WheelDown;
           break;
         default:
           throw new ArgumentException("Unrecognized mouse message.", nameof(message));
@@ -108,7 +108,7 @@ namespace InputMaster.Hooks
       }
       catch (Exception ex) // This is the last place to handle any exceptions thrown during the hook procedure.
       {
-        Helper.HandleAnyException(ex);
+        Helper.HandleException(ex);
       }
       return captured ? new IntPtr(-1) : NativeMethods.CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
     }

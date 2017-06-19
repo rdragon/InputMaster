@@ -20,11 +20,11 @@ namespace InputMaster
         return;
       }
       DataFile = Path.Combine(dir, name);
-      Env.Scheduler.AddJob($"State<{name}>", Save, Env.Config.SaveTimerInterval);
+      Env.App.SaveTick += Save;
       Env.App.Exiting += Try.Wrap(Save);
     }
 
-    public bool Changed { get; set; }
+    public bool Changed { private get; set; }
 
     public void Load()
     {
@@ -39,14 +39,14 @@ namespace InputMaster
         {
           Load(reader);
         }
-        catch (Exception ex) when (!Helper.IsCriticalException(ex))
+        catch (Exception ex) when (!Helper.IsFatalException(ex))
         {
           Env.Notifier.WriteError(ex, $"Failed to load state data from '{DataFile}'.");
         }
       }
     }
 
-    public void Save()
+    private void Save()
     {
       if (!Changed || Env.TestRun)
       {

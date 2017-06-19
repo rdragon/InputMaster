@@ -2,61 +2,72 @@
 using System.Collections.Generic;
 using System.Windows.Forms;
 using InputMaster.Parsers;
+using System.Drawing;
+using System.IO;
+using System.Drawing.Imaging;
 
 namespace InputMaster
 {
-  [CommandTypes(CommandTypes.Visible)]
   internal class MiscActor : Actor
   {
-    public void ExitInputMaster()
+    [Command]
+    private static void ExitInputMaster()
     {
       Application.Exit();
     }
 
-    public void RestartInputMaster()
+    [Command]
+    private static void RestartInputMaster()
     {
       Env.ShouldRestart = true;
       Application.Exit();
     }
 
-    public static void RunElevated([AllowSpaces] string filePath, [AllowSpaces]string arguments = "")
+    [Command]
+    private static void RunElevated([AllowSpaces] string filePath, [AllowSpaces]string arguments = "")
     {
       Helper.StartProcess(filePath, arguments);
     }
 
-    public static void EditElevated([AllowSpaces]string filePath)
+    [Command]
+    private static void EditElevated([AllowSpaces]string filePath)
     {
       RunElevated(Env.Config.Notepadpp, $"-multiInst \"{filePath}\"");
     }
 
-    public static void WriteLine([AllowSpaces] string text)
+    [Command]
+    private static void WriteLine([AllowSpaces] string text)
     {
       Env.Notifier.Write(text);
     }
 
-    public static void PrintDate(TimeSpan? timeDifference = null)
+    [Command]
+    private static void PrintDate(TimeSpan? timeDifference = null)
     {
       var d = timeDifference.GetValueOrDefault(TimeSpan.Zero);
       Env.CreateInjector().Add(DateTime.Now.Add(d).ToString("yyyy-MM-dd"), new InputReader(InputReaderFlags.ParseLiteral)).Run();
     }
 
-    public static void PrintFormattedDate([AllowSpaces] string format)
+    [Command]
+    private static void PrintFormattedDate([AllowSpaces] string format)
     {
       Env.CreateInjector().Add(DateTime.Now.ToString(format), new InputReader(InputReaderFlags.ParseLiteral)).Run();
     }
 
-    public static void Send([AllowSpaces] Action action)
+    [Command]
+    private static void Send([AllowSpaces] Action action)
     {
       action();
     }
 
-    public void SendDynamic([AllowSpaces] LocatedString located)
+    [Command]
+    public static void SendDynamic([AllowSpaces] LocatedString located)
     {
       Env.CreateInjector().Add(located, new InputReader(Env.Config.DefaultInputReader.Flags | InputReaderFlags.AllowDynamicHotkey)).Run();
     }
 
-    [CommandTypes(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime | CommandTypes.StandardSectionOnly)]
-    public void Define(ExecuteAtParseTimeData data, LocatedString token, [AllowSpaces] LocatedString argument)
+    [Command(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime | CommandTypes.StandardSectionOnly)]
+    private static void Define(ExecuteAtParseTimeData data, LocatedString token, [AllowSpaces] LocatedString argument)
     {
       var name = Helper.ReadIdentifierTokenString(token);
       void Action(IInjectorStream<object> stream)
@@ -67,41 +78,47 @@ namespace InputMaster
       data.ParserOutput.DynamicHotkeyCollection.AddDynamicHotkey(name, Action, data.Section.AsStandardSection);
     }
 
-    [CommandTypes(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime | CommandTypes.ModeOnly)]
-    public void IncludeMode(ExecuteAtParseTimeData data, LocatedString modeName)
+    [Command(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime | CommandTypes.ModeOnly)]
+    private static void IncludeMode(ExecuteAtParseTimeData data, LocatedString modeName)
     {
       data.Section.AsMode.IncludeMode(modeName.Value);
     }
 
-    [CommandTypes(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime | CommandTypes.TopLevelOnly)]
-    public void MutualExclusiveFlags(ExecuteAtParseTimeData data, [AllowSpaces]string names)
+    [Command(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime | CommandTypes.TopLevelOnly)]
+    private static void MutualExclusiveFlags(ExecuteAtParseTimeData data, [AllowSpaces]string names)
     {
       data.ParserOutput.FlagSets.Add(new HashSet<string>(names.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)));
     }
 
-    public static void PrintInput(HotkeyTrigger trigger)
+    [Command]
+    private static void PrintInput(HotkeyTrigger trigger)
     {
       Env.CreateInjector().Add(trigger.Combo.ToString(), Env.Config.LiteralInputReader).Run();
     }
 
-    public static void WriteMousePosition()
+    [Command]
+    private static void WriteMousePosition()
     {
       Env.Notifier.Write(Cursor.Position.X + ", " + Cursor.Position.Y);
     }
 
-    public static void Beep()
+    [Command]
+    private static void Beep()
     {
       Helper.Beep();
     }
 
-    public static void ShowLog()
+    [Command]
+    private static void ShowLog()
     {
       Helper.ShowSelectableText(Env.Notifier.GetLog());
     }
 
-    public static void Nothing(string dummy = "") { }
+    [Command]
+    private static void Nothing(string dummy = "") { }
 
-    public void PutComputerToSleep()
+    [Command]
+    private static void PutComputerToSleep()
     {
       if (Env.FlagManager.IsSet("NoStandby"))
       {
@@ -113,8 +130,8 @@ namespace InputMaster
       }
     }
 
-    [CommandTypes(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime)]
-    public static void ComposeHelper(ExecuteAtParseTimeData data, [AllowSpaces] LocatedString locatedArgument)
+    [Command(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime)]
+    private static void ComposeHelper(ExecuteAtParseTimeData data, [AllowSpaces] LocatedString locatedArgument)
     {
       foreach (var s in locatedArgument.Split(" "))
       {
@@ -131,7 +148,8 @@ namespace InputMaster
       }
     }
 
-    public static void Standby()
+    [Command]
+    private static void Standby()
     {
       if (Env.FlagManager.IsSet("NoStandby"))
       {
@@ -141,6 +159,21 @@ namespace InputMaster
       {
         Application.SetSuspendState(PowerState.Suspend, false, true);
       }
+    }
+
+    [Command]
+    public static void SaveScreen()
+    {
+      var bitmap = new Bitmap(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
+      var graphics = Graphics.FromImage(bitmap);
+      graphics.CopyFromScreen(0, 0, 0, 0, bitmap.Size);
+      var name = Helper.GetString("Name", Helper.GetValidFileName(DateTime.Now.ToString(), '-'));
+      if (string.IsNullOrWhiteSpace(name))
+      {
+        return;
+      }
+      Directory.CreateDirectory(Env.Config.ScreenshotsDir);
+      bitmap.Save(Path.Combine(Env.Config.ScreenshotsDir, name + ".jpg"), ImageFormat.Jpeg);
     }
   }
 }

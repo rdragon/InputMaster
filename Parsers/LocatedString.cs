@@ -9,9 +9,8 @@ namespace InputMaster.Parsers
 {
   internal struct LocatedString : IEquatable<LocatedString>
   {
-    public static readonly LocatedString None = new LocatedString();
-    public static readonly LocatedString Empty = new LocatedString("");
-    private static readonly string DelimiterPattern = $" *{Regex.Escape(ParserConfig.ArgumentDelimiter)} *";
+    private static readonly LocatedString Empty = new LocatedString("");
+    private static readonly string DelimiterPattern = $" *{Regex.Escape(Constants.ArgumentDelimiter)} *";
     private static readonly Regex DelimiterRegex = new Regex($"{DelimiterPattern}| +");
     private static readonly Regex DelimiterRegexAllowSpace = new Regex(DelimiterPattern);
 
@@ -38,6 +37,11 @@ namespace InputMaster.Parsers
       return !a.Equals(b);
     }
 
+    public LocatedString Trim()
+    {
+      return TrimStart().TrimEnd();
+    }
+
     public LocatedString TrimStart()
     {
       var s = Value.TrimStart();
@@ -47,11 +51,6 @@ namespace InputMaster.Parsers
     public LocatedString TrimEnd()
     {
       return new LocatedString(Value.TrimEnd(), Location);
-    }
-
-    public LocatedString Trim()
-    {
-      return TrimStart().TrimEnd();
     }
 
     public LocatedString Require(string delimiter, int targetCount = -1)
@@ -69,17 +68,17 @@ namespace InputMaster.Parsers
     {
       if (targetCount != -1)
       {
-        throw CreateException($"Wrong number of arguments given, expecting {targetCount} arguments.");
+        return CreateException($"Wrong number of arguments given, expecting {targetCount} arguments.");
       }
       if (minCount != -1)
       {
-        throw CreateException($"Not enough arguments given, expecting at least {minCount}.");
+        return CreateException($"Not enough arguments given, expecting at least {minCount}.");
       }
       if (maxCount != -1)
       {
-        throw CreateException($"Too many arguments given, expecting at most {maxCount}.");
+        return CreateException($"Too many arguments given, expecting at most {maxCount}.");
       }
-      throw new ArgumentException();
+      throw new ArgumentException("All arguments are -1.");
     }
 
     public LocatedString[] Split(string s)
@@ -108,14 +107,6 @@ namespace InputMaster.Parsers
       Helper.RequireAtLeast(length, nameof(length), 0);
       Helper.RequireAtMost(startIndex + length, nameof(startIndex) + "+" + nameof(length), Value.Length);
       return new LocatedString(Value.Substring(startIndex, length), Location.AddColumns(startIndex));
-    }
-
-    public LocatedString Replace(string str, string replacement)
-    {
-      Helper.ForbidNullOrEmpty(str, nameof(str));
-      Helper.ForbidNull(replacement, nameof(replacement));
-      var newValue = Value.Replace(str, replacement);
-      return new LocatedString(newValue, newValue.Length != Value.Length ? Location.WithoutColumnInfo : Location);
     }
 
     public override string ToString()

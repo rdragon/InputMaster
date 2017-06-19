@@ -4,8 +4,8 @@ namespace UnitTests
 {
   internal class TestForegroundListener : IForegroundListener
   {
-    public string NewWindowTitle { get; set; }
-    public string NewProcessName { get; set; }
+    public string NewWindowTitle { private get; set; }
+    public string NewProcessName { private get; set; }
     public string ForegroundWindowTitle { get; private set; }
     public string ForegroundProcessName { get; private set; }
 

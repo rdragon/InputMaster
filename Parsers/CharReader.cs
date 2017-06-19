@@ -60,18 +60,6 @@ namespace InputMaster.Parsers
       ReadMany(c);
     }
 
-    protected LocatedString ReadWhile(Func<char, bool> func)
-    {
-      Helper.ForbidNull(func, nameof(func));
-      var location = Location;
-      var startIndex = Index;
-      while (!EndOfStream && func(Current))
-      {
-        Read();
-      }
-      return new LocatedString(Text.Substring(startIndex, Index - startIndex), location);
-    }
-
     protected LocatedString ReadUntil(params char[] chars)
     {
       return ReadWhile(c => !chars.Contains(c));
@@ -95,12 +83,6 @@ namespace InputMaster.Parsers
       return true;
     }
 
-    protected bool At(string text)
-    {
-      Helper.ForbidNull(text, nameof(text));
-      return (!EndOfStream || text.Length == 0) && Text.Substring(Index).StartsWith(text);
-    }
-
     protected bool At(Regex regex)
     {
       return Helper.ForbidNull(regex, nameof(regex)).IsMatch(Text.Substring(Index));
@@ -112,11 +94,6 @@ namespace InputMaster.Parsers
       {
         throw CreateException("Unexpected end of stream.");
       }
-    }
-
-    protected ParseException CreateException(string message)
-    {
-      return new ParseException(Location, message);
     }
 
     protected void Require(char c)
@@ -139,9 +116,9 @@ namespace InputMaster.Parsers
     protected LocatedString ReadToken(out string text)
     {
       var location = Location;
-      Read(ParserConfig.TokenStart);
-      text = ReadUntil(ParserConfig.TokenEnd).Value;
-      Read(ParserConfig.TokenEnd);
+      Read(Constants.TokenStart);
+      text = ReadUntil(Constants.TokenEnd).Value;
+      Read(Constants.TokenEnd);
       return new LocatedString(Helper.CreateTokenString(text), location);
     }
 
@@ -152,7 +129,28 @@ namespace InputMaster.Parsers
       {
         throw CreateException($"Unexpected character '{Current}'. An identifier should start with an upper case letter.");
       }
-      return ReadWhile(ParserConfig.IsIdentifierCharacter);
+      return ReadWhile(Constants.IsIdentifierCharacter);
+    }
+
+    private ParseException CreateException(string message)
+    {
+      return new ParseException(Location, message);
+    }
+
+    private bool At(string text)
+    {
+      return (!EndOfStream || text.Length == 0) && Text.Substring(Index).StartsWith(text);
+    }
+
+    private LocatedString ReadWhile(Func<char, bool> func)
+    {
+      var location = Location;
+      var startIndex = Index;
+      while (!EndOfStream && func(Current))
+      {
+        Read();
+      }
+      return new LocatedString(Text.Substring(startIndex, Index - startIndex), location);
     }
   }
 }

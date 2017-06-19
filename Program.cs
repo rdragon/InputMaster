@@ -17,10 +17,9 @@ namespace InputMaster
     private Mutex Mutex;
     private bool MutexAcquired;
 
-    public Program()
+    private Program()
     {
       ConfigHelper.SetConfig();
-      Env.Config.Initialize();
     }
 
     [STAThread]
@@ -32,7 +31,7 @@ namespace InputMaster
       Application.ThreadException += (s, e) =>
       {
         // Warning: the argument only contains the innermost exception (see http://stackoverflow.com/questions/347502/why-does-the-inner-exception-reach-the-threadexception-handler-and-not-the-actual).
-        Helper.HandleAnyException(e.Exception);
+        Helper.HandleException(e.Exception);
       };
       Thread.CurrentThread.Priority = ThreadPriority.AboveNormal;
       new Program().Run(arguments);
@@ -63,7 +62,7 @@ namespace InputMaster
       var text = File.ReadAllText(Env.Config.WindowHandleFile);
       if (!long.TryParse(text, out var handle))
       {
-        throw new Exception($"Failed to parse contents of '{Env.Config.WindowHandleFile}' as long.");
+        throw new FatalException($"Failed to parse contents of '{Env.Config.WindowHandleFile}' as long.");
       }
       NativeMethods.SendNotifyMessage(new IntPtr(handle), WindowMessage.Close, IntPtr.Zero, IntPtr.Zero);
     }
@@ -95,7 +94,7 @@ namespace InputMaster
     {
       try
       {
-        Mutex = new Mutex(false, "InputMasterSingleInstance");//todo: 4dy9fbflg2ct
+        Mutex = new Mutex(false, "4dy9fbflg2ct");
         AcquireMutex();
         MutexAcquired = true;
         if (HandleArguments(arguments))
@@ -111,12 +110,12 @@ namespace InputMaster
       }
       catch (Exception ex)
       {
-        Try.SetException(ex);
+        Try.HandleFatalException(ex);
       }
       finally
       {
         Try.Execute(OnExit);
-        Try.ShowException();
+        Try.ShowFatalExceptionIfExists();
       }
     }
 
@@ -131,12 +130,12 @@ namespace InputMaster
         CloseOtherInstance();
         if (!AcquireMutex(Env.Config.ExitOtherInputMasterTimeout))
         {
-          throw new Exception("Timeout while waiting for mutex to be released.");
+          throw new FatalException("Timeout while waiting for mutex to be released.");
         }
       }
       catch (Exception ex)
       {
-        throw new Exception("Failed to close other InputMaster instance.", ex);
+        throw new FatalException("Failed to close other InputMaster instance.", ex);
       }
     }
 

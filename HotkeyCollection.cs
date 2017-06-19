@@ -20,7 +20,7 @@ namespace InputMaster
       }
       if (set.Any(z => z.Section.CompareTo(section) == 0))
       {
-        throw new AmbiguousHotkeyException();
+        throw new AmbiguousHotkeyException("Ambiguous hotkey found" + Helper.GetBindingsSuffix(chord, nameof(chord)));
       }
       var added = set.Add(new Hotkey(action, section));
       Debug.Assert(added);

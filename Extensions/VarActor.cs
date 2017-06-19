@@ -6,7 +6,6 @@ using Newtonsoft.Json;
 
 namespace InputMaster.Extensions
 {
-  [CommandTypes(CommandTypes.Visible)]
   internal class VarActor : Actor
   {
     private readonly Dictionary<string, string> Dict = new Dictionary<string, string>();
@@ -18,23 +17,26 @@ namespace InputMaster.Extensions
       State.Load();
     }
 
-    public async Task SetVar(string name, string value = null)
+    [Command]
+    private Task SetVarAsync(string name, string value = null)
     {
-      await SetVarFormatted(name, "{0}", value);
+      return SetVarFormattedAsync(name, "{0}", value);
     }
 
-    public async Task SetVarFormatted(string name, [AllowSpaces]string format, string value = null)
+    [Command]
+    private async Task SetVarFormattedAsync(string name, [AllowSpaces]string format, string value = null)
     {
       if (value == null)
       {
-        value = await ForegroundInteractor.GetSelectedText();
+        value = await ForegroundInteractor.GetSelectedTextAsync();
       }
       Dict[name] = string.Format(format, value);
       State.Changed = true;
       Env.Notifier.Write($"{name}: {Dict[name]}");
     }
 
-    public void PrintVar(string name)
+    [Command]
+    private void PrintVar(string name)
     {
       if (Dict.TryGetValue(name, out var value))
       {
@@ -46,21 +48,23 @@ namespace InputMaster.Extensions
       }
     }
 
-    public async Task ExportVars()
+    [Command]
+    private Task ExportVars()
     {
-      await ForegroundInteractor.Paste(JsonConvert.SerializeObject(Dict, Formatting.Indented).Replace(Environment.NewLine, "\n"));
+      return ForegroundInteractor.PasteAsync(JsonConvert.SerializeObject(Dict, Formatting.Indented).Replace(Environment.NewLine, "\n"));
     }
 
-    public async Task ImportVars(string text = null)
+    [Command]
+    private async Task ImportVarsAsync(string text = null)
     {
       if (text == null)
       {
-        text = await ForegroundInteractor.GetSelectedText();
+        text = await ForegroundInteractor.GetSelectedTextAsync();
       }
       var dict = JsonConvert.DeserializeObject<Dictionary<string, string>>(text);
       foreach (var pair in dict)
       {
-        await SetVar(pair.Key, pair.Value);
+        await SetVarAsync(pair.Key, pair.Value);
       }
     }
 

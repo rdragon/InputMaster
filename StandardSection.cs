@@ -13,7 +13,7 @@ namespace InputMaster
     private bool Enabled;
     private readonly int Id;
 
-    public StandardSection(StandardSection parent)
+    protected StandardSection(StandardSection parent)
     {
       Parent = Helper.ForbidNull(parent, nameof(parent));
       Id = Interlocked.Increment(ref IdCounter);
@@ -24,8 +24,6 @@ namespace InputMaster
       Column = 1;
       Id = Interlocked.Increment(ref IdCounter);
     }
-
-    public bool IsTopLevel => Parent == null;
 
     public bool IsEnabled
     {
@@ -39,6 +37,8 @@ namespace InputMaster
         return Enabled;
       }
     }
+
+    private bool IsTopLevel => Parent == null;
 
     protected virtual bool ComputeEnabled()
     {

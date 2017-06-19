@@ -4,9 +4,9 @@ using System.Runtime.InteropServices;
 
 namespace InputMaster.KeyboardLayouts
 {
-  internal class LayoutEnglishUS : KeyboardLayout
+  internal class LayoutEnglishUnitedStates : KeyboardLayout
   {
-    public LayoutEnglishUS()
+    public LayoutEnglishUnitedStates()
     {
       var chars = "`-=[];'\\,./0123456789abcdefghijklmnopqrstuvwxyz";
       var shiftedChars = "~_+{}:\"|<>?)!@#$%^&*(ABCDEFGHIJKLMNOPQRSTUVWXYZ";

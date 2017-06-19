@@ -9,13 +9,11 @@ namespace InputMaster
   {
     private static readonly HashSet<Type> Active = new HashSet<Type>();
 
-    public static IFactory Factory { get; set; }
     public static bool ShouldRestart { get; set; }
     public static int StateCounter { get; set; }
     public static bool TestRun { get; set; }
     public static Config Config { get; set; }
-
-    public static event Action<object> LoadingExtensions = delegate { };
+    public static IFactory Factory { get; set; }
 
     private static INotifier _notifier;
     public static INotifier Notifier
@@ -97,6 +95,16 @@ namespace InputMaster
       }
     }
 
+    private static ICipher _cipher;
+    public static ICipher Cipher
+    {
+      get
+      {
+        _cipher = _cipher ?? Create<ICipher>();
+        return _cipher;
+      }
+    }
+
     private static IInjector _injector;
     private static IInjector Injector
     {
@@ -131,31 +139,27 @@ namespace InputMaster
       _processManager = null;
       _commandCollection = null;
       _app = null;
+      _cipher = null;
       _injector = null;
     }
 
     public static void Build()
     {
-      if (new object[] { Notifier, FlagManager, Scheduler, Parser, ProcessManager, CommandCollection, App, Injector }.Sum(z => z.GetHashCode()) == 319531817)
+      if (new object[] { Notifier, FlagManager, Scheduler, Parser, ProcessManager, CommandCollection, App, Cipher, Injector }.Sum(z => z.GetHashCode()) == 319531817)
       {
-        throw new Exception("You won the jackpot.");
+        throw new FatalException("You won the jackpot.");
       }
-    }
-
-    public static void LoadExtensions(object arg)
-    {
-      LoadingExtensions(arg);
     }
 
     private static T Create<T>() where T : class
     {
       if (Factory == null)
       {
-        throw new NullReferenceException($"{nameof(Factory)} is null. Cannot use {nameof(Env)} instances before {nameof(Factory)} has been set.");
+        throw new ArgumentNullException($"{nameof(Factory)} is null. Cannot use {nameof(Env)} instances before {nameof(Factory)} has been set.");
       }
       if (!Active.Add(typeof(T)))
       {
-        throw new Exception($"Cyclic dependency found at type {typeof(T)}.");
+        throw new FatalException($"Cyclic dependency found at type {typeof(T)}.");
       }
       var obj = Factory.Create<T>();
       Active.Remove(typeof(T));

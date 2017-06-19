@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>InputMaster</RootNamespace>
     <AssemblyName>InputMaster</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <PublishUrl>publish\</PublishUrl>
@@ -27,6 +27,7 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -39,7 +40,7 @@
     <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <RunCodeAnalysis>false</RunCodeAnalysis>
-    <CodeAnalysisRuleSet>ExtendedDesignGuidelineRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -90,6 +91,8 @@
     <Compile Include="AccountManager.cs" />
     <Compile Include="Actor.cs" />
     <Compile Include="App.cs" />
+    <Compile Include="Constants.cs" />
+    <Compile Include="ValueProvider.cs" />
     <Compile Include="Attributes.cs" />
     <Compile Include="DynamicHotkeyCollection.cs" />
     <Compile Include="Chord.cs" />
@@ -109,12 +112,10 @@
     <Compile Include="InputArgs.cs" />
     <Compile Include="Interfaces.cs" />
     <Compile Include="KeyboardLayouts\KeyboardLayout.cs" />
-    <Compile Include="CharacterKey.cs" />
-    <Compile Include="KeyboardLayouts\LayoutEnglishUS.cs" />
+    <Compile Include="KeyboardLayouts\LayoutEnglishUnitedStates.cs" />
     <Compile Include="ModeHotkey.cs" />
     <Compile Include="Hooks\ModeViewer.cs" />
     <Compile Include="ConfigHelper.cs" />
-    <Compile Include="ParserConfig.cs" />
     <Compile Include="Parsers\ParserOutput.cs" />
     <Compile Include="Parsers\Command.cs" />
     <Compile Include="Parsers\CommandToken.cs" />
@@ -123,11 +124,11 @@
     <Compile Include="Parsers\CharReader.cs" />
     <Compile Include="CommandCollection.cs" />
     <Compile Include="Parsers\Location.cs" />
-    <Compile Include="Extensions\CustomActor.cs" />
     <Compile Include="HotkeyCollection.cs" />
     <Compile Include="TextEditor\SharedFile.cs" />
     <Compile Include="TextEditor\SharedFileManager.cs" />
     <Compile Include="TextEditor\FileTab.cs" />
+    <Compile Include="TextEditor\FileManager.cs" />
     <Compile Include="TitleFilter.cs" />
     <Compile Include="Win32\Definitions.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -137,7 +138,7 @@
     </Compile>
     <Compile Include="Forms\RtbPosition.cs" />
     <Compile Include="Section.cs" />
-    <Compile Include="Cipher.cs" />
+    <Compile Include="TextEditor\Cipher.cs" />
     <Compile Include="Win32\NativeMethods.cs" />
     <Compile Include="Forms\NotifyForm.cs">
       <SubType>Form</SubType>

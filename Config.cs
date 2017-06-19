@@ -3,14 +3,11 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using InputMaster.Extensions;
 using InputMaster.Parsers;
 using InputMaster.Win32;
 using InputMaster.KeyboardLayouts;
-
-// ReSharper disable CollectionNeverUpdated.Global
-// ReSharper disable ConvertToConstant.Global
+// ReSharper disable All
 
 namespace InputMaster
 {
@@ -19,8 +16,8 @@ namespace InputMaster
     protected readonly Dictionary<string, string> PreprocessorReplaces = new Dictionary<string, string>();
     protected readonly Dictionary<string, Input> CustomInputs = new Dictionary<string, Input>();
     protected readonly Dictionary<string, Combo> CustomCombos = new Dictionary<string, Combo>();
-    private Dictionary<Input, Modifiers> ModifierDict = new Dictionary<Input, Modifiers>();
-    private Dictionary<Modifiers, Input> ModifierKeyDict = new Dictionary<Modifiers, Input>();
+    private readonly Dictionary<Input, Modifiers> ModifierDict = new Dictionary<Input, Modifiers>();
+    private readonly Dictionary<Modifiers, Input> ModifierKeyDict = new Dictionary<Modifiers, Input>();
 
     public Config()
     {
@@ -36,13 +33,13 @@ namespace InputMaster
       SharedFilesDirName = "SharedFiles";
       DefaultTextEditor = Path.Combine(Environment.SystemDirectory, "notepad.exe");
       Notepadpp = @"C:\Program Files (x86)\Notepad++\notepad++.exe";
+      ScreenshotsDir = Path.Combine(DataDir, "Screenshots");
       DefaultWebBrowser = @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe";
-
       DefaultInputReader = new InputReader(InputReaderFlags.AllowCustomCharacter | InputReaderFlags.AllowHoldRelease | InputReaderFlags.AllowMultiplier);
       DefaultChordReader = new InputReader(InputReaderFlags.AllowCustomModifier);
       DefaultModeChordReader = new InputReader(InputReaderFlags.AllowCustomModifier | InputReaderFlags.AllowKeywordAny);
       LiteralInputReader = new InputReader(InputReaderFlags.ParseLiteral);
-      KeyboardLayout = new LayoutEnglishUS();
+      KeyboardLayout = new LayoutEnglishUnitedStates();
       CloseKey = Input.Esc;
       ToggleHookKey = Input.NumLock;
       ClearModeCombo = new Combo(Input.Bs);
@@ -66,7 +63,6 @@ namespace InputMaster
       OpenAccountModeName = "OpenAccount";
       ModifyAccountModeName = "ModifyAccount";
       AccountModeName = "Account";
-      SharedFileRegex = new Regex(@"\[shared_(?<id>[0-9a-z]+)\]");
       TextEditorWindowTitle = "Text Editor - InputMaster";
       SaveTimerInterval = TimeSpan.FromSeconds(30);
       UpdatePanelInterval = TimeSpan.FromSeconds(1);
@@ -74,7 +70,6 @@ namespace InputMaster
       MaxTextEditorTabs = 3;
       TextEditorModeName = "TextEditor";
       CipherDerivationIterations = 100;
-
       foreach (var pair in ConfigHelper.ModifierKeys)
       {
         var input = pair.Item1;
@@ -88,10 +83,10 @@ namespace InputMaster
       var modifierWithoutKey = Helper.Modifiers.FirstOrDefault(z => !ModifierKeyDict.ContainsKey(z));
       if (modifierWithoutKey != Modifiers.None)
       {
-        throw new Exception($"No modifier key found for modifier {modifierWithoutKey}.");
+        throw new FatalException($"No modifier key found for modifier {modifierWithoutKey}.");
       }
     }
-    
+
     public string DataDir { get; protected set; }
     public string CacheDir { get; protected set; }
     public string SharedDir { get; protected set; }
@@ -104,6 +99,7 @@ namespace InputMaster
     public string DefaultTextEditor { get; protected set; }
     public string DefaultWebBrowser { get; protected set; }
     public string Notepadpp { get; protected set; }
+    public string ScreenshotsDir { get; protected set; }
     public InputReader DefaultInputReader { get; protected set; }
     public InputReader DefaultChordReader { get; protected set; }
     public InputReader DefaultModeChordReader { get; protected set; }
@@ -134,7 +130,6 @@ namespace InputMaster
     public string ModifyAccountModeName { get; protected set; }
     public string AccountModeName { get; protected set; }
     public string LocalAccountId { get; protected set; }
-    public Regex SharedFileRegex { get; protected set; }
     public bool EnableTextEditor { get; protected set; }
     public string TextEditorWindowTitle { get; protected set; }
     public TimeSpan SaveTimerInterval { get; protected set; }
@@ -146,11 +141,9 @@ namespace InputMaster
     public int CipherDerivationIterations { get; protected set; }
     public FileInfo KeyFile { get; protected set; }
     public bool AskForPassword { get; protected set; }
+    public Warnings Warnings { get; protected set; }
 
-    /// <summary>
-    /// Should only be called once.
-    /// </summary>
-    public void Initialize()
+    public virtual void Run()
     {
       PreprocessorReplaces.Add(nameof(DataDir), DataDir);
       PreprocessorReplaces.Add(nameof(CacheDir), CacheDir);
@@ -162,14 +155,10 @@ namespace InputMaster
       PreprocessorReplaces.Add(nameof(AccountsOutputFile), AccountsOutputFile);
       PreprocessorReplaces.Add(nameof(DefaultTextEditor), DefaultTextEditor);
       PreprocessorReplaces.Add(nameof(Notepadpp), Notepadpp);
-    }
 
-    public void Run()
-    {
       Env.AddActor(new MiscActor());
       Env.AddActor(new ForegroundInteractor());
       Env.AddActor(new SecondClipboard());
-      Env.AddActor(new CustomActor());
       Env.AddActor(new ColorTracker());
       Env.AddActor(new VarActor());
 
@@ -178,13 +167,12 @@ namespace InputMaster
         Env.CreateInjector().Add(Input.NumLock).Run();
       }
     }
-    
+
     public bool TryGetModifierKey(Modifiers modifier, out Input input) => ModifierKeyDict.TryGetValue(modifier, out input);
     public bool TryGetModifier(Input input, out Modifiers modifier) => ModifierDict.TryGetValue(input, out modifier);
     public bool TryGetCustomCombo(string name, out Combo combo) => CustomCombos.TryGetValue(name, out combo);
     public bool TryGetCustomInput(string name, out Input input) => CustomInputs.TryGetValue(name, out input);
     public bool TryGetPreprocessorReplace(string key, out string value) => PreprocessorReplaces.TryGetValue(key, out value);
-
     public virtual string GetChordText(string title) => Helper.GetChordText(title);
   }
 }

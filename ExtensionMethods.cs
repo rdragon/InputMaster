@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace InputMaster
 {
-  internal static partial class ExtensionMethods
+  internal static class ExtensionMethods
   {
     public static bool IsMouseMessage(this WindowMessage message)
     {
@@ -55,11 +55,6 @@ namespace InputMaster
       return Env.Config.TryGetModifier(input, out var modifier) ? modifier : Modifiers.None;
     }
 
-    public static Modifiers ToStandardModifier(this Input input)
-    {
-      return input.ToModifier().ToStandardModifiers();
-    }
-
     public static bool IsModifierKey(this Input input)
     {
       return input.ToModifier() != Modifiers.None;
@@ -67,7 +62,7 @@ namespace InputMaster
 
     public static bool IsStandardModifierKey(this Input input)
     {
-      return input.ToStandardModifier() != Modifiers.None;
+      return input.ToModifier().ToStandardModifiers() != Modifiers.None;
     }
 
     public static string ToTokenString(this Input input, bool shiftDown = false)

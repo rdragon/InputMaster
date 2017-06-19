@@ -12,11 +12,9 @@ namespace InputMaster
     public void AddActor(object actor)
     {
       var actorType = actor.GetType();
-      var actorCommandTypes = GetCommandTypes(actorType);
-      foreach (var methodInfo in actorType.GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Static | BindingFlags.Public | BindingFlags.Instance))
+      foreach (var methodInfo in actorType.GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
       {
-        var commandTypes = actorCommandTypes | GetCommandTypes(methodInfo);
-        if (!commandTypes.HasFlag(CommandTypes.Visible) || commandTypes.HasFlag(CommandTypes.Invisible))
+        if (!TryGetCommandTypes(methodInfo, out var commandTypes))
         {
           continue;
         }
@@ -29,18 +27,20 @@ namespace InputMaster
       }
     }
 
-    private static CommandTypes GetCommandTypes(MemberInfo memberInfo)
+    private static bool TryGetCommandTypes(MemberInfo memberInfo, out CommandTypes commandTypes)
     {
-      if (Attribute.IsDefined(memberInfo, typeof(CommandTypesAttribute)))
+      if (Attribute.IsDefined(memberInfo, typeof(CommandAttribute)))
       {
-        return ((CommandTypesAttribute)memberInfo.GetCustomAttribute(typeof(CommandTypesAttribute))).CommandTypes;
+        commandTypes = ((CommandAttribute)memberInfo.GetCustomAttribute(typeof(CommandAttribute))).CommandTypes;
+        return true;
       }
-      return CommandTypes.None;
+      commandTypes = CommandTypes.None;
+      return false;
     }
 
     public Command GetCommand(LocatedString locatedName)
     {
-      if (Commands.TryGetValue(locatedName.Value, out var command))
+      if (Commands.TryGetValue(locatedName.Value, out var command) || Commands.TryGetValue(locatedName.Value + "Async", out command))
       {
         return command;
       }

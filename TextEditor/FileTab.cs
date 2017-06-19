@@ -12,25 +12,31 @@ namespace InputMaster.TextEditor
 {
   internal class FileTab
   {
-    private readonly TextEditorForm Form;
-    private readonly RichTextBoxPlus Panel;
-    private readonly RichTextBoxPlus Rtb;
+    private readonly TextEditorForm TextEditorForm;
     private readonly ModeHook ModeHook;
+    private readonly FileManager FileManager;
+    private RichTextBoxPlus Panel;
+    private RichTextBoxPlus Rtb;
     private bool Changed;
     private bool ShouldUpdatePanel;
 
-    public FileTab(string file, TextEditorForm form, ModeHook modeHook, TabPage tabPage)
+    public FileTab(string file, TextEditorForm textEditorForm, ModeHook modeHook, FileManager fileManager, TabPage tabPage)
     {
-      Helper.ForbidNull(file, nameof(file));
-      Helper.ForbidNull(form, nameof(form));
-      Helper.ForbidNull(modeHook, nameof(modeHook));
-      Helper.ForbidNull(tabPage, nameof(tabPage));
       File = file;
-      Form = form;
-      ModeHook = modeHook;
-      Title = Form.Decrypt(File);
-      var text = Form.Decrypt(Form.GetDataFile(File));
+      TextEditorForm = textEditorForm;
+      FileManager = fileManager;
       TabPage = tabPage;
+      ModeHook = modeHook;
+    }
+
+    public string File { get; }
+    public TabPage TabPage { get; }
+    public string Title { get; private set; }
+
+    public async Task InitializeAsync()
+    {
+      Title = await Env.Cipher.DecryptAsync(File);
+      var text = await Env.Cipher.DecryptAsync(FileManager.GetDataFile(File));
       TabPage.Text = Title;
       TabPage.Tag = this;
       var splitContainer = new SplitContainer
@@ -62,7 +68,7 @@ namespace InputMaster.TextEditor
       };
 
       UpdatePanel(true);
-      if (Form.TryGetPosition(file, out var rtbPosition))
+      if (TextEditorForm.TryGetPosition(File, out var rtbPosition))
       {
         Rtb.LoadPosition(rtbPosition);
       }
@@ -101,7 +107,7 @@ namespace InputMaster.TextEditor
             break;
           case Keys.Control | Keys.W:
             e.Handled = true;
-            Close();
+            await CloseAsync();
             break;
           case Keys.F2:
             e.Handled = true;
@@ -121,16 +127,12 @@ namespace InputMaster.TextEditor
       };
     }
 
-    public TabPage TabPage { get; }
-    public string File { get; }
-    public string Title { get; private set; }
-
     /// <summary>
     /// Returns the position of the special section character, or -1 on failure.
     /// </summary>
     private static int GetStartOfSection(string padded, string section)
     {
-      var s = $"\n{ParserConfig.TextEditorSectionIdentifier} {section}\n";
+      var s = $"\n{Constants.TextEditorSectionIdentifier} {section}\n";
       var i = padded.IndexOf(s, StringComparison.Ordinal);
       return i == -1 ? -1 : i + 1;
     }
@@ -149,7 +151,7 @@ namespace InputMaster.TextEditor
     /// </summary>
     private static int GetAppendIndex(string padded, int index)
     {
-      var i = padded.IndexOf($"\n{ParserConfig.TextEditorSectionIdentifier} ", index, StringComparison.Ordinal);
+      var i = padded.IndexOf($"\n{Constants.TextEditorSectionIdentifier} ", index, StringComparison.Ordinal);
       i = i == -1 ? padded.Length : i;
       for (; i >= 2; i--)
       {
@@ -176,7 +178,7 @@ namespace InputMaster.TextEditor
       var sb = new StringBuilder();
       foreach (var line in Rtb.Lines)
       {
-        if (line.Length >= 3 && line.StartsWith(ParserConfig.TextEditorSectionIdentifier + " "))
+        if (line.Length >= 3 && line.StartsWith(Constants.TextEditorSectionIdentifier + " "))
         {
           var s = line.Substring(2);
           if (!string.IsNullOrWhiteSpace(s))
@@ -192,20 +194,21 @@ namespace InputMaster.TextEditor
       }
     }
 
-    public void Save()
+    public Task SaveAsync()
     {
-      if (Changed)
+      if (!Changed)
       {
-        Form.Encrypt(Form.GetDataFile(File), Rtb.Text);
-        Changed = false;
+        return Task.CompletedTask;
       }
+      Changed = false;
+      return Env.Cipher.EncryptAsync(FileManager.GetDataFile(File), Rtb.Text);
     }
 
-    public void Close()
+    public async Task CloseAsync()
     {
-      Save();
-      Form.UpdatePosition(File, Rtb.GetPosition());
-      Form.RemoveFileTab(this);
+      await SaveAsync();
+      TextEditorForm.UpdatePosition(File, Rtb.GetPosition());
+      TextEditorForm.RemoveFileTab(this);
       TabPage.Dispose();
     }
 
@@ -274,7 +277,7 @@ namespace InputMaster.TextEditor
     private void MoveCaretToTopOfSection()
     {
       var padded = GetPaddedText(Rtb.Text);
-      var i = padded.LastIndexOf($"\n{ParserConfig.TextEditorSectionIdentifier} ", Rtb.SelectionStart + 1, StringComparison.Ordinal);
+      var i = padded.LastIndexOf($"\n{Constants.TextEditorSectionIdentifier} ", Rtb.SelectionStart + 1, StringComparison.Ordinal);
       if (i == -1)
       {
         Rtb.Select(0, 0);
@@ -316,16 +319,16 @@ namespace InputMaster.TextEditor
       {
         Title = newTitle;
         TabPage.Text = Title;
-        Form.Encrypt(File, Title);
-        await Form.CompileTextEditorModeAsync();
+        await Env.Cipher.EncryptAsync(File, Title);
+        await FileManager.CompileTextEditorModeAsync();
       }
     }
 
     private void Compile()
     {
-      if (Title.Contains("[hotkeys]"))
+      if (Title.Contains(Constants.HotkeyFileTag))
       {
-        Env.Parser.UpdateHotkeyFile(new HotkeyFile(nameof(TextEditorForm), Rtb.Text));
+        Env.Parser.UpdateHotkeyFile(new HotkeyFile(nameof(TextEditor.TextEditorForm), Rtb.Text));
         Env.Parser.Run();
       }
     }

@@ -77,7 +77,7 @@ namespace InputMaster.Hooks
           TargetHook.Handle(comboArgs);
           e.Capture = comboArgs.Capture;
           // Capture a key down event that does not trigger an action when custom modifiers are active.
-          e.Capture = e.Capture || (Modifiers.HasCustomModifiers() && !e.Input.IsModifierKey());
+          e.Capture = e.Capture || Modifiers.HasCustomModifiers() && !e.Input.IsModifierKey();
         }
       }
 
@@ -206,19 +206,19 @@ namespace InputMaster.Hooks
       return s;
     }
 
-    [CommandTypes(CommandTypes.ExecuteAtParseTime | CommandTypes.Visible)]
+    [Command(CommandTypes.ExecuteAtParseTime)]
     public void Replace(ExecuteAtParseTimeData data, [AllowSpaces] LocatedString argument)
     {
       Replace(data, argument, false);
     }
 
-    [CommandTypes(CommandTypes.ExecuteAtParseTime | CommandTypes.Visible)]
+    [Command(CommandTypes.ExecuteAtParseTime)]
     public void ReplaceOp(ExecuteAtParseTimeData data, [AllowSpaces] LocatedString argument)
     {
       Replace(data, argument, true);
     }
 
-    private void ResetStandardModifierKeys()
+    private static void ResetStandardModifierKeys()
     {
       ConfigHelper
         .ModifierKeys.Select(z => z.Item1)

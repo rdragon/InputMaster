@@ -1,13 +1,17 @@
 ﻿using System;
-using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace InputMaster
 {
   internal static class Try
   {
-    private static Exception Exception;
+    private static Exception FatalException;
 
+    /// <summary>
+    /// Execute the action and capture any exception thrown during the execution.
+    /// </summary>
+    /// <param name="action"></param>
     public static void Execute(Action action)
     {
       try
@@ -16,21 +20,35 @@ namespace InputMaster
       }
       catch (Exception ex)
       {
-        SetException(ex);
+        HandleFatalException(ex);
       }
     }
 
-    public static void SetException(Exception exception)
+    public static async Task ExecuteAsync(Func<Task> action)
     {
       try
       {
-        if (exception != null && Interlocked.CompareExchange(ref Exception, exception, null) == null)
-        {
-          Env.Notifier.WriteError(exception.ToString());
-        }
+        await action();
+      }
+      catch (Exception ex)
+      {
+        HandleFatalException(ex);
+      }
+    }
+
+    public static void HandleFatalException(Exception exception)
+    {
+      FatalException = FatalException ?? exception;
+      // Try to log the exception.
+      try
+      {
+        Env.Notifier.WriteError(exception.ToString());
       }
       // ReSharper disable once EmptyGeneralCatchClause
-      catch (Exception) { }
+      catch (Exception)
+      {
+        // Nothing can be done here as there has already been thrown a fatal exception, and logging does not seem to work.
+      }
     }
 
     public static Action Wrap(Action action)
@@ -38,22 +56,22 @@ namespace InputMaster
       return () => { Execute(action); };
     }
 
-    public static void ShowException()
+    public static void ShowFatalExceptionIfExists()
     {
-      var exception = Exception;
-      if (exception != null)
+      if (FatalException == null)
       {
-        MessageBox.Show($"Fatal Error: {exception}", "Fatal Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        return;
       }
+      MessageBox.Show(FatalException.ToString(), "Fatal Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
 
-    public static void ThrowException()
+    public static void ThrowFatalExceptionIfExists()
     {
-      var exception = Exception;
-      if (exception != null)
+      if (FatalException == null)
       {
-        throw exception;
+        return;
       }
+      throw FatalException;
     }
   }
 }

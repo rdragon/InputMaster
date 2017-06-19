@@ -9,18 +9,21 @@ namespace InputMaster
   internal enum CommandTypes
   {
     None = 0,
-    /// <summary>
-    /// Overwrites <see cref="Visible"/>.
-    /// </summary>
     ModeOnly = 1,
     InputModeOnly = 2,
     ComposeModeOnly = 4,
     StandardSectionOnly = 8,
     TopLevelOnly = 16,
     Chordless = 32,
-    Visible = 64,
-    ExecuteAtParseTime = 128,
-    Invisible = 256
+    ExecuteAtParseTime = 128
+  }
+
+  [Flags]
+  internal enum Warnings
+  {
+    None = 0,
+    MissingAccountFile = 1,
+    MissingSharedPasswordFile = 2
   }
 
   [UsedImplicitly]
@@ -36,32 +39,31 @@ namespace InputMaster
 
   internal class HotkeyTrigger
   {
-    public Combo Combo { get; }
-
     public HotkeyTrigger(Combo combo)
     {
       Combo = combo;
     }
+
+    public Combo Combo { get; }
   }
 
-  public class AmbiguousHotkeyException : Exception
+  internal class AmbiguousHotkeyException : Exception
   {
-    public AmbiguousHotkeyException() { }
-    public AmbiguousHotkeyException(string message) : base(message) { }
-    public AmbiguousHotkeyException(string message, Exception innerException) : base(message, innerException) { }
+    public AmbiguousHotkeyException(string message, Exception innerException = null) : base(message, innerException) { }
   }
 
-  public class InvalidPasswordException : Exception
+  internal class WrappedException : Exception
   {
-    public InvalidPasswordException() { }
-    public InvalidPasswordException(string message) : base(message) { }
-    public InvalidPasswordException(string message, Exception innerException) : base(message, innerException) { }
+    public WrappedException(string message, Exception innerException = null) : base(message, innerException) { }
   }
 
-  public class WrappedException : Exception
+  internal class FatalException : Exception
   {
-    public WrappedException() { }
-    public WrappedException(string message) : base(message) { }
-    public WrappedException(string message, Exception innerException) : base(message, innerException) { }
+    public FatalException(string message, Exception innerException = null) : base(message, innerException) { }
+  }
+
+  internal class DecryptionFailedException : Exception
+  {
+    public DecryptionFailedException(string message, Exception innerException = null) : base(message, innerException) { }
   }
 }

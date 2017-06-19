@@ -25,11 +25,11 @@ namespace InputMaster.Parsers
         var mode = section.AsMode;
         if (!mode.IsComposeMode && chord.Length > 1)
         {
-          throw new ParseException($"Cannot use a chord with multiple keys inside a normal mode section. Use a '{ParserConfig.ComposeModeSectionIdentifier}' section instead.");
+          throw new ParseException($"Cannot use a chord with multiple keys inside a normal mode section. Use a '{Constants.ComposeModeSectionIdentifier}' section instead.");
         }
         if (!mode.IsComposeMode && chord.Length == 1 && chord.First().Modifiers != Modifiers.None)
         {
-          throw new ParseException($"Cannot use modifiers inside a normal mode section. Use a '{ParserConfig.ComposeModeSectionIdentifier}' section instead.");
+          throw new ParseException($"Cannot use modifiers inside a normal mode section. Use a '{Constants.ComposeModeSectionIdentifier}' section instead.");
         }
         section.AsMode.AddHotkey(new ModeHotkey(chord, action, description));
       }

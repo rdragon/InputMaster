@@ -5,7 +5,7 @@ InputMaster also makes all modifier keys [sticky](https://en.wikipedia.org/wiki/
 
 ## Requirements
 - Windows 7/8/10
-- .NET Framework 4.5.2
+- .NET Framework 4.6.1
 - Visual Studio 2017
 
 ## Build process

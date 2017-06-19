@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -20,16 +19,16 @@ using Newtonsoft.Json;
 
 namespace InputMaster
 {
-  internal static partial class Helper
+  internal static class Helper
   {
     public static string CreateTokenString(string text)
     {
-      return ParserConfig.TokenStart + text + ParserConfig.TokenEnd;
+      return Constants.TokenStart + text + Constants.TokenEnd;
     }
 
     public static string ReadIdentifierTokenString(LocatedString locatedString)
     {
-      if (Regex.IsMatch(locatedString.Value, "^" + ParserConfig.IdentifierTokenPattern + "$"))
+      if (Regex.IsMatch(locatedString.Value, "^" + Constants.IdentifierTokenPattern + "$"))
       {
         return locatedString.Value.Substring(1, locatedString.Length - 2);
       }
@@ -43,22 +42,9 @@ namespace InputMaster
       NativeMethods.SetForegroundWindow(window);
     }
 
-    public static void CloseWindow(IntPtr window)
-    {
-      NativeMethods.SendNotifyMessage(window, WindowMessage.Close, IntPtr.Zero, IntPtr.Zero);
-    }
-
     public static int GetMouseWheelDelta(Message m)
     {
-      return (m.WParam.ToInt32() >> 16);
-    }
-
-    public static void PushRange<T>(Stack<T> stack, IEnumerable<T> values)
-    {
-      foreach (var value in values)
-      {
-        stack.Push(value);
-      }
+      return m.WParam.ToInt32() >> 16;
     }
 
     public static void StartProcess(string fileName, string arguments = "", string userName = null, SecureString password = null, string domain = null, bool captureForeground = false)
@@ -90,29 +76,29 @@ namespace InputMaster
     }
 
     /// <summary>
-    /// Use only on main thread (because of <see cref="Env.Notifier"/>).
+    /// Log the exception, and exit the application if it is a fatal exception.
     /// </summary>
-    public static void HandleAnyException(Exception exception)
+    /// <param name="exception"></param>
+    public static void HandleException(Exception exception)
     {
+      if (IsFatalException(exception))
+      {
+        HandleFatalException(exception);
+        return;
+      }
       try
       {
-        if (IsCriticalException(exception))
-        {
-          HandleFatalException(exception);
-        }
-        else
-        {
-          Env.Notifier.WriteError(exception);
-        }
+        Env.Notifier.WriteError(exception);
       }
       catch (Exception ex)
       {
         HandleFatalException(ex);
       }
     }
-    public static void HandleFatalException(Exception exception)
+
+    private static void HandleFatalException(Exception exception)
     {
-      Try.SetException(exception);
+      Try.HandleFatalException(exception);
       Application.Exit();
     }
 
@@ -123,13 +109,6 @@ namespace InputMaster
       {
         new ShowStringForm(str, scrollToBottom).Show();
       }
-    }
-
-    public static T Exchange<T>(ref T value, T newValue)
-    {
-      var oldValue = value;
-      value = newValue;
-      return oldValue;
     }
 
     public static string GetString(string title, string defaultValue = null, bool selectAll = true)
@@ -207,7 +186,7 @@ namespace InputMaster
       throw new IOException("Failed to clear the clipboard.");
     }
 
-    public static async Task<T> TryAsync<T>(Func<T> action, int count = 10, int pauseInterval = 100)
+    private static async Task<T> TryAsync<T>(Func<T> action, int count = 10, int pauseInterval = 100)
     {
       for (var i = 0; i < count - 1; i++)
       {
@@ -215,17 +194,12 @@ namespace InputMaster
         {
           return action();
         }
-        catch (Exception ex) when (!IsCriticalException(ex))
+        catch (Exception ex) when (!IsFatalException(ex))
         {
           await Task.Delay(pauseInterval);
         }
       }
       return action();
-    }
-
-    public static async Task TryAsync(Action action, int count = 10, int pauseInterval = 100)
-    {
-      await TryAsync((Func<object>)(() => { action(); return null; }), count, pauseInterval);
     }
 
     public static void Beep()
@@ -266,34 +240,35 @@ namespace InputMaster
       return value;
     }
 
-    public static string ForbidNullOrEmpty(string str, string name)
+    public static void ForbidNullOrEmpty(string str, string name)
     {
       ForbidNull(str, name);
       if (str.Length == 0)
       {
         throw new ArgumentException("Unexpected empty string.", name);
       }
-      return str;
     }
 
-    public static string ForbidNullOrWhitespace(string str, string name)
+    private static void ForbidNullOrWhitespace(string str, string name)
     {
       ForbidNull(str, name);
       if (string.IsNullOrWhiteSpace(str))
       {
         throw new ArgumentException("String consists of whitespace only.", name);
       }
-      return str;
     }
 
-    public static bool IsCriticalException(Exception ex)
+    /// <summary>
+    /// Returns true for exceptions that we cannot / should not recover from.
+    /// </summary>
+    public static bool IsFatalException(Exception ex)
     {
-      return ex is StackOverflowException || ex is OutOfMemoryException || ex is ThreadAbortException || ex is AssertFailedException || ex is NullReferenceException || ex is IndexOutOfRangeException || ex is AccessViolationException || (ex.InnerException != null && IsCriticalException(ex.InnerException));
+      return ex is FatalException || ex is StackOverflowException || ex is OutOfMemoryException || ex is ThreadAbortException || ex is AssertFailedException && Env.TestRun || ex is AccessViolationException || ex.InnerException != null && IsFatalException(ex.InnerException);
     }
 
     public static bool HasAssertFailed(Exception ex)
     {
-      return ex is AssertFailedException || (ex.InnerException != null && HasAssertFailed(ex.InnerException));
+      return ex is AssertFailedException || ex.InnerException != null && HasAssertFailed(ex.InnerException);
     }
 
     public static string ByteCountToString(long byteCount)
@@ -355,47 +330,15 @@ namespace InputMaster
       return s;
     }
 
-    public static string RequireValidPath(string path)
-    {
-      ForbidNull(path, nameof(path));
-      // ReSharper disable once ReturnValueOfPureMethodIsNotUsed
-      Path.GetFullPath(path); // throws exception on non-valid path
-      return path;
-    }
-
-    public static string RequireValidFilePath(string path)
-    {
-      RequireValidPath(path);
-      if (string.IsNullOrWhiteSpace(Path.GetFileName(path)))
-      {
-        throw new ArgumentException($"The path '{path}' does not point to a file.");
-      }
-      return path;
-    }
-
-    public static string RequireValidFileName(string name)
+    public static void RequireValidFileName(string name)
     {
       if (!IsValidFileName(name))
       {
         throw new ArgumentException($"The name '{name}' is not a valid file name.");
       }
-      return name;
     }
 
-    public static bool IsValidPath(string path)
-    {
-      try
-      {
-        RequireValidPath(path);
-        return true;
-      }
-      catch (Exception ex) when (!IsCriticalException(ex))
-      {
-        return false;
-      }
-    }
-
-    public static bool IsValidFileName(string name)
+    private static bool IsValidFileName(string name)
     {
       ForbidNullOrWhitespace(name, nameof(name));
       return GetValidFileName(name) == name;
@@ -439,45 +382,9 @@ namespace InputMaster
         val = JsonConvert.DeserializeObject<T>(File.ReadAllText(file));
         return true;
       }
-      catch (Exception ex) when (!IsCriticalException(ex)) { }
+      catch (Exception ex) when (!IsFatalException(ex)) { }
       val = default(T);
       return false;
-    }
-
-    /// <summary>
-    /// Returns a path based on <paramref name="path"/> that doesn't point to any file or directory.
-    /// </summary>
-    public static string GetNewPath(string path)
-    {
-      RequireValidPath(path);
-      var file = new FileInfo(path);
-      var dir = new DirectoryInfo(path);
-      if (!file.Exists && !dir.Exists)
-      {
-        return path;
-      }
-      string basePath;
-      string extension;
-      if (file.Exists)
-      {
-        basePath = Path.Combine(file.DirectoryName, Path.GetFileNameWithoutExtension(file.Name));
-        extension = file.Extension;
-      }
-      else
-      {
-        basePath = dir.FullName;
-        extension = "";
-      }
-      var i = 0;
-      while (true)
-      {
-        i++;
-        var newPath = $"{basePath} ({i}){extension}";
-        if (!File.Exists(newPath) && !Directory.Exists(newPath))
-        {
-          return newPath;
-        }
-      }
     }
 
     /// <summary>
@@ -574,11 +481,6 @@ namespace InputMaster
       return null;
     }
 
-    public static byte[] GetSecureHash(string text)
-    {
-      return new SHA256Managed().ComputeHash(Encoding.UTF8.GetBytes(text));
-    }
-
     /// <summary>
     /// For each two adjacent lines with the same indentation and that both contain a column boundary, the column boundaries are aligned. A column boundary is a string of at least <paramref name="minSpaceCount"/> spaces (outside the indentation).
     /// </summary>
@@ -597,7 +499,7 @@ namespace InputMaster
     /// <summary>
     /// For each two adjacent lines with the same indentation and that both contain a column boundary, the column boundaries are aligned. A column boundary is a string of at least <paramref name="minSpaceCount"/> spaces (outside the indentation).
     /// </summary>
-    public static void AlignColumns(string[] lines, int minSpaceCount = 2)
+    private static void AlignColumns(string[] lines, int minSpaceCount = 2)
     {
       RequireAtLeast(minSpaceCount, nameof(minSpaceCount), 1);
       if (lines == null)

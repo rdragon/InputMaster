@@ -37,7 +37,7 @@ namespace InputMaster.Forms
 
     public override bool Equals(object obj)
     {
-      return obj != null && obj.GetType() == typeof(RtbPosition) && ((RtbPosition)obj) == this;
+      return obj is RtbPosition && (RtbPosition)obj == this;
     }
 
     public override int GetHashCode()

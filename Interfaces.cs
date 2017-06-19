@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using InputMaster.Parsers;
 using InputMaster.Win32;
+using System.Threading.Tasks;
 
 namespace InputMaster
 {
@@ -42,8 +43,6 @@ namespace InputMaster
     T Add(Input input, bool down);
     T Add(char c);
   }
-
-  internal interface IInjectorStream : IInjectorStream<IInjectorStream> { }
 
   internal interface IInjector<out T> : IInjectorStream<T>
   {
@@ -103,6 +102,7 @@ namespace InputMaster
   internal interface IApp
   {
     event Action Exiting;
+    event Action SaveTick;
   }
 
   internal interface IKeyboardLayout
@@ -111,5 +111,17 @@ namespace InputMaster
     Combo GetCombo(char c);
     string ConvertComboToString(Combo combo);
     bool IsCharacterKey(Input input);
+  }
+
+  internal interface ICipher
+  {
+    Task EncryptAsync(string file, string plaintext);
+    Task<string> DecryptAsync(string file);
+  }
+
+  internal interface IValueProvider<out T>
+  {
+    void ExecuteOnce(Action<T> func);
+    void ExecuteMany(Action<T> func);
   }
 }

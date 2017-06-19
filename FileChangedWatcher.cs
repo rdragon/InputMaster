@@ -18,7 +18,7 @@ namespace InputMaster
         SynchronizingObject = Env.Notifier.SynchronizingObject,
         EnableRaisingEvents = true
       };
-      FileSystemWatcher.Changed += Changed;
+      FileSystemWatcher.Changed += async (s, e) => await ChangedAsync();
     }
 
     public event Action<string> TextChanged = delegate { };
@@ -28,12 +28,7 @@ namespace InputMaster
       FileSystemWatcher.Dispose();
     }
 
-    public void RaiseChangedEvent()
-    {
-      Changed(null, null);
-    }
-
-    private async void Changed(object sender, EventArgs e)
+    public async void RaiseChangedEventAsync()
     {
       await ChangedAsync();
     }

@@ -21,6 +21,8 @@ namespace InputMaster
 
     public TextEditorForm TextEditorForm { get; private set; }
     public AccountManager AccountManager { get; private set; }
+    public SharedFileManager SharedFileManager { get; private set; }
+    public FileManager FileManager { get; private set; }
 
     public T Create<T>() where T : class
     {
@@ -70,6 +72,10 @@ namespace InputMaster
       {
         return new App();
       }
+      if (type == typeof(ICipher))
+      {
+        return new Cipher();
+      }
       throw new InvalidOperationException($"{nameof(Factory)} cannot create instances of type {type}.");
     }
 
@@ -91,20 +97,18 @@ namespace InputMaster
       var inputHook = new InputHook(comboRelay);
       var inputRelay = new InputRelay(inputHook);
       var primaryHook = new PrimaryHook(inputRelay);
-      if (Env.Config.EnableTextEditor)
-      {
-        TextEditorForm = new TextEditorForm(modeHook);
-        AccountManager = new AccountManager(TextEditorForm, modeHook);
-        TextEditorForm.Start();
-      }
+      FileManager = new FileManager(out var accountFileProvider, out var sharedPasswordProvider, out var sharedFileProvider);
+      AccountManager = new AccountManager(modeHook, accountFileProvider);
+      SharedFileManager = new SharedFileManager(sharedFileProvider, sharedPasswordProvider);
+      TextEditorForm = new TextEditorForm(modeHook, FileManager);
+      TextEditorForm.StartAsync();
       CreateNotifyIcon();
       Env.Config.Run();
-      Env.LoadExtensions(this);
       Env.Parser.EnableOnce();
       primaryHook.Register();
     }
 
-    private void CreateNotifyIcon()
+    private static void CreateNotifyIcon()
     {
       var notifyIcon = new NotifyIcon
       {

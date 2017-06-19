@@ -201,7 +201,7 @@ namespace InputMaster.Forms
       base.WndProc(ref msg);
     }
 
-    public void ShowFindDialog()
+    private void ShowFindDialog()
     {
       var s = Helper.GetString("Find", string.IsNullOrEmpty(SelectedText) ? LastSearchString : SelectedText);
       if (!string.IsNullOrEmpty(s))
@@ -235,11 +235,11 @@ namespace InputMaster.Forms
       var i = SelectionStart;
       var text = Text;
       var j = i;
-      while (j < text.Length && ParserConfig.IsIdentifierCharacter(text[j]))
+      while (j < text.Length && Constants.IsIdentifierCharacter(text[j]))
       {
         j++;
       }
-      while (i >= 0 && ParserConfig.IsIdentifierCharacter(text[i]))
+      while (i >= 0 && Constants.IsIdentifierCharacter(text[i]))
       {
         i--;
       }

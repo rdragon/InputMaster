@@ -4,12 +4,14 @@ using JetBrains.Annotations;
 namespace InputMaster
 {
   [MeansImplicitUse(ImplicitUseTargetFlags.WithMembers)]
-  [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-  internal sealed class CommandTypesAttribute : Attribute
+  [AttributeUsage(AttributeTargets.Method)]
+  internal sealed class CommandAttribute : Attribute
   {
     public CommandTypes CommandTypes { get; }
 
-    public CommandTypesAttribute(CommandTypes types)
+    public CommandAttribute() { }
+
+    public CommandAttribute(CommandTypes types)
     {
       CommandTypes = types;
     }

@@ -10,10 +10,10 @@ namespace InputMaster
 {
   internal class ForegroundInteractor : Actor
   {
-    [CommandTypes(CommandTypes.Visible)]
-    public static async Task SumSelection()
+    [Command]
+    public static Task SumSelection()
     {
-      await ModifySelectedText(s =>
+      return ModifySelectedTextAsync(s =>
       {
         return Regex.Split(s, @"\s+")
           .Where(z => !string.IsNullOrWhiteSpace(z))
@@ -22,30 +22,30 @@ namespace InputMaster
       });
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public static async Task SortSelectedLines()
+    [Command]
+    public static Task SortSelectedLines()
     {
-      await ModifySelectedLines(lines =>
+      return ModifySelectedLinesAsync(lines =>
       {
         lines.Sort();
         return lines;
       });
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public static async Task ReverseSelectedLines()
+    [Command]
+    public static Task ReverseSelectedLines()
     {
-      await ModifySelectedLines(lines =>
+      return ModifySelectedLinesAsync(lines =>
       {
         lines.Reverse();
         return lines;
       });
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public static async Task RandomlyPermuteSelectedLines()
+    [Command]
+    public static Task RandomlyPermuteSelectedLines()
     {
-      await ModifySelectedLines(lines =>
+      return ModifySelectedLinesAsync(lines =>
       {
         var r = new Random();
         var n = lines.Count;
@@ -60,19 +60,19 @@ namespace InputMaster
       });
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public static async Task ReplicateSelectedText()
+    [Command]
+    public static async Task ReplicateSelectedTextAsync()
     {
       await Task.Yield();
       var s = Helper.GetString("Count");
       var i = int.Parse(s);
-      await ModifySelectedText(t => string.Concat(Enumerable.Repeat(t, i)));
+      await ModifySelectedTextAsync(t => string.Concat(Enumerable.Repeat(t, i)));
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public static async Task ListDirectorySizes()
+    [Command]
+    public static async Task ListDirectorySizesAsync()
     {
-      var dir = await GetSelectedText();
+      var dir = await GetSelectedTextAsync();
       Helper.ForbidNull(dir, nameof(dir));
       Helper.RequireExistsDir(dir);
       Helper.ShowSelectableText(Helper.AlignColumns(
@@ -83,11 +83,12 @@ namespace InputMaster
         .Select(z => Path.GetFileName(z.Dir) + "  " + Helper.ByteCountToString(z.Size)))));
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public static async Task PartitionSelectedLines()
+    [Command]
+    public static async Task PartitionSelectedLinesAsync()
     {
+      await Task.Yield();
       var pattern = Helper.GetString("pattern");
-      await ModifySelectedLines(lines =>
+      await ModifySelectedLinesAsync(lines =>
       {
         var r = new Regex(pattern);
         var a = new List<string>();
@@ -100,8 +101,8 @@ namespace InputMaster
       });
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public static async Task Paste(string text)
+    [Command]
+    public static async Task PasteAsync(string text)
     {
       await Helper.SetClipboardTextAsync(text.Replace("\n", Environment.NewLine));
       if (!Env.Parser.TryGetAction(DynamicHotkeyEnum.Paste, true, out var action))
@@ -111,32 +112,32 @@ namespace InputMaster
       Env.CreateInjector().Add(action).Run();
     }
 
-    [CommandTypes(CommandTypes.Visible)]
-    public static async Task ClearClipboard()
+    [Command]
+    public static Task ClearClipboardAsync()
     {
-      await Helper.ClearClipboardAsync();
+      return Helper.ClearClipboardAsync();
     }
 
-    private static async Task ModifySelectedText(Func<string, string> func)
+    private static async Task ModifySelectedTextAsync(Func<string, string> func)
     {
-      var s = await GetSelectedText();
+      var s = await GetSelectedTextAsync();
       var t = func(s);
-      await Paste(t);
+      await PasteAsync(t);
     }
 
-    private static async Task ModifySelectedLines(Func<List<string>, IEnumerable<string>> func)
+    private static Task ModifySelectedLinesAsync(Func<List<string>, IEnumerable<string>> func)
     {
-      await ModifySelectedText(s => string.Join("\n", func(s.Split('\n').ToList())));
+      return ModifySelectedTextAsync(s => string.Join("\n", func(s.Split('\n').ToList())));
     }
 
-    public static async Task ModifyClipboardText(Func<string, string> func)
+    public static async Task ModifyClipboardTextAsync(Func<string, string> func)
     {
       var s = await Helper.GetClipboardTextAsync();
       var t = func(s);
       await Helper.SetClipboardTextAsync(t);
     }
 
-    public static async Task<string> GetSelectedText()
+    public static async Task<string> GetSelectedTextAsync()
     {
       await Helper.ClearClipboardAsync();
       if (!Env.Parser.TryGetAction(DynamicHotkeyEnum.Copy, true, out var action))

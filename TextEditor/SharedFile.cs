@@ -9,7 +9,7 @@ namespace InputMaster.TextEditor
     public SharedFile(string title, string nameFile, string dataFile)
     {
       Title = title;
-      var match = Env.Config.SharedFileRegex.Match(title);
+      var match = Constants.SharedFileRegex.Match(title);
       Id = match.Groups["id"].Value;
       NameFile = nameFile;
       DataFile = dataFile;

@@ -2,31 +2,24 @@
 using System.IO;
 using Newtonsoft.Json;
 using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace InputMaster.TextEditor
 {
   internal class SharedFileManager
   {
-    private readonly TextEditorForm TextEditorForm;
-    private readonly List<SharedFile> SharedFiles = new List<SharedFile>();
+    private List<SharedFile> SharedFiles = new List<SharedFile>();
     private readonly string TimestampSuffix = "_timestamp";
+    private string SharedPassword;
 
-    public SharedFileManager(TextEditorForm textEditorForm)
+    public SharedFileManager(IValueProvider<IEnumerable<SharedFile>> sharedFileProvider, IValueProvider<string> sharedPasswordProvider)
     {
-      TextEditorForm = textEditorForm;
+      sharedFileProvider.ExecuteMany(sharedFiles => SharedFiles = sharedFiles.ToList());
+      sharedPasswordProvider.ExecuteOnce(sharedPassword => SharedPassword = sharedPassword);
     }
 
-    public void Clear()
-    {
-      SharedFiles.Clear();
-    }
-
-    public void Add(SharedFile sharedFile)
-    {
-      SharedFiles.Add(sharedFile);
-    }
-
-    public void Export()
+    public async Task ExportAsync()
     {
       var targetDir = Path.Combine(Env.Config.SharedDir, Env.Config.SharedFilesDirName);
       var tempDir = Path.Combine(Env.Config.CacheDir, Env.Config.SharedFilesDirName);
@@ -38,34 +31,43 @@ namespace InputMaster.TextEditor
       }
       foreach (var sharedFile in SharedFiles)
       {
-        Export(sharedFile, targetDir, tempDir);
+        await ExportAsync(sharedFile, targetDir, tempDir);
       }
       Directory.Delete(tempDir, true);
     }
 
-    public void Import(string dir)
+    public async Task<IEnumerable<TitleTextPair>> ImportAsync(string dir)
     {
       Helper.RequireExistsDir(dir);
-      TextEditorForm.CloseAll();
       foreach (var sharedFile in SharedFiles)
       {
         Helper.ForceDeleteFile(sharedFile.NameFile);
         Helper.ForceDeleteFile(sharedFile.DataFile);
       }
       SharedFiles.Clear();
+      var pairs = new List<TitleTextPair>();
       foreach (var file in Directory.EnumerateFiles(dir))
       {
         if (file.EndsWith(TimestampSuffix, StringComparison.OrdinalIgnoreCase))
         {
           continue;
         }
-        var s = Cipher.Decrypt(file, TextEditorForm.SafePassword);
-        var pair = JsonConvert.DeserializeObject<TitleTextPair>(s);
-        TextEditorForm.CreateNewFile(pair.Title, pair.Text);
+        RequireSharedPassword();
+        var s = await new Cipher(SharedPassword).DecryptAsync(file);
+        pairs.Add(JsonConvert.DeserializeObject<TitleTextPair>(s));
+      }
+      return pairs;
+    }
+
+    private void RequireSharedPassword()
+    {
+      if (SharedPassword == null)
+      {
+        throw new InvalidOperationException("No shared password loaded.");
       }
     }
 
-    private void Export(SharedFile sharedFile, string targetDir, string tempDir)
+    private async Task ExportAsync(SharedFile sharedFile, string targetDir, string tempDir)
     {
       var tempFile = Path.Combine(tempDir, sharedFile.Id);
       var targetFile = Path.Combine(targetDir, sharedFile.Id);
@@ -83,10 +85,10 @@ namespace InputMaster.TextEditor
         }
       }
 
-      Helper.ForbidNull(TextEditorForm.SafePassword, nameof(TextEditorForm.SafePassword));
-      var text = TextEditorForm.Decrypt(sharedFile.DataFile);
+      RequireSharedPassword();
+      var text = await Env.Cipher.DecryptAsync(sharedFile.DataFile);
       Directory.CreateDirectory(Path.GetDirectoryName(targetFile));
-      Cipher.Encrypt(targetFile, JsonConvert.SerializeObject(new TitleTextPair(sharedFile.Title, text)), TextEditorForm.SafePassword);
+      await new Cipher(SharedPassword).EncryptAsync(targetFile, JsonConvert.SerializeObject(new TitleTextPair(sharedFile.Title, text)));
       var timestamp = new SharedFileTimestamp(sharedFile.NameFile, sharedFile.DataFile);
       File.WriteAllText(targetTimestampFile, JsonConvert.SerializeObject(timestamp));
     }

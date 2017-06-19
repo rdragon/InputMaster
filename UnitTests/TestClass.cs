@@ -34,5 +34,35 @@ namespace UnitTests
       Assert.AreEqual("x", x.Value);
       Assert.AreEqual(new Location(1, 3), x.Location);
     }
+
+    [TestMethod]
+    public void LocatedString_TrimEnd()
+    {
+      var x = new LocatedString("x  ", new Location(1, 1));
+      x = x.TrimEnd();
+      Assert.AreEqual("x", x.Value);
+      Assert.AreEqual(new Location(1, 1), x.Location);
+    }
+
+    [TestMethod]
+    public void LocatedString_Trim()
+    {
+      var x = new LocatedString("  x  ", new Location(1, 1));
+      x = x.Trim();
+      Assert.AreEqual("x", x.Value);
+      Assert.AreEqual(new Location(1, 3), x.Location);
+    }
+
+    [TestMethod]
+    public void LocatedString_Substring()
+    {
+      var x = new LocatedString("abcdef", new Location(1, 1));
+      x = x.Substring(2);
+      Assert.AreEqual("cdef", x.Value);
+      Assert.AreEqual(new Location(1, 3), x.Location);
+      x = x.Substring(1, 2);
+      Assert.AreEqual("de", x.Value);
+      Assert.AreEqual(new Location(1, 4), x.Location);
+    }
   }
 }

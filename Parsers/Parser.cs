@@ -12,8 +12,8 @@ namespace InputMaster.Parsers
 {
   internal class Parser : IParser
   {
-    private static readonly Regex CommentRegex = new Regex($"{Regex.Escape(ParserConfig.CommentIdentifier)}.*$", RegexOptions.Multiline);
-    private static readonly Regex PreprocessorReplaceRegex = new Regex($@"{ParserConfig.SpecialChar}\((?<ident>{ParserConfig.InnerIdentifierTokenPattern})\)");
+    private static readonly Regex CommentRegex = new Regex($"{Regex.Escape(Constants.CommentIdentifier)}.*$", RegexOptions.Multiline);
+    private static readonly Regex PreprocessorReplaceRegex = new Regex($@"{Constants.SpecialChar}\((?<ident>{Constants.InnerIdentifierTokenPattern})\)");
     private readonly Dictionary<string, HotkeyFile> HotkeyFiles = new Dictionary<string, HotkeyFile>();
     private readonly Dictionary<string, ParseAction> ParseActions = new Dictionary<string, ParseAction>();
     private DynamicHotkeyCollection DynamicHotkeyCollection = new DynamicHotkeyCollection();
@@ -31,7 +31,7 @@ namespace InputMaster.Parsers
         UpdateHotkeyFile(new HotkeyFile("default", text));
         Run();
       };
-      hotkeyFileWatcher.RaiseChangedEvent();
+      hotkeyFileWatcher.RaiseChangedEventAsync();
       Env.App.Exiting += hotkeyFileWatcher.Dispose;
     }
 
@@ -152,7 +152,7 @@ namespace InputMaster.Parsers
           mode.ResolveIncludes(parserOutput);
         }
       }
-      catch (Exception ex) when (!Helper.IsCriticalException(ex))
+      catch (Exception ex) when (!Helper.IsFatalException(ex))
       {
         Env.Notifier.WriteError(ex, "Failed to parse hotkeys.");
         return;
@@ -222,11 +222,11 @@ namespace InputMaster.Parsers
           else
           {
             HandleColumn(Location.Column);
-            if (TryRead(ParserConfig.SectionIdentifier))
+            if (TryRead(Constants.SectionIdentifier))
             {
               ReadSectionHeader();
             }
-            else if (TryRead(ParserConfig.SpecialCommandIdentifier))
+            else if (TryRead(Constants.SpecialCommandIdentifier))
             {
               ReadSpecialCommand();
             }
@@ -285,7 +285,7 @@ namespace InputMaster.Parsers
         ReadSome(' ');
         var sectionType = ReadIdentifier();
         ReadSome(' ');
-        var argument = ReadArguments().Require(targetCount: 1, delimiter: ParserConfig.ArgumentDelimiter);
+        var argument = ReadArguments().Require(targetCount: 1, delimiter: Constants.ArgumentDelimiter);
         Read('\n');
         var section = CreateSection(sectionType, argument);
         if (section.IsMode)
@@ -307,15 +307,15 @@ namespace InputMaster.Parsers
           var regexOptions = sectionType == RegexSectionType.Process ? RegexOptions.IgnoreCase : RegexOptions.None;
           return new RegexSection(Sections.Peek().AsStandardSection, CreateRegex(argument, regexOptions), sectionType);
         }
-        if (type.Value == ParserConfig.FlagSectionIdentifier)
+        if (type.Value == Constants.FlagSectionIdentifier)
         {
           return new FlagSection(Sections.Peek().AsStandardSection, argument.Value);
         }
-        if (type.Value == ParserConfig.InputModeSectionIdentifier)
+        if (type.Value == Constants.InputModeSectionIdentifier)
         {
           return new Mode(argument.Value, false);
         }
-        if (type.Value == ParserConfig.ComposeModeSectionIdentifier)
+        if (type.Value == Constants.ComposeModeSectionIdentifier)
         {
           return new Mode(argument.Value, true);
         }
@@ -372,15 +372,15 @@ namespace InputMaster.Parsers
           }
           if (token.HasFlag(CommandTypes.ModeOnly) && !Sections.Peek().IsMode)
           {
-            throw CreateException(token, $"This command is only valid in a {ParserConfig.InputModeSectionIdentifier} or {ParserConfig.ComposeModeSectionIdentifier} section.");
+            throw CreateException(token, $"This command is only valid in a {Constants.InputModeSectionIdentifier} or {Constants.ComposeModeSectionIdentifier} section.");
           }
           if (token.HasFlag(CommandTypes.ComposeModeOnly) && (!Sections.Peek().IsMode || !Sections.Peek().AsMode.IsComposeMode))
           {
-            throw CreateException(token, $"This command is only valid in a {ParserConfig.ComposeModeSectionIdentifier} section.");
+            throw CreateException(token, $"This command is only valid in a {Constants.ComposeModeSectionIdentifier} section.");
           }
           if (token.HasFlag(CommandTypes.InputModeOnly) && (!Sections.Peek().IsMode || Sections.Peek().AsMode.IsComposeMode))
           {
-            throw CreateException(token, $"This command is only valid in a {ParserConfig.InputModeSectionIdentifier} section.");
+            throw CreateException(token, $"This command is only valid in a {Constants.InputModeSectionIdentifier} section.");
           }
           if (token.HasFlag(CommandTypes.StandardSectionOnly) && !Sections.Peek().IsStandardSection)
           {
@@ -447,7 +447,7 @@ namespace InputMaster.Parsers
             {
               break;
             }
-            Read(ParserConfig.MultipleCommandsIdentifier);
+            Read(Constants.MultipleCommandsIdentifier);
             ReadSome(' ');
             commandTokens.Add(ReadCommand());
           }

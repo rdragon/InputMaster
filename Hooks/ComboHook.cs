@@ -59,7 +59,7 @@ namespace InputMaster.Hooks
         {
           action(e.Combo);
         }
-        catch (Exception ex) when (!Helper.IsCriticalException(ex))
+        catch (Exception ex) when (!Helper.IsFatalException(ex))
         {
           Env.Notifier.WriteError(ex);
         }

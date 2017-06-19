@@ -104,7 +104,7 @@ namespace InputMaster
         {
           Action();
         }
-        catch (Exception ex) when (!Helper.IsCriticalException(ex))
+        catch (Exception ex) when (!Helper.IsFatalException(ex))
         {
           Env.Notifier.WriteError(ex, "Failed to complete a scheduled job" + Helper.GetBindingsSuffix(nameof(Name), Name));
         }

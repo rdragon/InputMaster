@@ -6,8 +6,8 @@ namespace InputMaster.KeyboardLayouts
 {
   internal abstract class KeyboardLayout : IKeyboardLayout
   {
-    private Dictionary<char, Combo> Combos = new Dictionary<char, Combo>();
-    private Dictionary<Input, CharacterKey> CharacterKeys = new Dictionary<Input, CharacterKey>();
+    private readonly Dictionary<char, Combo> Combos = new Dictionary<char, Combo>();
+    private readonly Dictionary<Input, (char, char)> CharacterKeys = new Dictionary<Input, (char, char)>();
 
     protected void AddKey(Input input, char c, char? shiftedChar = null)
     {
@@ -15,7 +15,7 @@ namespace InputMaster.KeyboardLayouts
       if (shiftedChar.HasValue)
       {
         Combos.Add(shiftedChar.Value, new Combo(input, Modifiers.Shift));
-        CharacterKeys.Add(input, new CharacterKey(input, c, shiftedChar.Value));
+        CharacterKeys.Add(input, (c, shiftedChar.Value));
       }
     }
 
@@ -30,16 +30,16 @@ namespace InputMaster.KeyboardLayouts
         if (modifiers.HasFlag(Modifiers.Shift))
         {
           modifiers &= ~Modifiers.Shift;
-          text = printableKey.ShiftedChar.ToString();
+          text = printableKey.Item2.ToString();
         }
         else
         {
-          text = printableKey.Char.ToString();
+          text = printableKey.Item1.ToString();
         }
       }
       else
       {
-        text = ParserConfig.TokenStart + combo.Input.ToString() + ParserConfig.TokenEnd;
+        text = Constants.TokenStart + combo.Input.ToString() + Constants.TokenEnd;
       }
       return modifiers.ToTokenString() + text;
     }

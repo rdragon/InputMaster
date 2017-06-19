@@ -10,6 +10,7 @@ namespace InputMaster
     private readonly List<ModeHotkey> Hotkeys = new List<ModeHotkey>();
     private readonly List<string> Includes = new List<string>();
     private MyIncludeState IncludeState = MyIncludeState.Idle;
+    private bool HasAmbiguousChord;
 
     public Mode(string name, bool isComposeMode)
     {
@@ -19,11 +20,10 @@ namespace InputMaster
 
     public string Name { get; }
     public bool IsComposeMode { get; }
-    public bool HasAmbiguousChord { get; private set; }
 
     public void AddHotkey(ModeHotkey modeHotkey, bool hideWarningMessage = false)
     {
-      Debug.Assert(IsComposeMode || (modeHotkey.Chord.Length == 1 && modeHotkey.Chord.First().Modifiers == Modifiers.None));
+      Debug.Assert(IsComposeMode || modeHotkey.Chord.Length == 1 && modeHotkey.Chord.First().Modifiers == Modifiers.None);
       foreach (var chord in Hotkeys.Select(z => z.Chord))
       {
         var small = modeHotkey.Chord;

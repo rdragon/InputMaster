@@ -40,13 +40,13 @@ namespace UnitTests
       Env.Parser.EnableOnce();
     }
 
-    [CommandTypes(CommandTypes.ExecuteAtParseTime | CommandTypes.Chordless | CommandTypes.Visible | CommandTypes.TopLevelOnly)]
+    [Command(CommandTypes.ExecuteAtParseTime | CommandTypes.Chordless | CommandTypes.TopLevelOnly)]
     public void Reset(ExecuteAtParseTimeData data)
     {
       data.ParserOutput.Clear();
     }
 
-    [CommandTypes(CommandTypes.ExecuteAtParseTime | CommandTypes.Chordless | CommandTypes.Visible | CommandTypes.TopLevelOnly)]
+    [Command(CommandTypes.ExecuteAtParseTime | CommandTypes.Chordless | CommandTypes.TopLevelOnly)]
     public void Test(ExecuteAtParseTimeData data, LocatedString toSimulate, string expectedOutput, string processName = null, string windowTitle = null, string flag = null)
     {
       Env.Parser.FireNewParserOutput(data.ParserOutput);

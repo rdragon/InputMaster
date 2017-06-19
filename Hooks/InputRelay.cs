@@ -3,7 +3,7 @@
 namespace InputMaster.Hooks
 {
   /// <summary>
-  /// Very simple hook that can be switched on and off by pressing a key. It also has the capability to capture all events until <see cref="Env.Config.CloseKey"/> is pressed.
+  /// Very simple hook that can be switched on and off by pressing a key. It also has the capability to capture all events until a dedicated key is pressed.
   /// </summary>
   internal class InputRelay : Actor, IInputHook
   {
@@ -74,7 +74,7 @@ namespace InputMaster.Hooks
       return s;
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void CaptureAllInput()
     {
       CaptureAll = true;
@@ -84,7 +84,7 @@ namespace InputMaster.Hooks
     /// Like <see cref="MiscActor.Send(Action)"/>, but only accepts a single <see cref="Input"/> as argument, and will release the given input when the hotkey key that triggered the event is released.
     /// Also, when the hotkey key is being held down, no additional injections are made (if this is not desired, an additional parameter should be added to the function which controls this behaviour).
     /// </summary>
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void SimulateInput(HotkeyTrigger trigger, Input input)
     {
       if (SimulatedInput != null)

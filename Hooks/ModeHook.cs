@@ -43,20 +43,20 @@ namespace InputMaster.Hooks
     /// </summary>
     public bool Active => ActiveMode != null;
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void EnterMode(string name, [ValidFlags("h")]string flags = "")
     {
       EnterMode(name, Input.None);
       Hidden = flags.Contains('h');
     }
 
-    [CommandTypes(CommandTypes.Visible)]
+    [Command]
     public void EnterModeHot(HotkeyTrigger trigger, string name)
     {
       EnterMode(name, trigger.Combo.Input);
     }
 
-    [CommandTypes(CommandTypes.Visible | CommandTypes.ModeOnly)]
+    [Command(CommandTypes.ModeOnly)]
     public void LeaveMode()
     {
       ModeViewer.Hide();
@@ -88,7 +88,7 @@ namespace InputMaster.Hooks
         }
         else
         {
-          Env.Notifier.WriteError($"Cannot use '{nameof(EnterModeHot)}' on a {ParserConfig.ComposeModeSectionIdentifier} '{mode.Name}'.");
+          Env.Notifier.WriteError($"Cannot use '{nameof(EnterModeHot)}' on a {Constants.ComposeModeSectionIdentifier} '{mode.Name}'.");
         }
       }
     }
@@ -124,7 +124,7 @@ namespace InputMaster.Hooks
             {
               modeHotkey.Action(e.Combo);
             }
-            catch (Exception ex) when (!Helper.IsCriticalException(ex))
+            catch (Exception ex) when (!Helper.IsFatalException(ex))
             {
               Env.Notifier.WriteError(ex);
             }
@@ -185,7 +185,7 @@ namespace InputMaster.Hooks
           {
             if (modeHotkey.Chord.Length - 1 == InputCount)
             {
-              if (hit == null || (modeHotkey.Chord.IsMoreSpecificThan(hit.Chord)))
+              if (hit == null || modeHotkey.Chord.IsMoreSpecificThan(hit.Chord))
               {
                 hit = modeHotkey;
               }
@@ -228,7 +228,7 @@ namespace InputMaster.Hooks
         {
           hit.Action(e.Combo);
         }
-        catch (Exception ex) when (!Helper.IsCriticalException(ex))
+        catch (Exception ex) when (!Helper.IsFatalException(ex))
         {
           Env.Notifier.WriteError(ex);
         }
@@ -246,7 +246,7 @@ namespace InputMaster.Hooks
 
     private string GetDisplayText()
     {
-      var modeHotkeys = new List<ModeHotkey>(ModeHotkeys).Where(z => z.Description != null && !z.Description.Contains("[hidden]")).ToList();
+      var modeHotkeys = new List<ModeHotkey>(ModeHotkeys).Where(z => z.Description != null && !z.Description.Contains(Constants.HiddenTag)).ToList();
       modeHotkeys.Sort((a, b) => string.CompareOrdinal(a.Description, b.Description));
       return string.Join("\n", modeHotkeys.Select(z => z.Description));
     }
