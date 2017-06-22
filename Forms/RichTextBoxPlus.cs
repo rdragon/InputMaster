@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -60,25 +59,29 @@ namespace InputMaster.Forms
         {
           return;
         }
-        e.Handled = true;
         switch (e.KeyData)
         {
           case Keys.F | Keys.Control:
+            e.Handled = true;
             ShowFindDialog();
             break;
           case Keys.F3:
+            e.Handled = true;
             FindNext(Math.Min(TextLength, SelectionStart + 1));
             break;
           case Keys.Shift | Keys.F3:
+            e.Handled = true;
             FindPrev(SelectionStart - 1);
             break;
           case Keys.F7:
+            e.Handled = true;
             Tidy();
             break;
           case Keys.V | Keys.Control:
           case Keys.Insert | Keys.Shift:
             if (CanPaste(DataFormats.GetFormat("Text")))
             {
+              e.Handled = true;
               var e1 = new PastingEventArgs();
               Pasting(e1);
               if (!e1.Handled)
@@ -86,25 +89,22 @@ namespace InputMaster.Forms
                 Paste(DataFormats.GetFormat("Text"));
               }
             }
-            else
-            {
-              e.Handled = false;
-            }
             break;
           case Keys.Shift | Keys.Delete:
+            e.Handled = true;
             RemoveSelectedLines();
             break;
-          case Keys.Control | Keys.D:
+          case Keys.Control | Keys.Shift | Keys.D:
+            e.Handled = true;
             DuplicateSelectionOrLine();
             break;
           case Keys.Alt | Keys.Up:
+            e.Handled = true;
             MoveSelectedLines(ArrowDirection.Up);
             break;
           case Keys.Alt | Keys.Down:
+            e.Handled = true;
             MoveSelectedLines(ArrowDirection.Down);
-            break;
-          default:
-            e.Handled = false;
             break;
         }
       };
@@ -113,23 +113,21 @@ namespace InputMaster.Forms
       {
         if (e.KeyChar == '\t')
         {
-          SelectedText = "  ";
           e.Handled = true;
+          SelectedText = "  ";
         }
       };
 
       KeyUp += async (s, e) =>
       {
         // A hack to fix the "Chinese Character Bug".
-        if (e.KeyData.HasFlag(Keys.Alt))
+        if (!e.KeyData.HasFlag(Keys.Alt) || Parent == null)
         {
-          await Task.Yield();
-          if (Parent != null)
-          {
-            Parent.Focus();
-            Focus();
-          }
+          return;
         }
+        await Task.Yield();
+        Parent.Focus();
+        Focus();
       };
 
       Disposed += (s, e) =>
@@ -203,14 +201,14 @@ namespace InputMaster.Forms
 
     private void ShowFindDialog()
     {
-      var s = Helper.GetString("Find", string.IsNullOrEmpty(SelectedText) ? LastSearchString : SelectedText);
-      if (!string.IsNullOrEmpty(s))
+      if (!Helper.TryGetString("Find", out var s, string.IsNullOrEmpty(SelectedText) ? LastSearchString : SelectedText))
       {
-        LastSearchString = s;
-        FindRegex = Helper.GetRegex(s, RegexOptions.IgnoreCase);
-        FindPrevRegex = Helper.GetRegex(s, RegexOptions.IgnoreCase | RegexOptions.RightToLeft);
-        FindNext(SelectionStart);
+        return;
       }
+      LastSearchString = s;
+      FindRegex = Helper.GetRegex(s, RegexOptions.IgnoreCase);
+      FindPrevRegex = Helper.GetRegex(s, RegexOptions.IgnoreCase | RegexOptions.RightToLeft);
+      FindNext(SelectionStart);
     }
 
     protected override void WndProc(ref Message m)
@@ -247,7 +245,7 @@ namespace InputMaster.Forms
     }
 
     /// <summary>
-    /// Replaces tabs by spaces, removes trailing whitespace, limits the number of adjacent empty lines to two and appends 50 empty lines at the end
+    /// Replace tabs by spaces, remove trailing whitespace, limit the number of adjacent empty lines to two and append 50 empty lines at the end.
     /// </summary>
     private void Tidy()
     {
@@ -278,27 +276,39 @@ namespace InputMaster.Forms
     {
       if (SelectionLength == 0)
       {
-        var text = Text;
-        var ss = SelectionStart;
-        var i = Helper.GetLineStart(text, ss);
-        var j = Helper.GetLineEnd(text, ss);
-        if (j == text.Length)
-        {
-          Select(i, j - i);
-          SelectedText = SelectedText + "\n" + SelectedText;
-        }
-        else
-        {
-          Select(i, j - i + 1);
-          SelectedText = SelectedText + SelectedText;
-        }
-        Select(ss, 0);
+        DuplicateLine();
       }
       else
       {
-        var sl = SelectionLength;
+        DuplicateSelection();
+      }
+    }
+
+    private void DuplicateSelection()
+    {
+      var start = SelectionStart;
+      var length = SelectionLength;
+      SelectedText = SelectedText + SelectedText;
+      Select(start + length, length);
+    }
+
+    private void DuplicateLine()
+    {
+      var text = Text;
+      var selectionStart = SelectionStart;
+      var lineStart = Helper.GetLineStart(text, selectionStart);
+      var lineEnd = Helper.GetLineEnd(text, selectionStart);
+      if (lineEnd == text.Length)
+      {
+        Select(lineStart, lineEnd - lineStart);
+        SelectedText = SelectedText + "\n" + SelectedText;
+        Select(lineEnd + 2 + selectionStart - lineStart, 0);
+      }
+      else
+      {
+        Select(lineStart, lineEnd - lineStart + 1);
         SelectedText = SelectedText + SelectedText;
-        SelectionLength = sl;
+        Select(lineEnd + 1 + selectionStart - lineStart, 0);
       }
     }
 
@@ -369,7 +379,7 @@ namespace InputMaster.Forms
 
     private bool FindPrev(int startAt)
     {
-      Debug.Assert(startAt >= -1);
+      Helper.RequireTrue(startAt >= -1);
       if (FindPrevRegex != null)
       {
         var m = FindPrevRegex.Match(Text, 0, startAt + 1);
@@ -481,57 +491,65 @@ namespace InputMaster.Forms
 
         Rtb.KeyDown += (s, e) =>
         {
-          if (On)
+          if (!On)
           {
-            if (e.KeyCode == Keys.Back)
-            {
+            return;
+          }
+          // Always handle these keys as they mess with the multi-edit.
+          switch (e.KeyCode)
+          {
+            case Keys.Back:
               e.Handled = true;
-              if (e.KeyData == Keys.Back)
-              {
-                Modify(ModifyType.Backspace);
-              }
-            }
-            else if (e.KeyCode == Keys.Delete)
-            {
+              break;
+            case Keys.Delete:
               e.Handled = true;
-              if (e.KeyData == Keys.Delete)
-              {
-                Modify(ModifyType.Delete);
-              }
-            }
-            else if (e.KeyData == Keys.Escape)
-            {
+              break;
+          }
+          switch (e.KeyData)
+          {
+            case Keys.Back:
+              e.Handled = true;
+              Modify(ModifyType.Backspace);
+              break;
+            case Keys.Delete:
+              e.Handled = true;
+              Modify(ModifyType.Delete);
+              break;
+            case Keys.Escape:
+              e.Handled = true;
               TurnOff();
-            }
+              break;
           }
         };
 
         Rtb.KeyPress += (s, e) =>
         {
-          if (On)
+          if (!On)
           {
-            e.Handled = true;
-            if (!char.IsControl(e.KeyChar))
-            {
-              Modify(ModifyType.String, e.KeyChar.ToString());
-            }
+            return;
+          }
+          e.Handled = true;
+          if (!char.IsControl(e.KeyChar))
+          {
+            Modify(ModifyType.String, e.KeyChar.ToString());
           }
         };
 
         Rtb.Pasting += async e =>
         {
-          if (On)
+          if (!On)
           {
-            e.Handled = true;
-            var s = await Helper.GetClipboardTextAsync();
-            if (s.IndexOf('\n') == -1)
-            {
-              Modify(ModifyType.String, s);
-            }
-            else
-            {
-              Env.Notifier.WriteError("Can't paste text containing multiple lines while multi-edit is active.");
-            }
+            return;
+          }
+          e.Handled = true;
+          var s = await Helper.GetClipboardTextAsync();
+          if (s.IndexOf('\n') == -1)
+          {
+            Modify(ModifyType.String, s);
+          }
+          else
+          {
+            Env.Notifier.WriteError("Can't paste text containing multiple lines while multi-edit is active.");
           }
         };
 
@@ -577,7 +595,7 @@ namespace InputMaster.Forms
               {
                 lines[p] += new string(' ', n);
               }
-              Debug.Assert(str != null);
+              Helper.RequireTrue(str != null);
               lines[p] = lines[p].Substring(0, column) + str + lines[p].Substring(column);
             }
           }

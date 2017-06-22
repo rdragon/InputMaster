@@ -49,6 +49,6 @@ namespace InputMaster.KeyboardLayouts
       return CharacterKeys.ContainsKey(input);
     }
 
-    public abstract InputArgs ReadKeyboardMessage(WindowMessage message, IntPtr data);
+    public abstract bool TryReadKeyboardMessage(WindowMessage message, IntPtr data, out InputArgs inputArgs);
   }
 }

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace InputMaster
+namespace InputMaster.Parsers
 {
   internal class DynamicHotkey : IComparable<DynamicHotkey>
   {

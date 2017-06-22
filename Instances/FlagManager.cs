@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace InputMaster
+namespace InputMaster.Instances
 {
   internal class FlagManager : Actor, IFlagManager
   {
@@ -71,22 +71,22 @@ namespace InputMaster
     public async Task SetCustomFlagAsync()
     {
       await Task.Yield();
-      var s = Helper.GetString("Flag");
-      if (!string.IsNullOrWhiteSpace(s))
+      if (!Helper.TryGetString("Flag", out var s))
       {
-        SetFlag(s);
+        return;
       }
+      SetFlag(s);
     }
 
     [Command]
     public async Task ClearCustomFlagAsync()
     {
       await Task.Yield();
-      var s = Helper.GetString("Flag");
-      if (!string.IsNullOrWhiteSpace(s))
+      if (!Helper.TryGetString("Flag", out var s))
       {
-        ClearFlag(s);
+        return;
       }
+      ClearFlag(s);
     }
 
     private void ToggleFlag(string flag, bool raiseEvent)

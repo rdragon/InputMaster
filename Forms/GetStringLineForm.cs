@@ -5,11 +5,11 @@ namespace InputMaster.Forms
 {
   internal sealed partial class GetStringLineForm : ThemeForm
   {
-    public GetStringLineForm(string title, string defaultValue = null, bool passwordForm = false)
+    public GetStringLineForm(string title, string defaultValue, bool passwordForm)
     {
       InitializeComponent();
-      Text = Helper.ForbidNull(title, nameof(title));
-      TextBox.Text = defaultValue ?? "";
+      Text = title;
+      TextBox.Text = defaultValue;
       TextBox.SelectAll();
       Button.Height = TextBox.Height;
 
@@ -19,9 +19,15 @@ namespace InputMaster.Forms
       }
     }
 
-    public string GetValue()
+    public bool TryGetValue(out string value)
     {
-      return DialogResult == DialogResult.OK ? TextBox.Text : null;
+      if (DialogResult == DialogResult.OK)
+      {
+        value = TextBox.Text;
+        return true;
+      }
+      value = null;
+      return false;
     }
 
     private void Button_Click(object sender, EventArgs e)

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace InputMaster
+namespace InputMaster.Parsers
 {
   internal class DynamicHotkeyCollection : Dictionary<string, SortedSet<DynamicHotkey>>
   {

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 
 namespace InputMaster
@@ -23,7 +22,7 @@ namespace InputMaster
         throw new AmbiguousHotkeyException("Ambiguous hotkey found" + Helper.GetBindingsSuffix(chord, nameof(chord)));
       }
       var added = set.Add(new Hotkey(action, section));
-      Debug.Assert(added);
+      Helper.RequireTrue(added);
       if (chord.Length > Math.Max(Env.Config.MaxChordLength, MaxChordLength))
       {
         Env.Notifier.WriteError($"Chord with length '{chord.Length}' found, while maximum allowed length is '{Env.Config.MaxChordLength}'. To change the maximum allowed length, update the config variable '{nameof(Env.Config.MaxChordLength)}'.");
@@ -31,9 +30,9 @@ namespace InputMaster
       MaxChordLength = Math.Max(MaxChordLength, chord.Length);
     }
 
-    public Action<Combo> TryGetAction(Chord chord)
+    public bool TryGetAction(Chord chord, out Action<Combo> action)
     {
-      Action<Combo> action = null;
+      action = null;
       if (Dictionary.TryGetValue(chord, out var set))
       {
         foreach (var item in set)
@@ -44,7 +43,7 @@ namespace InputMaster
           }
         }
       }
-      return action;
+      return action != null;
     }
 
     public void Clear()

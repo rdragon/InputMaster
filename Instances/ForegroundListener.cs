@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Text;
 using InputMaster.Win32;
 
-namespace InputMaster
+namespace InputMaster.Instances
 {
   internal class ForegroundListener : IForegroundListener
   {

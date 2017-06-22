@@ -160,12 +160,12 @@ namespace InputMaster.Parsers
       FireNewParserOutput(parserOutput);
     }
 
-    public bool TryGetAction(string name, bool complainIfNotFound, out Action<IInjectorStream<object>> action)
+    public void GetAction(string name, out Action<IInjectorStream<object>> action)
     {
       action = null;
-      if (DynamicHotkeyCollection.TryGetValue(name, out var set))
+      if (DynamicHotkeyCollection.TryGetValue(name, out var sortedSet))
       {
-        foreach (var dynamicHotkey in set)
+        foreach (var dynamicHotkey in sortedSet)
         {
           if (dynamicHotkey.Enabled)
           {
@@ -174,17 +174,13 @@ namespace InputMaster.Parsers
         }
         if (action != null)
         {
-          return true;
+          return;
         }
       }
-      if (complainIfNotFound)
-      {
-        Env.Notifier.WriteError($"No dynamic hotkey named '{name}' found" + Helper.GetBindingsSuffix(
-          Env.ForegroundListener.ForegroundProcessName, nameof(Env.ForegroundListener.ForegroundProcessName),
-          Env.ForegroundListener.ForegroundWindowTitle, nameof(Env.ForegroundListener.ForegroundWindowTitle),
-          string.Join("|", Env.FlagManager.GetFlags()), "Flags"));
-      }
-      return false;
+      throw new ParseException($"No dynamic hotkey named '{name}' found" + Helper.GetBindingsSuffix(
+        Env.ForegroundListener.ForegroundProcessName, nameof(Env.ForegroundListener.ForegroundProcessName),
+        Env.ForegroundListener.ForegroundWindowTitle, nameof(Env.ForegroundListener.ForegroundWindowTitle),
+        string.Join("|", Env.FlagManager.GetFlags()), "Flags"));
     }
 
     public bool IsDynamicHotkey(string name) => DynamicHotkeyCollection.ContainsKey(name);
@@ -278,7 +274,7 @@ namespace InputMaster.Parsers
 
       private void ReadSectionHeader()
       {
-        if (Sections.Peek().IsMode)
+        if (Sections.Peek() is Mode)
         {
           throw new ParseException(Location, "Cannot start section inside mode.");
         }
@@ -288,13 +284,13 @@ namespace InputMaster.Parsers
         var argument = ReadArguments().Require(targetCount: 1, delimiter: Constants.ArgumentDelimiter);
         Read('\n');
         var section = CreateSection(sectionType, argument);
-        if (section.IsMode)
+        if (section is Mode mode)
         {
           if (Sections.Count > 1)
           {
             throw new ParseException(sectionType.Location, "A mode is only valid at the top level.");
           }
-          section = ParserOutput.AddMode(section.AsMode);
+          section = ParserOutput.AddMode(mode);
         }
         Sections.Push(section);
       }
@@ -305,11 +301,11 @@ namespace InputMaster.Parsers
         {
           var sectionType = (RegexSectionType)Enum.Parse(typeof(RegexSectionType), type.Value);
           var regexOptions = sectionType == RegexSectionType.Process ? RegexOptions.IgnoreCase : RegexOptions.None;
-          return new RegexSection(Sections.Peek().AsStandardSection, CreateRegex(argument, regexOptions), sectionType);
+          return new RegexSection((StandardSection)Sections.Peek(), CreateRegex(argument, regexOptions), sectionType);
         }
         if (type.Value == Constants.FlagSectionIdentifier)
         {
-          return new FlagSection(Sections.Peek().AsStandardSection, argument.Value);
+          return new FlagSection((StandardSection)Sections.Peek(), argument.Value);
         }
         if (type.Value == Constants.InputModeSectionIdentifier)
         {
@@ -370,19 +366,19 @@ namespace InputMaster.Parsers
           {
             throw CreateException(token, "This command is only valid at the top level.");
           }
-          if (token.HasFlag(CommandTypes.ModeOnly) && !Sections.Peek().IsMode)
+          if (token.HasFlag(CommandTypes.ModeOnly) && !(Sections.Peek() is Mode))
           {
             throw CreateException(token, $"This command is only valid in a {Constants.InputModeSectionIdentifier} or {Constants.ComposeModeSectionIdentifier} section.");
           }
-          if (token.HasFlag(CommandTypes.ComposeModeOnly) && (!Sections.Peek().IsMode || !Sections.Peek().AsMode.IsComposeMode))
+          if (token.HasFlag(CommandTypes.ComposeModeOnly) && (!(Sections.Peek() is Mode mode) || !mode.IsComposeMode))
           {
             throw CreateException(token, $"This command is only valid in a {Constants.ComposeModeSectionIdentifier} section.");
           }
-          if (token.HasFlag(CommandTypes.InputModeOnly) && (!Sections.Peek().IsMode || Sections.Peek().AsMode.IsComposeMode))
+          if (token.HasFlag(CommandTypes.InputModeOnly) && (!(Sections.Peek() is Mode mode1) || !mode1.IsInputMode))
           {
             throw CreateException(token, $"This command is only valid in a {Constants.InputModeSectionIdentifier} section.");
           }
-          if (token.HasFlag(CommandTypes.StandardSectionOnly) && !Sections.Peek().IsStandardSection)
+          if (token.HasFlag(CommandTypes.StandardSectionOnly) && !(Sections.Peek() is StandardSection))
           {
             throw CreateException(token, "This command is only valid in a standard section.");
           }
@@ -477,7 +473,7 @@ namespace InputMaster.Parsers
       private Chord ReadChord()
       {
         var locatedString = ReadUntil(' ', '\n');
-        return (Sections.Peek().IsMode ? ModeChordReader : ChordReader).CreateChord(locatedString);
+        return (Sections.Peek() is Mode ? ModeChordReader : ChordReader).CreateChord(locatedString);
       }
     }
   }

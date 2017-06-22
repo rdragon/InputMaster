@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using InputMaster.Win32;
 
-namespace InputMaster.Extensions
+namespace InputMaster.Actors
 {
   internal class ColorTracker : Actor
   {

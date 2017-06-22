@@ -2,42 +2,35 @@
 {
   internal class ModeViewer
   {
-    private bool Visible;
     private string Text;
 
     public void Hide()
     {
-      if (Visible)
-      {
-        Text = "";
-        Env.Notifier.SetPersistentText("");
-        Visible = false;
-      }
+      SetText("");
     }
 
     public void ToggleVisibility(string text)
     {
-      if (Visible)
+      SetText(string.IsNullOrEmpty(Text) ? text : "");
+    }
+
+    public void SetText(string text)
+    {
+      if (text == Text)
       {
-        Hide();
+        return;
       }
-      else
-      {
-        Visible = true;
-        UpdateText(text);
-      }
+      Text = text;
+      Env.Notifier.SetPersistentText(Text);
     }
 
     public void UpdateText(string text)
     {
-      if (Visible)
+      if (string.IsNullOrEmpty(Text))
       {
-        if (text != Text)
-        {
-          Text = Helper.ForbidNull(text, nameof(text));
-          Env.Notifier.SetPersistentText(Text);
-        }
+        return;
       }
+      SetText(text);
     }
   }
 }

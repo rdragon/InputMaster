@@ -72,7 +72,7 @@ namespace InputMaster.TextEditor
         var text = await Env.Cipher.DecryptAsync(GetDataFile(file));
         var name = Helper.GetValidFileName(title, '_');
         var targetFile = new FileInfo(Path.Combine(targetDir, name + ".txt"));
-        File.WriteAllText(targetFile.FullName, title + Environment.NewLine + text.Replace("\n", Environment.NewLine));
+        File.WriteAllText(targetFile.FullName, title + "\n" + text);
         count++;
       }
       return count;
@@ -148,7 +148,10 @@ namespace InputMaster.TextEditor
         {
           var file = link.File;
           var title = link.Title;
-          var chordText = Env.Config.GetChordText(title) ?? title;
+          if (!Env.Config.TryGetChordText(title, out var chordText))
+          {
+            continue;
+          }
           var chord = Env.Config.DefaultChordReader.CreateChord(new LocatedString(chordText));
 
           void Action(Combo combo)
@@ -169,58 +172,58 @@ namespace InputMaster.TextEditor
 
     public async Task ImportFromDirectoryAsync()
     {
-      var path = Helper.GetString("Please give a directory from which to import all text files.");
-      var count = 0;
-      if (!string.IsNullOrWhiteSpace(path))
+      if (!Helper.TryGetString("Please give a directory from which to import all text files.", out var dir))
       {
-        var dir = new DirectoryInfo(path);
-        foreach (var file in dir.GetFiles("*.txt"))
+        return;
+      }
+      Helper.ForbidWhitespace(dir, nameof(dir));
+      var count = 0;
+      foreach (var file in new DirectoryInfo(dir).GetFiles("*.txt"))
+      {
+        var s = Helper.ReadAllText(file.FullName);
+        var i = s.IndexOf('\n');
+        var failed = false;
+        if (i == -1)
         {
-          var s = File.ReadAllText(file.FullName).Replace("\r\n", "\n");
-          var i = s.IndexOf('\n');
-          var failed = false;
-          if (i == -1)
+          failed = true;
+        }
+        else
+        {
+          var title = s.Substring(0, i).Trim();
+          if (title.Length == 0)
           {
             failed = true;
           }
           else
           {
-            var title = s.Substring(0, i).Trim();
-            if (title.Length == 0)
-            {
-              failed = true;
-            }
-            else
-            {
-              var text = s.Substring(i + 1);
-              await CreateNewFileAsync(title, text);
-              count++;
-            }
-          }
-          if (failed)
-          {
-            Env.Notifier.WriteError($"Cannot import '{file.FullName}', file is in incorrect format.");
+            var text = s.Substring(i + 1);
+            await CreateNewFileAsync(title, text);
+            count++;
           }
         }
-        Env.Notifier.Write($"Imported {count} files from '{path}'.");
-        await CompileTextEditorModeAsync();
+        if (failed)
+        {
+          Env.Notifier.WriteError($"Cannot import '{file.FullName}', file is in incorrect format.");
+        }
       }
+      Env.Notifier.Write($"Imported {count} files from '{dir}'.");
+      await CompileTextEditorModeAsync();
     }
 
     public async Task ExportToDirectoryAsync()
     {
-      var path = Helper.GetString("Please give a directory to which to export all files.");
-      if (!string.IsNullOrWhiteSpace(path))
+      if (!Helper.TryGetString("Please give a directory to which to export all text files.", out var dir))
       {
-        var count = await Task.Run(() => ExportToDirectoryAsync(Env.Config.TextEditorDir, path));
-        Env.Notifier.Write($"Exported {count} files to '{path}'.");
+        return;
       }
+      Helper.ForbidWhitespace(dir, nameof(dir));
+      var count = await Task.Run(() => ExportToDirectoryAsync(Env.Config.TextEditorDir, dir));
+      Env.Notifier.Write($"Exported {count} files to '{dir}'.");
     }
 
     public async Task FindAllAsync()
     {
-      var s = Helper.GetString("Find All", "");
-      if (string.IsNullOrEmpty(s))
+      if (!Helper.TryGetString("Find All", out var s))
       {
         return;
       }
@@ -234,7 +237,7 @@ namespace InputMaster.TextEditor
           var count = r.Matches(text).Count;
           if (count > 0)
           {
-            sb.AppendLine($"{await Env.Cipher.DecryptAsync(GetNameFile(dataFile))}  ({count} match{(count != 1 ? "es" : "")})");
+            sb.Append($"{await Env.Cipher.DecryptAsync(GetNameFile(dataFile))}  ({count} match{(count != 1 ? "es" : "")})\n");
           }
         }
         return sb;

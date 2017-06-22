@@ -18,12 +18,13 @@ namespace InputMaster.KeyboardLayouts
       AddKey(Input.Space, ' ');
     }
 
-    public override InputArgs ReadKeyboardMessage(WindowMessage message, IntPtr data)
+    public override bool TryReadKeyboardMessage(WindowMessage message, IntPtr data, out InputArgs inputArgs)
     {
       var keyProcedureData = (KeyProcedureData)Marshal.PtrToStructure(data, typeof(KeyProcedureData));
       if (keyProcedureData.Flags.HasFlag(KeyProcedureDataFlags.Injected))
       {
-        return null; // Ignore injected messages (e.g. the events we simulate).
+        inputArgs = null;
+        return false; // Ignore injected messages (e.g. the events we simulate).
       }
       var down = message == WindowMessage.KeyDown || message == WindowMessage.SystemKeyDown;
       var input = keyProcedureData.VirtualKey;
@@ -53,7 +54,8 @@ namespace InputMaster.KeyboardLayouts
           case Input.PgUp: input = Input.Num9; break;
         }
       }
-      return new InputArgs(input, down);
+      inputArgs = new InputArgs(input, down);
+      return true;
     }
   }
 }

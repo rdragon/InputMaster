@@ -14,16 +14,17 @@ namespace InputMaster.TextEditor
 
     public Cipher()
     {
-      Password = Env.Config.KeyFile == null ? "" : File.ReadAllText(Env.Config.KeyFile.FullName);
-      if (Env.Config.AskForPassword || string.IsNullOrEmpty(Password))
+      Password = Env.Config.KeyFile == null ? "" : Helper.ReadAllText(Env.Config.KeyFile.FullName);
+      if (!Env.Config.AskForPassword && !string.IsNullOrEmpty(Password) ||
+        !Helper.TryGetLine("Password", out string password, isPassword: true))
       {
-        Password += Helper.GetStringLine("Password", isPassword: true) ?? "";
+        return;
       }
+      Password += password;
     }
 
     public Cipher(string password)
     {
-      Helper.ForbidNull(password, nameof(password));
       Password = password;
     }
 
@@ -99,7 +100,7 @@ namespace InputMaster.TextEditor
             Helper.RequireEqual(cryptoStream.Read(plaintextBytes, 0, plaintextByteCount), "read bytes",
               plaintextByteCount);
             var s = Encoding.UTF8.GetString(plaintextBytes, 0, plaintextByteCount);
-            return s.StartsWith(Identifier) ? s.Substring(Identifier.Length) : throw new FormatException();
+            return s.StartsWith(Identifier) ? Helper.RemoveCarriageReturns(s.Substring(Identifier.Length)) : throw new FormatException();
           }
         }
       }

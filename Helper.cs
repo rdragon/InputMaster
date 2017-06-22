@@ -13,7 +13,6 @@ using System.Windows.Forms;
 using InputMaster.Forms;
 using InputMaster.Parsers;
 using InputMaster.Win32;
-using JetBrains.Annotations;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 
@@ -47,31 +46,42 @@ namespace InputMaster
       return m.WParam.ToInt32() >> 16;
     }
 
-    public static void StartProcess(string fileName, string arguments = "", string userName = null, SecureString password = null, string domain = null, bool captureForeground = false)
+    public static void StartProcess(string fileName, string arguments = "", bool captureForeground = false)
     {
-      ForbidNull(fileName, nameof(fileName));
       if (captureForeground)
       {
         Env.Notifier.CaptureForeground();
       }
       try
       {
-        Process p;
-        if (userName != null)
-        {
-          ForbidNull(password, nameof(password));
-          ForbidNull(domain, nameof(domain));
-          p = Process.Start(fileName, arguments, userName, password, domain);
-        }
-        else
-        {
-          p = Process.Start(fileName, arguments);
-        }
-        p?.Dispose();
+        Process.Start(fileName, arguments)?.Dispose();
       }
       catch (Exception ex)
       {
         throw new WrappedException("Failed to start process" + GetBindingsSuffix(fileName, nameof(fileName), arguments, nameof(arguments)), ex);
+      }
+    }
+
+    public static void StartProcess(string fileName, string userName, SecureString password, string domain, string arguments = "", bool captureForeground = false)
+    {
+      if (captureForeground)
+      {
+        Env.Notifier.CaptureForeground();
+      }
+      try
+      {
+        ForbidNull(password);
+        ForbidNull(domain);
+        Process.Start(fileName, arguments, userName, password, domain)?.Dispose();
+      }
+      catch (Exception ex)
+      {
+        throw new WrappedException("Failed to start process" + GetBindingsSuffix(
+          fileName, nameof(fileName),
+          arguments, nameof(arguments),
+          userName, nameof(userName),
+          password.Length, $"{nameof(password)}.{nameof(password.Length)}",
+          domain, nameof(domain)), ex);
       }
     }
 
@@ -111,21 +121,21 @@ namespace InputMaster
       }
     }
 
-    public static string GetString(string title, string defaultValue = null, bool selectAll = true)
+    public static bool TryGetString(string title, out string value, string defaultValue = "", bool selectAll = true)
     {
-      using (var form = new GetStringForm(ForbidNull(title, nameof(title)), defaultValue, selectAll))
+      using (var form = new GetStringForm(title, defaultValue, selectAll))
       {
         form.ShowDialog();
-        return form.GetValue();
+        return form.TryGetValue(out value);
       }
     }
 
-    public static string GetStringLine(string title, string defaultValue = null, bool isPassword = false)
+    public static bool TryGetLine(string title, out string value, string defaultValue = "", bool isPassword = false)
     {
-      using (var form = new GetStringLineForm(ForbidNull(title, nameof(title)), defaultValue, isPassword))
+      using (var form = new GetStringLineForm(title, defaultValue, isPassword))
       {
         form.ShowDialog();
-        return form.GetValue();
+        return form.TryGetValue(out value);
       }
     }
 
@@ -230,28 +240,30 @@ namespace InputMaster
       return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
     }
 
-    [ContractAnnotation("value:null => halt")]
-    public static T ForbidNull<T>(T value, string name)
+    public static void ForbidNull(params object[] values)
     {
-      if (value == null)
+      for (int i = 0; i < values.Length; i++)
       {
-        throw new ArgumentNullException(name);
+        if (values[i] == null)
+        {
+          throw new ArgumentNullException($"Argument {i + 1} is null.");
+        }
       }
-      return value;
     }
 
-    public static void ForbidNullOrEmpty(string str, string name)
+    public static void ForbidEmpty(string str, string name = "(unspecified)")
     {
-      ForbidNull(str, name);
+      ForbidNull(str);
       if (str.Length == 0)
       {
-        throw new ArgumentException("Unexpected empty string.", name);
+        throw new ArgumentException("String is empty.", name);
       }
     }
 
-    private static void ForbidNullOrWhitespace(string str, string name)
+    public static void ForbidWhitespace(string str, string name = "(unspecified)")
     {
-      ForbidNull(str, name);
+      ForbidNull(str);
+      ForbidEmpty(str, name);
       if (string.IsNullOrWhiteSpace(str))
       {
         throw new ArgumentException("String consists of whitespace only.", name);
@@ -301,47 +313,17 @@ namespace InputMaster
     }
 
     /// <summary>
-    /// Removes or replaces all invalid file name characters.
+    /// Replaces all invalid file name characters.
     /// </summary>
-    public static string GetValidFileName(string name, char? replacement = null)
+    public static string GetValidFileName(string name, char replacement)
     {
-      ForbidNullOrWhitespace(name, nameof(name));
+      ForbidWhitespace(name);
       var invalidChars = Path.GetInvalidFileNameChars();
-      if (replacement.HasValue)
+      if (invalidChars.Contains(replacement))
       {
-        if (invalidChars.Contains(replacement.Value))
-        {
-          throw new ArgumentException($"Invalid file name character '{replacement.Value}' used as replacement character.", nameof(replacement));
-        }
-        return new string(name.Select(c =>
-        {
-          if (invalidChars.Contains(c))
-          {
-            return replacement.Value;
-          }
-          return c;
-        }).ToArray());
+        throw new ArgumentException($"Invalid file name character '{replacement}' used as replacement character.", nameof(replacement));
       }
-      var s = new string(name.Where(c => !invalidChars.Contains(c)).ToArray());
-      if (string.IsNullOrWhiteSpace(s))
-      {
-        return "New File";
-      }
-      return s;
-    }
-
-    public static void RequireValidFileName(string name)
-    {
-      if (!IsValidFileName(name))
-      {
-        throw new ArgumentException($"The name '{name}' is not a valid file name.");
-      }
-    }
-
-    private static bool IsValidFileName(string name)
-    {
-      ForbidNullOrWhitespace(name, nameof(name));
-      return GetValidFileName(name) == name;
+      return new string(name.Select(c => invalidChars.Contains(c) ? replacement : c).ToArray());
     }
 
     public static void ForceDeleteDir(string dir)
@@ -367,19 +349,21 @@ namespace InputMaster
       }
     }
 
+    public static string ReadAllText(string file) => RemoveCarriageReturns(File.ReadAllText(file));
+
     /// <summary>
     /// Asynchronously reads the contents of a file. Throws an exception after a certain number of tries.
     /// </summary>
     public static async Task<string> ReadAllTextAsync(string file)
     {
-      return await TryAsync(() => File.ReadAllText(file).Replace("\r\n", "\n"));
+      return await TryAsync(() => ReadAllText(file));
     }
 
     public static bool TryReadJson<T>(string file, out T val)
     {
       try
       {
-        val = JsonConvert.DeserializeObject<T>(File.ReadAllText(file));
+        val = JsonConvert.DeserializeObject<T>(ReadAllText(file));
         return true;
       }
       catch (Exception ex) when (!IsFatalException(ex)) { }
@@ -392,7 +376,6 @@ namespace InputMaster
     /// </summary>
     public static int GetLineStart(string text, int index)
     {
-      ForbidNull(text, nameof(text));
       RequireInInterval(index, nameof(index), 0, text.Length);
       if (index == 0)
       {
@@ -406,7 +389,6 @@ namespace InputMaster
     /// </summary>
     public static int GetLineEnd(string text, int index)
     {
-      ForbidNull(text, nameof(text));
       RequireInInterval(index, nameof(index), 0, text.Length);
       for (; index < text.Length; index++)
       {
@@ -449,7 +431,6 @@ namespace InputMaster
     /// </summary>
     public static Regex GetRegex(string text, RegexOptions options = RegexOptions.None, bool fullMatchIfLiteral = false)
     {
-      ForbidNull(text, nameof(text));
       text = Parser.RunPreprocessor(text);
       if (text.Length > 1 && text[0] == '/' && text[text.Length - 1] == '/')
       {
@@ -470,15 +451,16 @@ namespace InputMaster
     /// Example: "some string (ab)" -> "ab".
     /// Example: "some other string" -> null.
     /// </summary>
-    public static string GetChordText(string text)
+    public static bool TryGetChordText(string text, out string chordText)
     {
-      ForbidNull(text, nameof(text));
       var m = Regex.Match(text, @"\(([^)]+)\) *$");
       if (m.Success)
       {
-        return m.Groups[1].Value;
+        chordText = m.Groups[1].Value;
+        return true;
       }
-      return null;
+      chordText = null;
+      return false;
     }
 
     /// <summary>
@@ -486,11 +468,11 @@ namespace InputMaster
     /// </summary>
     public static string AlignColumns(string text, int minSpaceCount = 2)
     {
-      RequireAtLeast(minSpaceCount, nameof(minSpaceCount), 1);
       if (text == null)
       {
         return null;
       }
+      RequireAtLeast(minSpaceCount, nameof(minSpaceCount), 1);
       var lines = text.Split('\n');
       AlignColumns(lines);
       return string.Join("\n", lines);
@@ -512,7 +494,6 @@ namespace InputMaster
       int i;
       for (i = 0; i < lines.Length; i++)
       {
-        ForbidNull(lines[i], $"lines[{i}]");
         indents[i] = lines[i].Length - lines[i].TrimStart(' ').Length;
         columns[i] = lines[i].IndexOf(spaces, indents[i], StringComparison.Ordinal);
       }
@@ -616,6 +597,34 @@ namespace InputMaster
           yield return (e1.Current, e2.Current, e3.Current);
         }
       }
+    }
+
+    public static void RequireTrue(bool condition)
+    {
+      if (!condition)
+      {
+        throw new ArgumentException("Condition is false.");
+      }
+    }
+
+    public static string RemoveCarriageReturns(string text)
+    {
+      return text.Replace("\r\n", "\n").Replace('\r', '\n');
+    }
+
+    public static void ForbidCarriageReturn(ref string text)
+    {
+      if (!text.Contains('\r'))
+      {
+        return;
+      }
+      Env.Notifier.WriteError("String contains carriage return(s)." + GetBindingsSuffix(Truncate(text, 50), nameof(text)));
+      text = RemoveCarriageReturns(text);
+    }
+
+    public static string JsonSerialize(object value, Formatting formatting)
+    {
+      return RemoveCarriageReturns(JsonConvert.SerializeObject(value, formatting));
     }
   }
 }

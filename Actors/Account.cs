@@ -2,7 +2,7 @@
 using System.Linq;
 using Newtonsoft.Json;
 
-namespace InputMaster
+namespace InputMaster.Actors
 {
   internal class Account
   {

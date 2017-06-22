@@ -44,13 +44,19 @@ namespace InputMaster.Hooks
         for (var j = 0; j < k; j++)
         {
           Chord.InsertAtStart(Buffer[--i % Buffer.Length]);
-          action = HotkeyCollection.TryGetAction(Chord) ?? action;
+          if (HotkeyCollection.TryGetAction(Chord, out var action1))
+          {
+            action = action1;
+          }
         }
       }
       else
       {
         Chord.InsertAtStart(combo);
-        action = HotkeyCollection.TryGetAction(Chord);
+        if (HotkeyCollection.TryGetAction(Chord, out var action1))
+        {
+          action = action1;
+        }
       }
       if (action != null)
       {

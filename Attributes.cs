@@ -3,7 +3,7 @@ using JetBrains.Annotations;
 
 namespace InputMaster
 {
-  [MeansImplicitUse(ImplicitUseTargetFlags.WithMembers)]
+  [MeansImplicitUse]
   [AttributeUsage(AttributeTargets.Method)]
   internal sealed class CommandAttribute : Attribute
   {

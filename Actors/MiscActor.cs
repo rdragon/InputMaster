@@ -6,7 +6,7 @@ using System.Drawing;
 using System.IO;
 using System.Drawing.Imaging;
 
-namespace InputMaster
+namespace InputMaster.Actors
 {
   internal class MiscActor : Actor
   {
@@ -75,13 +75,13 @@ namespace InputMaster
         stream.Add(argument, Env.Config.DefaultInputReader);
       }
       Action(Env.CreateInjector()); // Test if argument is in correct format.
-      data.ParserOutput.DynamicHotkeyCollection.AddDynamicHotkey(name, Action, data.Section.AsStandardSection);
+      data.ParserOutput.DynamicHotkeyCollection.AddDynamicHotkey(name, Action, (StandardSection)data.Section);
     }
 
     [Command(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime | CommandTypes.ModeOnly)]
     private static void IncludeMode(ExecuteAtParseTimeData data, LocatedString modeName)
     {
-      data.Section.AsMode.IncludeMode(modeName.Value);
+      ((Mode)data.Section).IncludeMode(modeName.Value);
     }
 
     [Command(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime | CommandTypes.TopLevelOnly)]
@@ -167,8 +167,7 @@ namespace InputMaster
       var bitmap = new Bitmap(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
       var graphics = Graphics.FromImage(bitmap);
       graphics.CopyFromScreen(0, 0, 0, 0, bitmap.Size);
-      var name = Helper.GetString("Name", Helper.GetValidFileName(DateTime.Now.ToString(), '-'));
-      if (string.IsNullOrWhiteSpace(name))
+      if (!Helper.TryGetString("Name", out var name, Helper.GetValidFileName(DateTime.Now.ToString(), '-')))
       {
         return;
       }

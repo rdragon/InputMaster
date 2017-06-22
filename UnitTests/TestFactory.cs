@@ -2,6 +2,7 @@
 using InputMaster;
 using InputMaster.Parsers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using InputMaster.Instances;
 
 namespace UnitTests
 {
@@ -12,11 +13,11 @@ namespace UnitTests
     public T Create<T>() where T : class
     {
       var obj = Create(typeof(T));
-      if (!(obj is T))
+      if (obj is T t)
       {
-        throw new InvalidOperationException($"{nameof(TestBrain)} creates instances of type {obj.GetType()} when given the argument {typeof(T)}, but {obj.GetType()} doesn't implement or derive from {typeof(T)}.");
+        return t;
       }
-      return obj as T;
+      throw new InvalidOperationException($"{nameof(TestBrain)} creates instances of type {obj.GetType()} when given the argument {typeof(T)}, but {obj.GetType()} doesn't implement or derive from {typeof(T)}.");
     }
 
     private object Create(Type type)

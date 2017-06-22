@@ -1,13 +1,13 @@
 ﻿using System;
 using System.IO;
 using System.Windows.Forms;
-using InputMaster.Forms;
+using InputMaster.Actors;
 using InputMaster.Hooks;
 using InputMaster.Parsers;
 using InputMaster.Properties;
 using InputMaster.TextEditor;
 
-namespace InputMaster
+namespace InputMaster.Instances
 {
   internal class Factory : IFactory
   {
@@ -15,7 +15,6 @@ namespace InputMaster
 
     public Factory(NotifyForm notifyForm)
     {
-      Helper.ForbidNull(notifyForm, nameof(notifyForm));
       NotifyForm = notifyForm;
     }
 
@@ -27,11 +26,11 @@ namespace InputMaster
     public T Create<T>() where T : class
     {
       var obj = Create(typeof(T));
-      if (!(obj is T))
+      if (obj is T t)
       {
-        throw new InvalidOperationException($"{nameof(Factory)} creates instances of type {obj.GetType()} when given the argument {typeof(T)}, but {obj.GetType()} doesn't implement or derive from {typeof(T)}.");
+        return t;
       }
-      return obj as T;
+      throw new InvalidOperationException($"{nameof(Factory)} creates instances of type {obj.GetType()} when given the argument {typeof(T)}, but {obj.GetType()} doesn't implement or derive from {typeof(T)}.");
     }
 
     private object Create(Type type)

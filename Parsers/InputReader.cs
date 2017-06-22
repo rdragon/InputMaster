@@ -1,8 +1,8 @@
 ﻿using JetBrains.Annotations;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text.RegularExpressions;
+using InputMaster.Actors;
 
 namespace InputMaster.Parsers
 {
@@ -182,10 +182,7 @@ namespace InputMaster.Parsers
           throw CreateException($"Cannot use a dynamic hotkey token at this location (use '{nameof(MiscActor.SendDynamic)}' instead).");
         }
         ForbidModifierHoldRelease();
-        if (!Env.Parser.TryGetAction(text, true, out var action))
-        {
-          return;
-        }
+        Env.Parser.GetAction(text, out var action);
         for (var i = 0; i < Multiplier; i++)
         {
           action.Invoke(InputReader.InjectorStream);
@@ -236,7 +233,7 @@ namespace InputMaster.Parsers
         }
         if (PressType != PressType.None)
         {
-          Debug.Assert(!CreateChord && Multiplier == 1 && Modifiers == Modifiers.None);
+          Helper.RequireTrue(!CreateChord && Multiplier == 1 && Modifiers == Modifiers.None);
           InputReader.InjectorStream.Add(input, PressType == PressType.Hold);
           PressType = PressType.None;
         }
@@ -244,7 +241,7 @@ namespace InputMaster.Parsers
         {
           if (CreateChord)
           {
-            Debug.Assert(Multiplier == 1);
+            Helper.RequireTrue(Multiplier == 1);
             InputReader.Combos.Add(new Combo(input, Modifiers));
           }
           else

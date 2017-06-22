@@ -74,7 +74,7 @@ namespace InputMaster
     void UpdateHotkeyFile(HotkeyFile hotkeyFile);
     void UpdateParseAction(string name, ParseAction action);
     void Run();
-    bool TryGetAction(string name, bool complainIfNotFound, out Action<IInjectorStream<object>> action);
+    void GetAction(string name, out Action<IInjectorStream<object>> action);
     bool IsDynamicHotkey(string name);
     void FireNewParserOutput(ParserOutput parserOutput); // For unit tests.
     void DisableOnce();
@@ -107,7 +107,7 @@ namespace InputMaster
 
   internal interface IKeyboardLayout
   {
-    InputArgs ReadKeyboardMessage(WindowMessage message, IntPtr data);
+    bool TryReadKeyboardMessage(WindowMessage message, IntPtr data, out InputArgs inputArgs);
     Combo GetCombo(char c);
     string ConvertComboToString(Combo combo);
     bool IsCharacterKey(Input input);

@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace InputMaster
+namespace InputMaster.Instances
 {
   internal class Scheduler : IScheduler
   {
@@ -43,8 +43,6 @@ namespace InputMaster
 
     public void AddJob(string name, Action action, TimeSpan delay)
     {
-      Helper.ForbidNull(name, nameof(name));
-      Helper.ForbidNull(action, nameof(action));
       Helper.RequireInInterval(delay, nameof(delay), Env.Config.SchedulerInterval, TimeSpan.MaxValue);
       if (Jobs.Any(z => z.Value.Name == name))
       {

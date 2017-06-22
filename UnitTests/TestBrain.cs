@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using InputMaster;
+using InputMaster.Actors;
 using InputMaster.Hooks;
 using InputMaster.Parsers;
 using InputMaster.Properties;
@@ -27,7 +28,7 @@ namespace UnitTests
 
     public void Run()
     {
-      ForegroundListener = Env.ForegroundListener as TestForegroundListener;
+      ForegroundListener = (TestForegroundListener)Env.ForegroundListener;
       ModeHook = new ModeHook();
       ComboHook = new ComboHook();
       ComboRelay = new ComboRelay(ModeHook, ComboHook);
@@ -36,7 +37,7 @@ namespace UnitTests
       PrimaryHook = new TestPrimaryHook(InputRelay);
       PrimaryHookInjector = new TestInjector(PrimaryHook);
       Env.AddActor(new MiscActor());
-      Env.Parser.UpdateHotkeyFile(new HotkeyFile(nameof(TestBrain), Resources.Tests.Replace("\r\n", "\n")));
+      Env.Parser.UpdateHotkeyFile(new HotkeyFile(nameof(TestBrain), Helper.RemoveCarriageReturns(Resources.Tests)));
       Env.Parser.EnableOnce();
     }
 
@@ -72,27 +73,21 @@ namespace UnitTests
       var errorLog = Env.Notifier.GetLog();
       if (expectedOutput != output || errorLog.Length > 0 || state.Length > 0)
       {
-        var sb = new StringBuilder();
-        sb.AppendLine();
-        sb.AppendLine();
-        sb.AppendLine(data.LocatedName.Location + ":");
+        var sb = new StringBuilder($"\n\n{data.LocatedName.Location}:\n");
         if (expectedOutput != output)
         {
-          sb.AppendLine("Expected output: " + (expectedOutput.Length == 0 ? "(no output)" : expectedOutput));
-          sb.AppendLine("Actual output: " + (output.Length == 0 ? "(no output)" : output));
-          sb.AppendLine();
+          var expected = expectedOutput.Length == 0 ? "(no output)" : expectedOutput;
+          var actual = output.Length == 0 ? "(no output)" : output;
+          sb.Append($"Expected output: {expected}\n");
+          sb.Append($"Actual output: {actual}\n\n");
         }
         if (errorLog.Length > 0)
         {
-          sb.AppendLine("Unexpected error(s):");
-          sb.AppendLine(errorLog);
-          sb.AppendLine();
+          sb.Append($"Unexpected error(s):\n{errorLog}\n\n");
         }
         if (state.Length > 0)
         {
-          sb.AppendLine("Invalid state after simulation:");
-          sb.AppendLine(state);
-          sb.AppendLine();
+          sb.Append($"Invalid state after simulation:\n{state}\n\n");
         }
         Assert.Fail(sb.ToString());
       }

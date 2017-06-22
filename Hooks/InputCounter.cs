@@ -1,4 +1,4 @@
-﻿namespace InputMaster
+﻿namespace InputMaster.Hooks
 {
   internal class InputCounter : IInjectorStream<InputCounter>
   {

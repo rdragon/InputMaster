@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 
-namespace InputMaster
+namespace InputMaster.Instances
 {
   internal class App : IApp
   {

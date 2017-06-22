@@ -18,7 +18,6 @@ namespace InputMaster.Parsers
 
     public LocatedString(string text, Location location)
     {
-      Helper.ForbidNull(text, nameof(text));
       Value = text;
       Location = location;
     }
@@ -55,7 +54,6 @@ namespace InputMaster.Parsers
 
     public LocatedString Require(string delimiter, int targetCount = -1)
     {
-      Helper.ForbidNullOrEmpty(delimiter, nameof(delimiter));
       var count = Split(delimiter).Length;
       if (targetCount != -1 && count != targetCount)
       {
@@ -81,16 +79,15 @@ namespace InputMaster.Parsers
       throw new ArgumentException("All arguments are -1.");
     }
 
-    public LocatedString[] Split(string s)
+    public LocatedString[] Split(string seperator)
     {
-      Helper.ForbidNullOrEmpty(s, nameof(s));
-      var parts = Value.Length == 0 ? new string[0] : Value.Split(new[] { s }, StringSplitOptions.None);
+      var parts = Value.Length == 0 ? new string[0] : Value.Split(new[] { seperator }, StringSplitOptions.None);
       var column = 0;
       var ar = new LocatedString[parts.Length];
       for (var i = 0; i < parts.Length; i++)
       {
         ar[i] = new LocatedString(parts[i], Location.AddColumns(column)).Trim();
-        column += parts[i].Length + s.Length;
+        column += parts[i].Length + seperator.Length;
       }
       return ar;
     }
@@ -136,7 +133,6 @@ namespace InputMaster.Parsers
       var current = Trim();
       foreach (var parameterInfo in myParameterInfos)
       {
-        Helper.ForbidNull(parameterInfo, nameof(parameterInfo));
         if (current.Length == 0)
         {
           if (parameterInfo.IsOptional)

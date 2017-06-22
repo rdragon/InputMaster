@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using InputMaster.Win32;
 
-namespace InputMaster
+namespace InputMaster.Instances
 {
   internal class Injector : IInjector
   {

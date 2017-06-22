@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace InputMaster.Extensions
+namespace InputMaster.Actors
 {
   internal class VarActor : Actor
   {
@@ -51,7 +51,7 @@ namespace InputMaster.Extensions
     [Command]
     private Task ExportVars()
     {
-      return ForegroundInteractor.PasteAsync(JsonConvert.SerializeObject(Dict, Formatting.Indented).Replace(Environment.NewLine, "\n"));
+      return ForegroundInteractor.PasteAsync(Helper.JsonSerialize(Dict, Formatting.Indented));
     }
 
     [Command]

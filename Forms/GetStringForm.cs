@@ -11,21 +11,23 @@ namespace InputMaster.Forms
     public GetStringForm(string title, string defaultValue, bool selectAll)
     {
       InitializeComponent();
-      Text = Helper.ForbidNull(title, nameof(title));
-      RichTextBox.Text = defaultValue ?? "";
+      Text = title;
+      RichTextBox.Text = defaultValue;
       if (selectAll)
       {
         RichTextBox.SelectAll();
       }
     }
 
-    public string GetValue()
+    public bool TryGetValue(out string value)
     {
       if (DialogResult == DialogResult.OK)
       {
-        return RichTextBox.Text;
+        value = RichTextBox.Text;
+        return true;
       }
-      return null;
+      value = null;
+      return false;
     }
 
     private void Button_Click(object sender, EventArgs e)
@@ -35,15 +37,16 @@ namespace InputMaster.Forms
 
     private void RichTextBox_KeyDown(object sender, KeyEventArgs e)
     {
-      if (e.KeyData == Keys.Escape)
+      switch (e.KeyData)
       {
-        e.Handled = true;
-        DialogResult = DialogResult.Abort;
-      }
-      else if (e.KeyData == Keys.Return)
-      {
-        e.Handled = true;
-        DialogResult = DialogResult.OK;
+        case Keys.Escape:
+          e.Handled = true;
+          DialogResult = DialogResult.Abort;
+          break;
+        case Keys.Return:
+          e.Handled = true;
+          DialogResult = DialogResult.OK;
+          break;
       }
     }
 

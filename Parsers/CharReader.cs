@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -15,12 +14,12 @@ namespace InputMaster.Parsers
 
     protected CharReader(LocatedString locatedString)
     {
-      var text = Helper.ForbidNull(locatedString.Value, nameof(locatedString) + "." + nameof(locatedString.Value));
+      var text = locatedString.Value;
       if (text.Contains('\t'))
       {
         throw new ParseException("Tab character(s) found in input. Please use spaces only.");
       }
-      Debug.Assert(!text.Contains("\r\n"));
+      Helper.ForbidCarriageReturn(ref text);
       Text = text;
       Location = locatedString.Location;
     }
@@ -67,7 +66,7 @@ namespace InputMaster.Parsers
 
     protected void Read(string text)
     {
-      foreach (var c in Helper.ForbidNull(text, nameof(text)))
+      foreach (var c in text)
       {
         Read(c);
       }
@@ -85,7 +84,7 @@ namespace InputMaster.Parsers
 
     protected bool At(Regex regex)
     {
-      return Helper.ForbidNull(regex, nameof(regex)).IsMatch(Text.Substring(Index));
+      return regex.IsMatch(Text.Substring(Index));
     }
 
     protected void ForbidEndOfStream()

@@ -231,7 +231,7 @@ namespace InputMaster.Hooks
     {
       var chord = data.Chord;
       int backspaceCount, deleteCount;
-      if (data.Section.IsMode)
+      if (data.Section is Mode)
       {
         backspaceCount = 0;
         deleteCount = 0;

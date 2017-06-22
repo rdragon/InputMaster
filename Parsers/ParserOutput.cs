@@ -20,9 +20,8 @@ namespace InputMaster.Parsers
 
     public void AddHotkey(Section section, Chord chord, Action<Combo> action, string description)
     {
-      if (section.IsMode)
+      if (section is Mode mode)
       {
-        var mode = section.AsMode;
         if (!mode.IsComposeMode && chord.Length > 1)
         {
           throw new ParseException($"Cannot use a chord with multiple keys inside a normal mode section. Use a '{Constants.ComposeModeSectionIdentifier}' section instead.");
@@ -31,11 +30,11 @@ namespace InputMaster.Parsers
         {
           throw new ParseException($"Cannot use modifiers inside a normal mode section. Use a '{Constants.ComposeModeSectionIdentifier}' section instead.");
         }
-        section.AsMode.AddHotkey(new ModeHotkey(chord, action, description));
+        mode.AddHotkey(new ModeHotkey(chord, action, description));
       }
       else
       {
-        HotkeyCollection.AddHotkey(chord, action, section.AsStandardSection);
+        HotkeyCollection.AddHotkey(chord, action, (StandardSection)section);
       }
     }
 

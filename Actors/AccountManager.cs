@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using InputMaster.Hooks;
 using Newtonsoft.Json;
 
-namespace InputMaster
+namespace InputMaster.Actors
 {
   internal class AccountManager : Actor
   {
@@ -22,7 +22,6 @@ namespace InputMaster
 
     public AccountManager(ModeHook modeHook, IValueProvider<string> accountFileProvider)
     {
-      Helper.ForbidNull(modeHook, nameof(modeHook));
       ModeHook = modeHook;
       Env.Parser.DisableOnce();
       Env.App.SaveTick += async () =>
@@ -34,7 +33,7 @@ namespace InputMaster
         if (Loaded)
         {
           Changed = false;
-          await Env.Cipher.EncryptAsync(AccountFile, JsonConvert.SerializeObject(Accounts.Values, Formatting.Indented));
+          await Env.Cipher.EncryptAsync(AccountFile, Helper.JsonSerialize(Accounts.Values, Formatting.Indented));
         }
         else
         {
@@ -88,18 +87,12 @@ namespace InputMaster
     private static Account GetModifiedAccount(Account account)
     {
       var strippedAccount = new Account(account, excludePassword: true, excludeUsernameAndEmail: true);
-      var s = Helper.GetString("Account", JsonConvert.SerializeObject(strippedAccount, Formatting.Indented), selectAll: false);
-      if (string.IsNullOrWhiteSpace(s))
+      if (!Helper.TryGetString("Account", out var s, Helper.JsonSerialize(strippedAccount, Formatting.Indented), selectAll: false))
       {
         return account;
       }
       strippedAccount = JsonConvert.DeserializeObject<Account>(s);
       return new Account(strippedAccount, sensitiveDataAccount: account);
-    }
-
-    private static string AskId()
-    {
-      return Helper.GetString("id");
     }
 
     private static string Increment(StringBuilder sb, int i = 0)
@@ -141,14 +134,22 @@ namespace InputMaster
     public async Task ModifyAccountAsync(string id = null)
     {
       await Task.Yield();
-      id = id ?? AskId();
-      if (!string.IsNullOrEmpty(id) && Accounts.TryGetValue(id, out var account))
+      if (id == null)
       {
-        var newAccount = GetModifiedAccount(account);
-        Accounts.Remove(account.Id);
-        AddAccount(newAccount);
-        Parse();
+        if (!Helper.TryGetLine("Id", out var s))
+        {
+          return;
+        }
+        id = s;
       }
+      if (!Accounts.TryGetValue(id, out var account))
+      {
+        return;
+      }
+      var newAccount = GetModifiedAccount(account);
+      Accounts.Remove(account.Id);
+      AddAccount(newAccount);
+      Parse();
     }
 
     [Command]
@@ -183,18 +184,18 @@ namespace InputMaster
     {
       await Task.Yield();
       var strippedAccounts = GetSortedAccounts().Select(a => new Account(a, excludeUsernameAndEmail: !showUsernameAndEmail, excludePassword: true)).ToList();
-      var s = Helper.GetString("Accounts", JsonConvert.SerializeObject(strippedAccounts, Formatting.Indented), selectAll: false);
-      if (!string.IsNullOrWhiteSpace(s))
+      if (!Helper.TryGetString("Accounts", out var s, Helper.JsonSerialize(strippedAccounts, Formatting.Indented), selectAll: false))
       {
-        var submittedAccounts = JsonConvert.DeserializeObject<List<Account>>(s);
-        var newAccounts = submittedAccounts.Select(a => new Account(a, sensitiveDataAccount: Accounts.ContainsKey(a.Id) ? Accounts[a.Id] : null)).ToList();
-        Accounts.Clear();
-        foreach (var account in newAccounts)
-        {
-          AddAccount(account);
-        }
-        Parse();
+        return;
       }
+      var submittedAccounts = JsonConvert.DeserializeObject<List<Account>>(s);
+      var newAccounts = submittedAccounts.Select(a => new Account(a, sensitiveDataAccount: Accounts.ContainsKey(a.Id) ? Accounts[a.Id] : null)).ToList();
+      Accounts.Clear();
+      foreach (var account in newAccounts)
+      {
+        AddAccount(account);
+      }
+      Parse();
     }
 
     [Command]
@@ -222,12 +223,20 @@ namespace InputMaster
     public async Task EnterAccountAsync(string id = null)
     {
       await Task.Yield();
-      id = id ?? AskId();
-      if (!string.IsNullOrEmpty(id) && Accounts.TryGetValue(id, out var account))
+      if (id == null)
       {
-        ModeHook.EnterMode(Env.Config.AccountModeName);
-        CurrentAccount = account;
+        if (!Helper.TryGetLine("Id", out var s))
+        {
+          return;
+        }
+        id = s;
       }
+      if (!Accounts.TryGetValue(id, out var account))
+      {
+        return;
+      }
+      ModeHook.EnterMode(Env.Config.AccountModeName);
+      CurrentAccount = account;
     }
 
     [Command]
@@ -240,7 +249,7 @@ namespace InputMaster
         {
           s.AppendChar(c);
         }
-        Helper.StartProcess(filePath, arguments, account.GetUsername(), s, Environment.UserDomainName);
+        Helper.StartProcess(filePath, account.GetUsername(), s, Environment.UserDomainName, arguments);
       }
       else
       {

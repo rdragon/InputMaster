@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace InputMaster
+namespace InputMaster.Instances
 {
   internal class ProcessManager : IProcessManager
   {

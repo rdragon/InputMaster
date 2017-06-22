@@ -51,6 +51,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DebugSymbols>true</DebugSymbols>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup>
     <RunPostBuildEvent>Always</RunPostBuildEvent>
@@ -87,33 +88,29 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Account.cs" />
-    <Compile Include="AccountManager.cs" />
-    <Compile Include="Actor.cs" />
-    <Compile Include="App.cs" />
+    <Compile Include="Actors\Account.cs" />
+    <Compile Include="Actors\AccountManager.cs" />
+    <Compile Include="Instances\App.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="ValueProvider.cs" />
     <Compile Include="Attributes.cs" />
-    <Compile Include="DynamicHotkeyCollection.cs" />
+    <Compile Include="Parsers\DynamicHotkeyCollection.cs" />
     <Compile Include="Chord.cs" />
-    <Compile Include="ComboArgs.cs" />
-    <Compile Include="Extensions\VarActor.cs" />
-    <Compile Include="Factory.cs" />
+    <Compile Include="Actors\VarActor.cs" />
+    <Compile Include="Instances\Factory.cs" />
     <Compile Include="Forms\GetStringLineForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\GetStringLineForm.Designer.cs">
       <DependentUpon>GetStringLineForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="HotkeyFile.cs" />
     <Compile Include="FileChangedWatcher.cs" />
-    <Compile Include="DynamicHotkey.cs" />
-    <Compile Include="InputCounter.cs" />
+    <Compile Include="Parsers\DynamicHotkey.cs" />
+    <Compile Include="Hooks\InputCounter.cs" />
     <Compile Include="InputArgs.cs" />
     <Compile Include="Interfaces.cs" />
     <Compile Include="KeyboardLayouts\KeyboardLayout.cs" />
     <Compile Include="KeyboardLayouts\LayoutEnglishUnitedStates.cs" />
-    <Compile Include="ModeHotkey.cs" />
     <Compile Include="Hooks\ModeViewer.cs" />
     <Compile Include="ConfigHelper.cs" />
     <Compile Include="Parsers\ParserOutput.cs" />
@@ -122,7 +119,7 @@
     <Compile Include="Parsers\ExecuteAtParseTimeData.cs" />
     <Compile Include="Parsers\ParseException.cs" />
     <Compile Include="Parsers\CharReader.cs" />
-    <Compile Include="CommandCollection.cs" />
+    <Compile Include="Instances\CommandCollection.cs" />
     <Compile Include="Parsers\Location.cs" />
     <Compile Include="HotkeyCollection.cs" />
     <Compile Include="TextEditor\SharedFile.cs" />
@@ -137,31 +134,30 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Forms\RtbPosition.cs" />
-    <Compile Include="Section.cs" />
     <Compile Include="TextEditor\Cipher.cs" />
     <Compile Include="Win32\NativeMethods.cs" />
-    <Compile Include="Forms\NotifyForm.cs">
+    <Compile Include="Instances\NotifyForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Parsers\LocatedString.cs" />
     <Compile Include="Env.cs" />
-    <Compile Include="ProcessManager.cs" />
+    <Compile Include="Instances\ProcessManager.cs" />
     <Compile Include="Hotkey.cs" />
     <Compile Include="Mode.cs" />
-    <Compile Include="Extensions\ColorTracker.cs" />
-    <Compile Include="FlagManager.cs" />
+    <Compile Include="Actors\ColorTracker.cs" />
+    <Compile Include="Instances\FlagManager.cs" />
     <Compile Include="Helper.cs" />
     <Compile Include="Combo.cs" />
     <Compile Include="Parsers\InputReader.cs" />
-    <Compile Include="MiscActor.cs" />
+    <Compile Include="Actors\MiscActor.cs" />
     <Compile Include="Parsers\Parser.cs" />
     <Compile Include="Hooks\ModeHook.cs" />
     <Compile Include="StandardSection.cs" />
-    <Compile Include="Scheduler.cs" />
+    <Compile Include="Instances\Scheduler.cs" />
     <Compile Include="State.cs" />
     <Compile Include="Try.cs" />
     <Compile Include="Hooks\InputHook.cs" />
-    <Compile Include="ForegroundListener.cs" />
+    <Compile Include="Instances\ForegroundListener.cs" />
     <Compile Include="Hooks\InputRelay.cs" />
     <Compile Include="Hooks\ComboRelay.cs" />
     <Compile Include="Hooks\PrimaryHook.cs" />
@@ -170,13 +166,13 @@
     <Compile Include="Hooks\ComboHook.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Extensions\SecondClipboard.cs" />
-    <Compile Include="Injector.cs" />
+    <Compile Include="Actors\SecondClipboard.cs" />
+    <Compile Include="Instances\Injector.cs" />
     <Compile Include="TextEditor\TextEditorForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Input.cs" />
-    <Compile Include="ForegroundInteractor.cs" />
+    <Compile Include="Actors\ForegroundInteractor.cs" />
     <Compile Include="Forms\ThemeForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -243,6 +239,7 @@
   <ItemGroup>
     <None Include="Resources\Tests.im" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>IF "$(ConfigurationName)"=="Release" IF EXIST "$(TargetPath)" powershell start-process $(TargetPath)

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using InputMaster.Parsers;
 
-namespace InputMaster
+namespace InputMaster.Instances
 {
   internal class CommandCollection : ICommandCollection
   {

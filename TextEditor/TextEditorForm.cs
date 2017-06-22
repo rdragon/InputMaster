@@ -59,30 +59,28 @@ namespace InputMaster.TextEditor
       Env.App.SaveTick += async () => await SaveAllAsync();
       KeyDown += async (s, e) =>
       {
-        if (e.KeyData == (Keys.Control | Keys.N))
+        switch (e.KeyData)
         {
-          e.Handled = true;
-          await CreateNewFileAsync();
-        }
-        else if (e.KeyData == (Keys.Control | Keys.Shift | Keys.F))
-        {
-          e.Handled = true;
-          await FileManager.FindAllAsync();
-        }
-        else if (e.KeyData == (Keys.Control | Keys.Shift | Keys.I))
-        {
-          e.Handled = true;
-          await FileManager.ImportFromDirectoryAsync();
-        }
-        else if (e.KeyData == (Keys.Control | Keys.Shift | Keys.E))
-        {
-          e.Handled = true;
-          await FileManager.ExportToDirectoryAsync();
-        }
-        else if (e.KeyData == (Keys.Control | Keys.O))
-        {
-          e.Handled = true;
-          await OpenCustomFileAsync();
+          case Keys.Control | Keys.N:
+            e.Handled = true;
+            await CreateNewFileAsync();
+            break;
+          case Keys.Control | Keys.Shift | Keys.F:
+            e.Handled = true;
+            await FileManager.FindAllAsync();
+            break;
+          case Keys.Control | Keys.Shift | Keys.I:
+            e.Handled = true;
+            await FileManager.ImportFromDirectoryAsync();
+            break;
+          case Keys.Control | Keys.Shift | Keys.E:
+            e.Handled = true;
+            await FileManager.ExportToDirectoryAsync();
+            break;
+          case Keys.Control | Keys.O:
+            e.Handled = true;
+            await OpenCustomFileAsync();
+            break;
         }
       };
       FormClosing += async (s, e) =>
@@ -151,12 +149,12 @@ namespace InputMaster.TextEditor
     private async Task OpenCustomFileAsync()
     {
       await Task.Yield();
-      var file = Helper.GetString("File path");
-      if (!string.IsNullOrWhiteSpace(file))
+      if (!Helper.TryGetString("File path", out var file))
       {
-        Helper.RequireExistsFile(file);
-        await OpenFileAsync(file);
+        return;
       }
+      Helper.RequireExistsFile(file);
+      await OpenFileAsync(file);
     }
 
     private async Task OpenFileAsync(string file)
@@ -180,18 +178,18 @@ namespace InputMaster.TextEditor
       }
       if (FileTabs.Count > Env.Config.MaxTextEditorTabs)
       {
-        await (TabControl.GetLastTabPageInOrder().Tag as FileTab).CloseAsync();
+        await ((FileTab)TabControl.GetLastTabPageInOrder().Tag).CloseAsync();
       }
     }
 
     private async Task CreateNewFileAsync()
     {
-      var title = Helper.GetString("Title of new file");
-      if (!string.IsNullOrWhiteSpace(title))
+      if (!Helper.TryGetString("Title of new file", out var title))
       {
-        var file = await FileManager.CreateNewFileAsync(title.Trim(), "");
-        await OpenFileAsync(file);
+        return;
       }
+      var file = await FileManager.CreateNewFileAsync(title.Trim(), "");
+      await OpenFileAsync(file);
       await FileManager.CompileTextEditorModeAsync();
     }
 

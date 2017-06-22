@@ -7,8 +7,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using InputMaster.Win32;
+using InputMaster.Forms;
 
-namespace InputMaster.Forms
+namespace InputMaster.Instances
 {
   internal sealed class NotifyForm : ThemeForm, INotifier
   {
@@ -36,8 +37,8 @@ namespace InputMaster.Forms
       {
         // This method is used instead of setting `this.Enabled` to false, so that the visuals are not affected.
         NativeMethods.EnableWindow(Handle, false);
-
         File.WriteAllText(Env.Config.WindowHandleFile, Handle.ToString());
+        new Factory(this).Run();
       };
 
       SizeChanged += (s, e) =>
@@ -130,11 +131,11 @@ namespace InputMaster.Forms
       var sb = new StringBuilder();
       if (!string.IsNullOrEmpty(PersistentText))
       {
-        sb.AppendLine(PersistentText);
+        sb.Append($"{PersistentText}\n");
       }
       foreach (var text in Messages)
       {
-        sb.AppendLine(text);
+        sb.Append($"{text}\n");
       }
       Label.Text = sb.ToString();
     }

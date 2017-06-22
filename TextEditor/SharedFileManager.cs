@@ -88,9 +88,9 @@ namespace InputMaster.TextEditor
       RequireSharedPassword();
       var text = await Env.Cipher.DecryptAsync(sharedFile.DataFile);
       Directory.CreateDirectory(Path.GetDirectoryName(targetFile));
-      await new Cipher(SharedPassword).EncryptAsync(targetFile, JsonConvert.SerializeObject(new TitleTextPair(sharedFile.Title, text)));
+      await new Cipher(SharedPassword).EncryptAsync(targetFile, Helper.JsonSerialize(new TitleTextPair(sharedFile.Title, text), Formatting.None));
       var timestamp = new SharedFileTimestamp(sharedFile.NameFile, sharedFile.DataFile);
-      File.WriteAllText(targetTimestampFile, JsonConvert.SerializeObject(timestamp));
+      File.WriteAllText(targetTimestampFile, Helper.JsonSerialize(timestamp, Formatting.None));
     }
   }
 }

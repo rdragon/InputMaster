@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using InputMaster.Extensions;
 using InputMaster.Parsers;
 using InputMaster.Win32;
 using InputMaster.KeyboardLayouts;
+using System.Windows.Forms;
+using InputMaster.Actors;
+using InputMaster.Instances;
 // ReSharper disable All
 
 namespace InputMaster
@@ -168,12 +170,17 @@ namespace InputMaster
       }
     }
 
+    public virtual Form CreateMainForm()
+    {
+      return new NotifyForm();
+    }
+
     public bool TryGetModifierKey(Modifiers modifier, out Input input) => ModifierKeyDict.TryGetValue(modifier, out input);
     public bool TryGetModifier(Input input, out Modifiers modifier) => ModifierDict.TryGetValue(input, out modifier);
     public bool TryGetCustomCombo(string name, out Combo combo) => CustomCombos.TryGetValue(name, out combo);
     public bool TryGetCustomInput(string name, out Input input) => CustomInputs.TryGetValue(name, out input);
     public bool TryGetPreprocessorReplace(string key, out string value) => PreprocessorReplaces.TryGetValue(key, out value);
-    public virtual string GetChordText(string title) => Helper.GetChordText(title);
+    public virtual bool TryGetChordText(string title, out string chordText) => Helper.TryGetChordText(title, out chordText);
   }
 }
 

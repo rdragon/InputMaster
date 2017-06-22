@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using InputMaster.Parsers;
 
@@ -14,16 +13,17 @@ namespace InputMaster
 
     public Mode(string name, bool isComposeMode)
     {
-      Name = Helper.ForbidNull(name, nameof(name));
+      Name = name;
       IsComposeMode = isComposeMode;
     }
 
     public string Name { get; }
     public bool IsComposeMode { get; }
+    public bool IsInputMode => !IsComposeMode;
 
     public void AddHotkey(ModeHotkey modeHotkey, bool hideWarningMessage = false)
     {
-      Debug.Assert(IsComposeMode || modeHotkey.Chord.Length == 1 && modeHotkey.Chord.First().Modifiers == Modifiers.None);
+      Helper.RequireTrue(IsComposeMode || modeHotkey.Chord.Length == 1 && modeHotkey.Chord.First().Modifiers == Modifiers.None);
       foreach (var chord in Hotkeys.Select(z => z.Chord))
       {
         var small = modeHotkey.Chord;

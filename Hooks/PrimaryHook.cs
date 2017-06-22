@@ -27,17 +27,20 @@ namespace InputMaster.Hooks
       };
     }
 
-    private static InputArgs ReadMessage(WindowMessage message, IntPtr data)
+    private static bool TryReadMessage(WindowMessage message, IntPtr data, out InputArgs inputArgs)
     {
-      return message.IsMouseMessage() ? ReadMouseMessage(message, data) : Env.Config.KeyboardLayout.ReadKeyboardMessage(message, data);
+      return message.IsMouseMessage()
+        ? TryReadMouseMessage(message, data, out inputArgs)
+        : Env.Config.KeyboardLayout.TryReadKeyboardMessage(message, data, out inputArgs);
     }
 
-    private static InputArgs ReadMouseMessage(WindowMessage message, IntPtr data)
+    private static bool TryReadMouseMessage(WindowMessage message, IntPtr data, out InputArgs inputArgs)
     {
       var mouseProcedureData = (MouseProcedureData)Marshal.PtrToStructure(data, typeof(MouseProcedureData));
       if (mouseProcedureData.Flags.HasFlag(MouseProcedureDataFlags.Injected) || message == WindowMessage.MouseMove)
       {
-        return null;
+        inputArgs = null;
+        return false;
       }
       var down = false;
       switch (message)
@@ -70,7 +73,8 @@ namespace InputMaster.Hooks
         default:
           throw new ArgumentException("Unrecognized mouse message.", nameof(message));
       }
-      return new InputArgs(input, down);
+      inputArgs = new InputArgs(input, down);
+      return true;
     }
 
     public void Register()
@@ -92,18 +96,14 @@ namespace InputMaster.Hooks
       var captured = false;
       try
       {
-        if (code >= 0)
+        if (code >= 0 && TryReadMessage((WindowMessage)wParam, lParam, out var e))
         {
-          var e = ReadMessage((WindowMessage)wParam, lParam);
-          if (e != null)
+          if (Env.Config.CaptureLmb && e.Input == Input.Lmb)
           {
-            if (Env.Config.CaptureLmb && e.Input == Input.Lmb)
-            {
-              captured = true;
-            }
-            TargetHook.Handle(e);
-            captured = e.Capture;
+            captured = true;
           }
+          TargetHook.Handle(e);
+          captured = e.Capture;
         }
       }
       catch (Exception ex) // This is the last place to handle any exceptions thrown during the hook procedure.

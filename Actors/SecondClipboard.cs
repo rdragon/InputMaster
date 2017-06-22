@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace InputMaster.Extensions
+namespace InputMaster.Actors
 {
   internal class SecondClipboard : Actor
   {

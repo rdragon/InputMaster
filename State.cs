@@ -12,14 +12,13 @@ namespace InputMaster
 
     protected State(string name, T parent, string dir)
     {
-      Helper.RequireValidFileName(name);
-      Helper.ForbidNull(parent, nameof(parent));
+      var filename = Helper.GetValidFileName(name, '_');
       Parent = parent;
       if (Env.TestRun)
       {
         return;
       }
-      DataFile = Path.Combine(dir, name);
+      DataFile = Path.Combine(dir, filename);
       Env.App.SaveTick += Save;
       Env.App.Exiting += Try.Wrap(Save);
     }

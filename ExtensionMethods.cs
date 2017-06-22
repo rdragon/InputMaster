@@ -177,9 +177,9 @@ namespace InputMaster
       return (T)stream;
     }
 
-    public static bool TryGetAction(this IParser parser, DynamicHotkeyEnum key, bool complainIfNotFound, out Action<IInjectorStream<object>> action)
+    public static void GetAction(this IParser parser, DynamicHotkeyEnum key, out Action<IInjectorStream<object>> action)
     {
-      return parser.TryGetAction(key.ToString(), complainIfNotFound, out action);
+      parser.GetAction(key.ToString(), out action);
     }
   }
 }

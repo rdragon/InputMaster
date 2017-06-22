@@ -2,7 +2,6 @@
 using InputMaster.Hooks;
 using InputMaster.Parsers;
 using System;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -183,7 +182,7 @@ namespace InputMaster.TextEditor
           var s = line.Substring(2);
           if (!string.IsNullOrWhiteSpace(s))
           {
-            sb.AppendLine(s);
+            sb.Append($"{s}\n");
           }
         }
       }
@@ -259,7 +258,7 @@ namespace InputMaster.TextEditor
         Rtb.Select(index - 1, 0);
         Rtb.ScrollToCaret();
         var i = GetAppendIndex(padded, index);
-        Debug.Assert(i != -1);
+        Helper.RequireTrue(i != -1);
         Rtb.Select(i - 1, 0);
       }
     }
@@ -302,8 +301,7 @@ namespace InputMaster.TextEditor
       var mode = new Mode(Title, true);
       foreach (var section in sections)
       {
-        var chordText = Helper.GetChordText(section);
-        if (chordText != null)
+        if (Helper.TryGetChordText(section, out var chordText))
         {
           var chord = Env.Config.DefaultChordReader.CreateChord(new LocatedString(chordText));
           mode.AddHotkey(new ModeHotkey(chord, combo => action(section), section));
@@ -314,14 +312,14 @@ namespace InputMaster.TextEditor
 
     private async Task RenameAsync()
     {
-      var newTitle = Helper.GetString("New Name", Title);
-      if (!string.IsNullOrEmpty(newTitle) && newTitle != Title)
+      if (!Helper.TryGetLine("New Name", out var newTitle, Title) || newTitle == Title)
       {
-        Title = newTitle;
-        TabPage.Text = Title;
-        await Env.Cipher.EncryptAsync(File, Title);
-        await FileManager.CompileTextEditorModeAsync();
+        return;
       }
+      Title = newTitle;
+      TabPage.Text = Title;
+      await Env.Cipher.EncryptAsync(File, Title);
+      await FileManager.CompileTextEditorModeAsync();
     }
 
     private void Compile()

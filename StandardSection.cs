@@ -15,7 +15,7 @@ namespace InputMaster
 
     protected StandardSection(StandardSection parent)
     {
-      Parent = Helper.ForbidNull(parent, nameof(parent));
+      Parent = parent;
       Id = Interlocked.Increment(ref IdCounter);
     }
 
@@ -71,7 +71,7 @@ namespace InputMaster
 
     public FlagSection(StandardSection parent, string text) : base(parent)
     {
-      Flag = Helper.ForbidNull(text, nameof(text));
+      Flag = text;
     }
 
     protected override bool ComputeEnabled()
@@ -87,7 +87,7 @@ namespace InputMaster
 
     public RegexSection(StandardSection parent, Regex regex, RegexSectionType type) : base(parent)
     {
-      Regex = Helper.ForbidNull(regex, nameof(regex));
+      Regex = regex;
       if (!Enum.IsDefined(typeof(RegexSectionType), type))
       {
         throw new ArgumentOutOfRangeException(nameof(type));

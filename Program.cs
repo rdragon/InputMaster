@@ -4,7 +4,6 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Windows.Forms;
-using InputMaster.Forms;
 using InputMaster.Win32;
 
 [assembly: InternalsVisibleTo("UnitTests")]
@@ -101,12 +100,7 @@ namespace InputMaster
         {
           return;
         }
-        var notifyForm = new NotifyForm();
-        notifyForm.Shown += (s, e) =>
-        {
-          new Factory(notifyForm).Run();
-        };
-        Application.Run(notifyForm);
+        Application.Run(Env.Config.CreateMainForm());
       }
       catch (Exception ex)
       {

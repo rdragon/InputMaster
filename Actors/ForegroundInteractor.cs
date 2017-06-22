@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace InputMaster
+namespace InputMaster.Actors
 {
   internal class ForegroundInteractor : Actor
   {
@@ -64,7 +64,10 @@ namespace InputMaster
     public static async Task ReplicateSelectedTextAsync()
     {
       await Task.Yield();
-      var s = Helper.GetString("Count");
+      if (!Helper.TryGetString("Count", out var s))
+      {
+        return;
+      }
       var i = int.Parse(s);
       await ModifySelectedTextAsync(t => string.Concat(Enumerable.Repeat(t, i)));
     }
@@ -73,7 +76,6 @@ namespace InputMaster
     public static async Task ListDirectorySizesAsync()
     {
       var dir = await GetSelectedTextAsync();
-      Helper.ForbidNull(dir, nameof(dir));
       Helper.RequireExistsDir(dir);
       Helper.ShowSelectableText(Helper.AlignColumns(
         string.Join("\n",
@@ -87,7 +89,10 @@ namespace InputMaster
     public static async Task PartitionSelectedLinesAsync()
     {
       await Task.Yield();
-      var pattern = Helper.GetString("pattern");
+      if (!Helper.TryGetString("pattern", out var pattern))
+      {
+        return;
+      }
       await ModifySelectedLinesAsync(lines =>
       {
         var r = new Regex(pattern);
@@ -104,11 +109,8 @@ namespace InputMaster
     [Command]
     public static async Task PasteAsync(string text)
     {
-      await Helper.SetClipboardTextAsync(text.Replace("\n", Environment.NewLine));
-      if (!Env.Parser.TryGetAction(DynamicHotkeyEnum.Paste, true, out var action))
-      {
-        return;
-      }
+      await Helper.SetClipboardTextAsync(text);
+      Env.Parser.GetAction(DynamicHotkeyEnum.Paste, out var action);
       Env.CreateInjector().Add(action).Run();
     }
 
@@ -140,13 +142,9 @@ namespace InputMaster
     public static async Task<string> GetSelectedTextAsync()
     {
       await Helper.ClearClipboardAsync();
-      if (!Env.Parser.TryGetAction(DynamicHotkeyEnum.Copy, true, out var action))
-      {
-        return "";
-      }
+      Env.Parser.GetAction(DynamicHotkeyEnum.Copy, out var action);
       Env.CreateInjector().Add(action).Run();
-      var s = await Helper.GetClipboardTextAsync();
-      return s.Replace(Environment.NewLine, "\n");
+      return await Helper.GetClipboardTextAsync();
     }
   }
 }

@@ -12,7 +12,7 @@ namespace InputMaster
 
     public FileChangedWatcher(string file)
     {
-      File = Helper.ForbidNull(file, nameof(file));
+      File = file;
       FileSystemWatcher = new FileSystemWatcher(Path.GetDirectoryName(File), Path.GetFileName(File))
       {
         SynchronizingObject = Env.Notifier.SynchronizingObject,

@@ -16,17 +16,16 @@ namespace InputMaster.Forms
     {
       ControlAdded += (s, e) =>
       {
-        var tabPage = e.Control as TabPage;
-        if (tabPage != null)
+        if (!(e.Control is TabPage tabPage))
         {
-          TabOrder.AddFirst(tabPage);
+          return;
         }
+        TabOrder.AddFirst(tabPage);
       };
 
       ControlRemoved += (s, e) =>
       {
-        var tabPage = e.Control as TabPage;
-        if (tabPage == null)
+        if (!(e.Control is TabPage tabPage))
         {
           return;
         }
@@ -39,11 +38,12 @@ namespace InputMaster.Forms
 
       Selected += (s, e) =>
       {
-        if (e.TabPage != null)
+        if (e.TabPage == null)
         {
-          TabOrder.Remove(e.TabPage);
-          TabOrder.AddFirst(e.TabPage);
+          return;
         }
+        TabOrder.Remove(e.TabPage);
+        TabOrder.AddFirst(e.TabPage);
       };
     }
 
