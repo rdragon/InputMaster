@@ -1,9 +1,7 @@
 ﻿using System;
-using JetBrains.Annotations;
 
 namespace InputMaster
 {
-  [MeansImplicitUse]
   [AttributeUsage(AttributeTargets.Method)]
   public sealed class CommandAttribute : Attribute
   {

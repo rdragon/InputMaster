@@ -4,20 +4,20 @@ namespace InputMaster.Parsers
 {
   public class DynamicHotkey : IComparable<DynamicHotkey>
   {
-    private readonly StandardSection Section;
-    public bool Enabled => Section.IsEnabled;
+    public bool Enabled => _section.IsEnabled;
+    private readonly StandardSection _section;
 
     public DynamicHotkey(Action<IInjectorStream<object>> action, StandardSection section)
     {
       Action = action;
-      Section = section;
+      _section = section;
     }
 
     public Action<IInjectorStream<object>> Action { get; }
 
     public int CompareTo(DynamicHotkey other)
     {
-      return Section.CompareTo(other.Section);
+      return _section.CompareTo(other._section);
     }
   }
 }

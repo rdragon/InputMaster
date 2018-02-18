@@ -13,16 +13,16 @@ namespace InputMaster.Instances
 {
   public sealed class NotifyForm : ThemeForm, INotifier
   {
-    private readonly Label Label = new Label { AutoSize = true, Location = new Point(9, 9) };
-    private readonly Queue<string> Messages = new Queue<string>();
-    private readonly StringBuilder Log = new StringBuilder();
-    private string PersistentText;
+    private readonly Label _label = new Label { AutoSize = true, Location = new Point(9, 9) };
+    private readonly Queue<string> _messages = new Queue<string>();
+    private readonly StringBuilder _log = new StringBuilder();
+    private string _persistentText;
     private State _state = State.Running;
 
     public NotifyForm()
     {
       SuspendLayout();
-      Controls.Add(Label);
+      Controls.Add(_label);
       AutoSize = true;
       AutoSizeMode = AutoSizeMode.GrowAndShrink;
       FormBorderStyle = FormBorderStyle.None;
@@ -95,7 +95,7 @@ namespace InputMaster.Instances
     {
       message = message ?? "";
       WriteToLog(message);
-      Messages.Enqueue(message);
+      _messages.Enqueue(message);
       UpdateLabel();
       Task.Delay(Env.Config.NotifierTextLifetime)
         .ContinueWith(t => DequeueMessage(), TaskScheduler.FromCurrentSynchronizationContext());
@@ -128,13 +128,13 @@ namespace InputMaster.Instances
 
     public void SetPersistentText(string text)
     {
-      PersistentText = text;
+      _persistentText = text;
       UpdateLabel();
     }
 
     public string GetLog()
     {
-      return Log.ToString();
+      return _log.ToString();
     }
 
     public void CaptureForeground()
@@ -147,7 +147,7 @@ namespace InputMaster.Instances
     private void WriteToLog(string message)
     {
       message = AppendTimestamp(message);
-      Log.Append($"{message}\n");
+      _log.Append($"{message}\n");
     }
 
     private static void WriteToFile(string message)
@@ -163,18 +163,18 @@ namespace InputMaster.Instances
       if (_state != State.Running)
         return;
       var sb = new StringBuilder();
-      if (!string.IsNullOrEmpty(PersistentText))
-        sb.Append($"{PersistentText}\n");
-      foreach (var text in Messages)
+      if (!string.IsNullOrEmpty(_persistentText))
+        sb.Append($"{_persistentText}\n");
+      foreach (var text in _messages)
         sb.Append($"{text}\n");
-      Label.Text = sb.ToString();
+      _label.Text = sb.ToString();
     }
 
     private void UpdateFormPosition()
     {
-      if (Label.Text.Length == 0)
+      if (_label.Text.Length == 0)
         Left = 99999;
-      else if (!string.IsNullOrEmpty(PersistentText))
+      else if (!string.IsNullOrEmpty(_persistentText))
         Location = new Point(Screen.PrimaryScreen.WorkingArea.Left, Screen.PrimaryScreen.WorkingArea.Top);
       else
         Location = new Point(Screen.PrimaryScreen.WorkingArea.Left, Screen.PrimaryScreen.WorkingArea.Bottom - Height);
@@ -182,7 +182,7 @@ namespace InputMaster.Instances
 
     private void DequeueMessage()
     {
-      Messages.Dequeue();
+      _messages.Dequeue();
       UpdateLabel();
     }
 

@@ -1,8 +1,5 @@
-﻿using JetBrains.Annotations;
-
-namespace InputMaster
+﻿namespace InputMaster
 {
-  [UsedImplicitly(ImplicitUseTargetFlags.Members)]
   public enum Input
   {
     None = 0,

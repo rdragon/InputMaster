@@ -1,4 +1,5 @@
-﻿using System;
+﻿using InputMaster.Rik; // Remove this line.
+using System;
 using System.Collections.Generic;
 
 namespace InputMaster
@@ -11,6 +12,7 @@ namespace InputMaster
     Ctrl = 2,
     Alt = 4,
     Win = 8
+    , Caps = 16 // Remove this line.
   }
 
   public enum DynamicHotkeyEnum { Copy, Paste }
@@ -29,11 +31,13 @@ namespace InputMaster
       (Input.RAlt, Modifiers.Alt),
       (Input.LWin, Modifiers.Win),
       (Input.RWin, Modifiers.Win)
+      , (Input.CapsLock, Modifiers.Caps) // Remove this line.
+      , (Input.Menu, Modifiers.Caps) // Remove this line.
     }.AsReadOnly();
 
     public static void SetConfig()
     {
-      Env.Config = new Config();
+      Env.Config = new /**/ConfigRik/**/(); // Config
       Env.Config.Initialize();
     }
   }

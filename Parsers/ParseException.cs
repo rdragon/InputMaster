@@ -18,12 +18,14 @@ namespace InputMaster.Parsers
       HasLocation = true;
     }
 
-    public ParseException(Location location, string message, Exception innerException = null) : base(location + ": " + message, innerException)
+    public ParseException(Location location, string message, Exception innerException = null) :
+      base(location + ": " + message, innerException)
     {
       HasLocation = true;
     }
 
-    public ParseException(LocatedString locatedString, string message, Exception innerException = null) : base(locatedString + ": " + message, innerException)
+    public ParseException(LocatedString locatedString, string message, Exception innerException = null) :
+      base(locatedString + ": " + message, innerException)
     {
       HasLocation = true;
     }

@@ -16,8 +16,8 @@ namespace InputMaster
   {
     public static bool Reset { get; private set; }
     public static bool ReadOnly { get; private set; }
-    private Mutex Mutex;
-    private bool MutexAcquired;
+    private Mutex _mutex;
+    private bool _mutexAcquired;
 
     [STAThread]
     private static void Main(string[] arguments)
@@ -27,7 +27,8 @@ namespace InputMaster
       Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
       Application.ThreadException += async (s, e) =>
       {
-        // Warning: the argument only contains the innermost exception (see http://stackoverflow.com/questions/347502/why-does-the-inner-exception-reach-the-threadexception-handler-and-not-the-actual).
+        // Warning: the argument only contains the innermost exception (see 
+        // http://stackoverflow.com/questions/347502/why-does-the-inner-exception-reach-the-threadexception-handler-and-not-the-actual).
         await Helper.HandleExceptionAsync(e.Exception);
       };
       Thread.CurrentThread.Priority = ThreadPriority.AboveNormal;
@@ -94,9 +95,9 @@ namespace InputMaster
           return;
         if (!ReadOnly)
         {
-          Mutex = new Mutex(false, "4dy9fbflg2ct_");
+          _mutex = new Mutex(false, "4dy9fbflg2ct_");
           AcquireMutex();
-          MutexAcquired = true;
+          _mutexAcquired = true;
         }
         if (result == Result.CloseAfterMutex)
           return;
@@ -132,7 +133,7 @@ namespace InputMaster
     {
       try
       {
-        return Mutex.WaitOne(timespan);
+        return _mutex.WaitOne(timespan);
       }
       catch (AbandonedMutexException)
       {
@@ -142,9 +143,9 @@ namespace InputMaster
 
     private void OnExit()
     {
-      if (MutexAcquired)
-        Mutex.ReleaseMutex();
-      Mutex?.Dispose();
+      if (_mutexAcquired)
+        _mutex.ReleaseMutex();
+      _mutex?.Dispose();
       RestartIfNeeded();
     }
 

@@ -274,7 +274,7 @@ namespace InputMaster
       return list;
     }
 
-    private class MyState : IState
+    public class MyState : IState
     {
       public Dictionary<int, Account> Accounts { get; set; }
 

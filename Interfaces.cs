@@ -130,12 +130,6 @@ namespace InputMaster
     byte[] Decrypt(byte[] data);
   }
 
-  public interface IValueProvider<out T>
-  {
-    void ExecuteOnce(Action<T> func);
-    void ExecuteMany(Action<T> func);
-  }
-
   public interface IStateHandler<T> : IStateHandler
   {
     Task<T> LoadAsync();

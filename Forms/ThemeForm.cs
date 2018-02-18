@@ -17,9 +17,7 @@ namespace InputMaster.Forms
     {
       c.ControlAdded += SomeControlAdded;
       foreach (Control child in c.Controls)
-      {
         SetHandlerRecursive(child);
-      }
     }
 
     private void SomeControlAdded(object sender, ControlEventArgs e)
@@ -37,18 +35,12 @@ namespace InputMaster.Forms
         control.Font = Env.Config.Font;
       }
       else if (control is SplitContainer)
-      {
         control.BackColor = Env.Config.BackgroundColor;
-      }
       else if (control is Label)
-      {
         control.Font = Env.Config.Font;
-      }
 
       foreach (Control child in control.Controls)
-      {
         ApplyThemeRecursive(child);
-      }
     }
 
     protected void ForceToForeground()

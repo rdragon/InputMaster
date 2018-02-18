@@ -198,9 +198,9 @@ namespace InputMaster.TextEditor
       Application.Exit();
     }
 
-    private class MyState : IState
+    public class MyState : IState
     {
-      public Dictionary<string, RtbPosition> Positions;
+      public Dictionary<string, RtbPosition> Positions { get; set; }
 
       public (bool, string message) Fix()
       {

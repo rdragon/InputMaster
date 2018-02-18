@@ -55,26 +55,4 @@ namespace InputMaster.Actors
       });
     }
   }
-
-  public class GitResponse
-  {
-    public string StandardOutput { get; }
-    public string StandardError { get; }
-
-    public GitResponse(string standardOutput, string standardError)
-    {
-      StandardOutput = standardOutput;
-      StandardError = standardError;
-    }
-  }
-
-  [Flags]
-  public enum GitStatusFlags
-  {
-    None = 0,
-    WorkingTreeDirty = 1,
-    IndexDirty = 2,
-    AwaitingPush = 4,
-    UpToDate = 8
-  }
 }

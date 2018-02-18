@@ -142,9 +142,7 @@ namespace InputMaster.Actors
         var a = new List<string>();
         var b = new List<string>();
         foreach (var line in lines)
-        {
           (r.IsMatch(line) ? a : b).Add(line);
-        }
         return a.Concat(new[] { "", "", "" }).Concat(b);
       });
     }

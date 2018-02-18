@@ -8,33 +8,33 @@ namespace InputMaster.Instances
 {
   public class ProcessManager : IProcessManager
   {
-    private readonly HashSet<MyProcess> Processes = new HashSet<MyProcess>();
-    private readonly Timer Timer = new Timer { Interval = (int)Env.Config.ProcessManagerInterval.TotalMilliseconds };
+    private readonly HashSet<MyProcess> _processes = new HashSet<MyProcess>();
+    private readonly Timer _timer = new Timer { Interval = (int)Env.Config.ProcessManagerInterval.TotalMilliseconds };
 
     public ProcessManager()
     {
-      Timer.Tick += (s, e) =>
+      _timer.Tick += (s, e) =>
       {
-        foreach (var process in Processes.ToArray())
+        foreach (var process in _processes.ToArray())
         {
           process.KillIfTimedOut();
           if (process.Process.HasExited)
           {
             process.Process.Dispose();
-            Processes.Remove(process);
+            _processes.Remove(process);
           }
         }
       };
-      Env.App.Run += () => Timer.Enabled = true;
+      Env.App.Run += () => _timer.Enabled = true;
       Env.App.Exiting += async () =>
       {
-        Timer.Dispose();
-        foreach (var process in Processes)
+        _timer.Dispose();
+        foreach (var process in _processes)
         {
           await Try.Execute(process.KillIfRunning);
           process.Process.Dispose();
         }
-        Processes.Clear();
+        _processes.Clear();
       };
     }
 
@@ -46,27 +46,26 @@ namespace InputMaster.Instances
       {
         var timeoutLength = timeout.GetValueOrDefault(TimeSpan.MaxValue);
         var timeoutDate = timeoutLength == TimeSpan.MaxValue ? DateTime.MaxValue : DateTime.Now.Add(timeoutLength);
-        Processes.Add(new MyProcess(process, timeoutLength, timeoutDate));
+        _processes.Add(new MyProcess(process, timeoutLength, timeoutDate));
       }
     }
 
     private class MyProcess
     {
-      private readonly TimeSpan TimeoutLength;
-      private readonly DateTime TimeoutDate;
+      public Process Process { get; }
+      private readonly TimeSpan _timeoutLength;
+      private readonly DateTime _timeoutDate;
 
       public MyProcess(Process process, TimeSpan timeoutLength, DateTime timeoutDate)
       {
         Process = process;
-        TimeoutLength = timeoutLength;
-        TimeoutDate = timeoutDate;
+        _timeoutLength = timeoutLength;
+        _timeoutDate = timeoutDate;
       }
-
-      public Process Process { get; }
 
       public void KillIfTimedOut()
       {
-        if (TimeoutDate < DateTime.Now)
+        if (_timeoutDate < DateTime.Now)
           KillIfRunning();
       }
 
@@ -77,8 +76,8 @@ namespace InputMaster.Instances
         Process.Kill();
         var s = "Killed process" + Helper.GetBindingsSuffix(Process.StartInfo.FileName, nameof(Process.StartInfo.FileName),
           Process.StartInfo.Arguments, nameof(Process.StartInfo.Arguments));
-        if (TimeoutDate < DateTime.Now)
-          s += " Reason: timed out after " + TimeoutLength + ".";
+        if (_timeoutDate < DateTime.Now)
+          s += " Reason: timed out after " + _timeoutLength + ".";
         Env.Notifier.Error(s);
       }
     }

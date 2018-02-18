@@ -6,39 +6,37 @@ namespace InputMaster
 {
   public class StandardSection : Section
   {
-    private static int IdCounter;
-
-    private readonly StandardSection Parent;
-    private int Counter = -1;
-    private bool Enabled;
-    private readonly int Id;
+    private static int _idCounter;
+    private readonly StandardSection _parent;
+    private readonly int _id;
+    private bool _enabled;
+    private int _counter = -1;
 
     protected StandardSection(StandardSection parent)
     {
-      Parent = parent;
-      Id = Interlocked.Increment(ref IdCounter);
+      _parent = parent;
+      _id = Interlocked.Increment(ref _idCounter);
     }
 
     public StandardSection()
     {
       Column = 1;
-      Id = Interlocked.Increment(ref IdCounter);
+      _id = Interlocked.Increment(ref _idCounter);
     }
 
+    private bool IsTopLevel => _parent == null;
     public bool IsEnabled
     {
       get
       {
-        if (Counter < Env.StateCounter)
+        if (_counter < Env.StateCounter)
         {
-          Counter = Env.StateCounter;
-          Enabled = (IsTopLevel || Parent.IsEnabled) && ComputeEnabled();
+          _counter = Env.StateCounter;
+          _enabled = (IsTopLevel || _parent.IsEnabled) && ComputeEnabled();
         }
-        return Enabled;
+        return _enabled;
       }
     }
-
-    private bool IsTopLevel => Parent == null;
 
     protected virtual bool ComputeEnabled()
     {
@@ -48,64 +46,16 @@ namespace InputMaster
     private int GetDepth(int d = 0)
     {
       if (IsTopLevel)
-      {
         return d;
-      }
-      return Parent.GetDepth(d + 1);
+      return _parent.GetDepth(d + 1);
     }
 
     public int CompareTo(StandardSection other)
     {
       if (other == null)
-      {
         return 1;
-      }
       var x = GetDepth() - other.GetDepth();
-      return x == 0 ? Id - other.Id : x;
+      return x == 0 ? _id - other._id : x;
     }
   }
-
-  public class FlagSection : StandardSection
-  {
-    private readonly string Flag;
-
-    public FlagSection(StandardSection parent, string text) : base(parent)
-    {
-      Flag = text;
-    }
-
-    protected override bool ComputeEnabled()
-    {
-      return Env.FlagManager.HasFlag(Flag);
-    }
-  }
-
-  public class RegexSection : StandardSection
-  {
-    private readonly Regex Regex;
-    private readonly RegexSectionType Type;
-
-    public RegexSection(StandardSection parent, Regex regex, RegexSectionType type) : base(parent)
-    {
-      Regex = regex;
-      if (!Enum.IsDefined(typeof(RegexSectionType), type))
-      {
-        throw new ArgumentOutOfRangeException(nameof(type));
-      }
-      Type = type;
-    }
-
-    protected override bool ComputeEnabled()
-    {
-      string s;
-      switch (Type)
-      {
-        case RegexSectionType.Window: s = Env.ForegroundListener.ForegroundWindowTitle; break;
-        default: s = Env.ForegroundListener.ForegroundProcessName; break;
-      }
-      return Regex.IsMatch(s);
-    }
-  }
-
-  public enum RegexSectionType { Window, Process }
 }

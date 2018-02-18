@@ -10,7 +10,7 @@ namespace InputMaster.Forms
   /// </summary>
   public class TabControlPlus : TabControl
   {
-    private readonly LinkedList<TabPage> TabOrder = new LinkedList<TabPage>();
+    private readonly LinkedList<TabPage> _tabOrder = new LinkedList<TabPage>();
 
     public TabControlPlus()
     {
@@ -18,37 +18,37 @@ namespace InputMaster.Forms
       {
         if (!(e.Control is TabPage tabPage))
           return;
-        TabOrder.AddFirst(tabPage);
+        _tabOrder.AddFirst(tabPage);
       };
 
       ControlRemoved += (s, e) =>
       {
         if (!(e.Control is TabPage tabPage))
           return;
-        TabOrder.Remove(tabPage);
-        if (tabPage == SelectedTab && TabOrder.Any())
-          SelectedTab = TabOrder.First.Value;
+        _tabOrder.Remove(tabPage);
+        if (tabPage == SelectedTab && _tabOrder.Any())
+          SelectedTab = _tabOrder.First.Value;
       };
 
       Selected += (s, e) =>
       {
         if (e.TabPage == null)
           return;
-        TabOrder.Remove(e.TabPage);
-        TabOrder.AddFirst(e.TabPage);
+        _tabOrder.Remove(e.TabPage);
+        _tabOrder.AddFirst(e.TabPage);
       };
     }
 
     public TabPage GetLastTabPageInOrder()
     {
-      return TabOrder.Count == 0 ? null : TabOrder.Last.Value;
+      return _tabOrder.Count == 0 ? null : _tabOrder.Last.Value;
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys key)
     {
-      if (key != (Keys.Tab | Keys.Control) || TabOrder.Count < 2)
+      if (key != (Keys.Tab | Keys.Control) || _tabOrder.Count < 2)
         return base.ProcessCmdKey(ref msg, key);
-      SelectedTab = TabOrder.First.Next.Value;
+      SelectedTab = _tabOrder.First.Next.Value;
       return true;
     }
 

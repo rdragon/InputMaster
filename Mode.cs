@@ -6,10 +6,10 @@ namespace InputMaster
 {
   public class Mode : Section
   {
-    private readonly List<ModeHotkey> Hotkeys = new List<ModeHotkey>();
-    private readonly List<string> Includes = new List<string>();
-    private MyIncludeState IncludeState = MyIncludeState.Idle;
-    private bool HasAmbiguousChord;
+    private readonly List<ModeHotkey> _hotkeys = new List<ModeHotkey>();
+    private readonly List<string> _includes = new List<string>();
+    private MyIncludeState _includeState = MyIncludeState.Idle;
+    private bool _hasAmbiguousChord;
 
     public Mode(string name, bool isComposeMode)
     {
@@ -24,7 +24,7 @@ namespace InputMaster
     public void AddHotkey(ModeHotkey modeHotkey, bool hideWarningMessage = false)
     {
       Helper.RequireTrue(IsComposeMode || modeHotkey.Chord.Length == 1 && modeHotkey.Chord.First().Modifiers == Modifiers.None);
-      foreach (var chord in Hotkeys.Select(z => z.Chord))
+      foreach (var chord in _hotkeys.Select(z => z.Chord))
       {
         var small = modeHotkey.Chord;
         var big = chord;
@@ -35,31 +35,31 @@ namespace InputMaster
           if (!hideWarningMessage)
           {
             Env.Notifier.Warning($"Mode '{Name}' has ambiguous chord '{small}'.");
-            HasAmbiguousChord = true;
+            _hasAmbiguousChord = true;
           }
           break;
         }
       }
-      Hotkeys.Add(modeHotkey);
+      _hotkeys.Add(modeHotkey);
     }
 
     public IEnumerable<ModeHotkey> GetHotkeys()
     {
-      return Hotkeys.AsReadOnly();
+      return _hotkeys.AsReadOnly();
     }
 
     public void IncludeMode(string modeName)
     {
-      Includes.Add(modeName);
+      _includes.Add(modeName);
     }
 
     public void ResolveIncludes(ParserOutput parserOutput)
     {
-      switch (IncludeState)
+      switch (_includeState)
       {
         case MyIncludeState.Idle:
-          IncludeState = MyIncludeState.Running;
-          foreach (var name in Includes)
+          _includeState = MyIncludeState.Running;
+          foreach (var name in _includes)
           {
             var mode = parserOutput.Modes.Find(z => z.Name == name);
             if (mode == null)
@@ -67,10 +67,10 @@ namespace InputMaster
             if (mode.IsComposeMode != IsComposeMode)
               throw new ParseException($"Cannot include mode '{name}' in mode '{Name}' as they are not of the same kind.");
             mode.ResolveIncludes(parserOutput);
-            foreach (var hotkey in mode.Hotkeys)
-              AddHotkey(hotkey, mode.HasAmbiguousChord);
+            foreach (var hotkey in mode._hotkeys)
+              AddHotkey(hotkey, mode._hasAmbiguousChord);
           }
-          IncludeState = MyIncludeState.Done;
+          _includeState = MyIncludeState.Done;
           break;
         case MyIncludeState.Running:
           throw new ParseException($"Cyclic include detected at mode '{Name}'.");

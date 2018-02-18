@@ -55,14 +55,14 @@ namespace InputMaster
     public bool ModeEquals(Combo other)
     {
       if (Equals(other))
+        return true;
+      if (other != None && Input == Input.Any && other.Modifiers.HasFlag(Modifiers) && !other.Input.IsModifierKey() &&
+        !other.Input.IsMouseInput())
       {
         return true;
       }
-      if (other != None && Input == Input.Any && other.Modifiers.HasFlag(Modifiers) && !other.Input.IsModifierKey() && !other.Input.IsMouseInput())
-      {
-        return true;
-      }
-      return other != None && other.Input == Input.Any && Modifiers.HasFlag(other.Modifiers) && !Input.IsModifierKey() && !Input.IsMouseInput();
+      return other != None && other.Input == Input.Any && Modifiers.HasFlag(other.Modifiers) && !Input.IsModifierKey() &&
+        !Input.IsMouseInput();
     }
   }
 }

@@ -7,20 +7,19 @@ namespace UnitTests
 {
   public class TestNotifier : INotifier
   {
-    private readonly StringBuilder Log = new StringBuilder();
-
     public ISynchronizeInvoke SynchronizingObject => throw new NotImplementedException();
+    private readonly StringBuilder _log = new StringBuilder();
 
     public void Info(string message) { }
 
     public void Warning(string message)
     {
-      Log.Append($"Warning: {message}\n");
+      _log.Append($"Warning: {message}\n");
     }
 
     public void Error(string message)
     {
-      Log.Append($"Error: {message}\n");
+      _log.Append($"Error: {message}\n");
     }
 
     public void LogError(string message)
@@ -34,7 +33,7 @@ namespace UnitTests
 
     public string GetLog()
     {
-      return Log.ToString();
+      return _log.ToString();
     }
   }
 }

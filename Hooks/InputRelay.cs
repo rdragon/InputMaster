@@ -3,115 +3,105 @@
 namespace InputMaster.Hooks
 {
   /// <summary>
-  /// Very simple hook that can be switched on and off by pressing a key. It also has the capability to capture all events until a dedicated key is pressed.
+  /// Very simple hook that can be switched on and off by pressing a key. It also has the capability to capture all events until a dedicated
+  /// key is pressed.
   /// </summary>
   public class InputRelay : Actor, IInputHook
   {
-    private bool Enabled;
-    private readonly IInputHook TargetHook;
-    private bool ToggleKeyIsDown;
-    private bool CaptureAll;
-    private Tuple<Input, Input> SimulatedInput;
+    private readonly IInputHook _targetHook;
+    private bool _enabled;
+    private bool _toggleKeyIsDown;
+    private bool _captureAll;
+    private Tuple<Input, Input> _simulatedInput;
 
     public InputRelay(IInputHook targetHook)
     {
-      TargetHook = targetHook;
-      Enabled = true;
+      _targetHook = targetHook;
+      _enabled = true;
     }
 
     public void Handle(InputArgs e)
     {
-      if (CaptureAll)
+      if (_captureAll)
       {
         e.Capture = true;
         if (e.Input == Env.Config.CloseKey)
-        {
-          CaptureAll = false;
-        }
+          _captureAll = false;
       }
       else if (e.Input == Env.Config.ToggleHookKey)
       {
-        if (e.Down && !ToggleKeyIsDown)
+        if (e.Down && !_toggleKeyIsDown)
         {
-          var enabled = Enabled;
+          var enabled = _enabled;
           Reset();
-          Enabled = !enabled;
+          _enabled = !enabled;
         }
         else if (!e.Down)
-        {
-          ToggleKeyIsDown = false;
-        }
+          _toggleKeyIsDown = false;
       }
-      else if (Enabled)
+      else if (_enabled)
       {
-        if (SimulatedInput != null && e.Up && e.Input == SimulatedInput.Item1)
+        if (_simulatedInput != null && e.Up && e.Input == _simulatedInput.Item1)
         {
           ReleaseSimulatedInput();
           e.Capture = true;
         }
-        TargetHook.Handle(e);
+        _targetHook.Handle(e);
       }
     }
 
     public void Reset()
     {
-      TargetHook.Reset();
-      ToggleKeyIsDown = false;
+      _targetHook.Reset();
+      _toggleKeyIsDown = false;
       ReleaseSimulatedInput();
-      Enabled = true;
+      _enabled = true;
     }
 
     public string GetStateInfo()
     {
-      var s = TargetHook.GetStateInfo();
-      if (ToggleKeyIsDown || !Enabled || CaptureAll)
-      {
-        s += nameof(InputRelay) + Helper.GetBindingsSuffix(
-          ToggleKeyIsDown, nameof(ToggleKeyIsDown),
-          Enabled, nameof(Enabled),
-          CaptureAll, nameof(CaptureAll)) + '\n';
-      }
-      return s;
+      var s = _targetHook.GetStateInfo();
+      return !_toggleKeyIsDown && _enabled && !_captureAll ? s :
+        s + nameof(InputRelay) + Helper.GetBindingsSuffix(
+          _toggleKeyIsDown, nameof(_toggleKeyIsDown),
+          _enabled, nameof(_enabled),
+          _captureAll, nameof(_captureAll)) + '\n';
     }
 
     [Command]
     public void CaptureAllInput()
     {
-      CaptureAll = true;
+      _captureAll = true;
     }
 
     /// <summary>
-    /// Like <see cref="Actors.MiscActor.Send(Action)"/>, but only accepts a single <see cref="Input"/> as argument, and will release the given input when the hotkey key that triggered the event is released.
-    /// Also, when the hotkey key is being held down, no additional injections are made (if this is not desired, an additional parameter should be added to the function which controls this behaviour).
+    /// Like <see cref="Actors.MiscActor.Send(Action)"/>, but only accepts a single <see cref="Input"/> as argument, and will release the
+    /// given input when the hotkey key that triggered the event is released. Also, when the hotkey key is being held down, no additional
+    /// injections are made (if this is not desired, an additional parameter should be added to the function which controls this behaviour).
     /// </summary>
     [Command]
     public void SimulateInput(HotkeyTrigger trigger, Input input)
     {
-      if (SimulatedInput != null)
+      if (_simulatedInput != null)
       {
-        if (SimulatedInput.Item2 != input)
-        {
+        if (_simulatedInput.Item2 != input)
           Env.Notifier.Error("Already simulating a key.");
-        }
       }
       else if (input.IsStandardModifierKey())
-      {
         Env.Notifier.Error("Simulating a standard modifier key is not supported.");
-      }
       else
       {
-        SimulatedInput = new Tuple<Input, Input>(trigger.Combo.Input, input);
+        _simulatedInput = new Tuple<Input, Input>(trigger.Combo.Input, input);
         Env.CreateInjector().Add(input, true).Run();
       }
     }
 
     private void ReleaseSimulatedInput()
     {
-      if (SimulatedInput != null)
-      {
-        Env.CreateInjector().Add(SimulatedInput.Item2, false).Run();
-        SimulatedInput = null;
-      }
+      if (_simulatedInput == null)
+        return;
+      Env.CreateInjector().Add(_simulatedInput.Item2, false).Run();
+      _simulatedInput = null;
     }
   }
 }

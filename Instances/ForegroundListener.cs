@@ -8,19 +8,18 @@ namespace InputMaster.Instances
 {
   public class ForegroundListener : IForegroundListener
   {
-    private readonly int MaxNameCacheCount = 500;
-    private readonly int MaxCaptionLength = 1000;
-    private readonly Dictionary<int, string> NameCache = new Dictionary<int, string>();
-    private readonly StringBuilder CaptionBuffer;
-    private int ForegroundProcessId;
+    public string ForegroundWindowTitle { get; private set; } = "";
+    public string ForegroundProcessName { get; private set; } = "";
+    private readonly int _maxNameCacheCount = 500;
+    private readonly int _maxCaptionLength = 1000;
+    private readonly Dictionary<int, string> _nameCache = new Dictionary<int, string>();
+    private readonly StringBuilder _captionBuffer;
+    private int _foregroundProcessId;
 
     public ForegroundListener()
     {
-      CaptionBuffer = new StringBuilder(MaxCaptionLength);
+      _captionBuffer = new StringBuilder(_maxCaptionLength);
     }
-
-    public string ForegroundWindowTitle { get; private set; } = "";
-    public string ForegroundProcessName { get; private set; } = "";
 
     private static int GetProcessId(IntPtr window)
     {
@@ -33,37 +32,29 @@ namespace InputMaster.Instances
       var window = NativeMethods.GetForegroundWindow();
       var title = GetWindowTitle(window);
       var id = GetProcessId(window);
-      if (id == ForegroundProcessId && title == ForegroundWindowTitle)
-      {
+      if (id == _foregroundProcessId && title == ForegroundWindowTitle)
         return;
-      }
       Env.StateCounter++;
       ForegroundWindowTitle = title;
-      if (id == ForegroundProcessId)
-      {
+      if (id == _foregroundProcessId)
         return;
-      }
-      ForegroundProcessId = id;
-      if (NameCache.TryGetValue(id, out var name))
+      _foregroundProcessId = id;
+      if (_nameCache.TryGetValue(id, out var name))
       {
         ForegroundProcessName = name;
         return;
       }
-      if (NameCache.Count == MaxNameCacheCount)
-      {
-        NameCache.Clear();
-      }
+      if (_nameCache.Count == _maxNameCacheCount)
+        _nameCache.Clear();
       using (var process = Process.GetProcessById(id))
-      {
         ForegroundProcessName = process.ProcessName;
-      }
-      NameCache[id] = ForegroundProcessName;
+      _nameCache[id] = ForegroundProcessName;
     }
 
     private string GetWindowTitle(IntPtr window)
     {
-      var length = NativeMethods.GetWindowText(window, CaptionBuffer, MaxCaptionLength);
-      return length > 0 ? CaptionBuffer.ToString() : "";
+      var length = NativeMethods.GetWindowText(window, _captionBuffer, _maxCaptionLength);
+      return length > 0 ? _captionBuffer.ToString() : "";
     }
   }
 }

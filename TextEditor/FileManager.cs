@@ -143,7 +143,8 @@ namespace InputMaster.TextEditor
       var dir = await Helper.TryGetStringAsync("Please give a directory from which to import all text files.");
       if (dir == null)
         return;
-      var generateNames = MessageBox.Show("Generate random file names?", "Generate random file names?", MessageBoxButtons.YesNo) == DialogResult.Yes;
+      var generateNames = MessageBox.Show("Generate random file names?", "Generate random file names?", MessageBoxButtons.YesNo) ==
+        DialogResult.Yes;
       var count = 0;
       foreach (var file in Directory.GetFiles(dir, "*.txt"))
       {
@@ -234,7 +235,7 @@ namespace InputMaster.TextEditor
       File.Delete(GetFile(name));
     }
 
-    private class MyState : IState
+    public class MyState : IState
     {
       public Dictionary<string, string> Index { get; set; }
 

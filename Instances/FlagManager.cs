@@ -23,7 +23,7 @@ namespace InputMaster.Instances
 
     private async Task<FlagManager> InitializeAsync()
     {
-      var stateHandler = Env.StateHandlerFactory.Create(new MyState(), Path.Combine(Env.Config.CacheDir, nameof(FlagManager)),
+      var stateHandler = Env.StateHandlerFactory.Create(new MyState(), Path.Combine(Env.Config.CacheDir, nameof(FlagManager) + ".json"),
         StateHandlerFlags.SavePeriodically);
       _state = await stateHandler.LoadAsync();
       return this;

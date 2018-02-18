@@ -10,30 +10,31 @@ namespace UnitTests
 {
   public class TestBrain : Actor
   {
-    private readonly TestOutputHandler OutputHandler;
-    private readonly InputReader InputReader = new InputReader(InputReaderFlags.AllowHoldRelease | InputReaderFlags.AllowCustomModifier | InputReaderFlags.AllowMultiplier);
-    private TestInjector PrimaryHookInjector;
-    private TestPrimaryHook PrimaryHook;
-    private InputRelay InputRelay;
-    private InputHook InputHook;
-    private ComboRelay ComboRelay;
-    private ComboHook ComboHook;
-    private TestForegroundListener ForegroundListener;
+    private readonly TestOutputHandler _outputHandler;
+    private readonly InputReader _inputReader = new InputReader(InputReaderFlags.AllowHoldRelease | InputReaderFlags.AllowCustomModifier |
+      InputReaderFlags.AllowMultiplier);
+    private TestInjector _primaryHookInjector;
+    private TestPrimaryHook _primaryHook;
+    private InputRelay _inputRelay;
+    private InputHook _inputHook;
+    private ComboRelay _comboRelay;
+    private ComboHook _comboHook;
+    private TestForegroundListener _foregroundListener;
 
     public TestBrain(TestOutputHandler outputHandler)
     {
-      OutputHandler = outputHandler;
+      _outputHandler = outputHandler;
     }
 
     public void Run()
     {
-      ForegroundListener = (TestForegroundListener)Env.ForegroundListener;
-      ComboHook = new ComboHook();
-      ComboRelay = new ComboRelay(Env.ModeHook, ComboHook);
-      InputHook = new InputHook(ComboRelay);
-      InputRelay = new InputRelay(InputHook);
-      PrimaryHook = new TestPrimaryHook(InputRelay);
-      PrimaryHookInjector = new TestInjector(PrimaryHook);
+      _foregroundListener = (TestForegroundListener)Env.ForegroundListener;
+      _comboHook = new ComboHook();
+      _comboRelay = new ComboRelay(Env.ModeHook, _comboHook);
+      _inputHook = new InputHook(_comboRelay);
+      _inputRelay = new InputRelay(_inputHook);
+      _primaryHook = new TestPrimaryHook(_inputRelay);
+      _primaryHookInjector = new TestInjector(_primaryHook);
       Env.AddActor(new MiscActor());
       Env.Parser.UpdateHotkeyFile(new HotkeyFile(nameof(TestBrain), Helper.RemoveCarriageReturns(Resources.Tests)));
     }
@@ -45,22 +46,23 @@ namespace UnitTests
     }
 
     [Command(CommandTypes.ExecuteAtParseTime | CommandTypes.Chordless | CommandTypes.TopLevelOnly)]
-    public void Test(ExecuteAtParseTimeData data, LocatedString toSimulate, string expectedOutput, string processName = null, string windowTitle = null, string flag = null)
+    public void Test(ExecuteAtParseTimeData data, LocatedString toSimulate, string expectedOutput, string processName = null,
+      string windowTitle = null, string flag = null)
     {
       Env.Parser.FireNewParserOutput(data.ParserOutput);
-      PrimaryHook.Reset();
-      OutputHandler.Reset();
-      ForegroundListener.Reset();
+      _primaryHook.Reset();
+      _outputHandler.Reset();
+      _foregroundListener.Reset();
       Env.FlagManager.ClearFlags();
       if (!string.IsNullOrEmpty(processName))
-        ForegroundListener.NewProcessName = processName;
+        _foregroundListener.NewProcessName = processName;
       if (!string.IsNullOrEmpty(windowTitle))
-        ForegroundListener.NewWindowTitle = windowTitle;
+        _foregroundListener.NewWindowTitle = windowTitle;
       if (!string.IsNullOrEmpty(flag))
         Env.FlagManager.ToggleFlag(flag);
-      PrimaryHookInjector.CreateInjector().Add(toSimulate, InputReader).Run();
-      var output = OutputHandler.GetStateInfo();
-      var state = PrimaryHook.GetStateInfo();
+      _primaryHookInjector.CreateInjector().Add(toSimulate, _inputReader).Run();
+      var output = _outputHandler.GetStateInfo();
+      var state = _primaryHook.GetStateInfo();
       var errorLog = Env.Notifier.GetLog();
       if (expectedOutput != output || errorLog.Length > 0 || state.Length > 0)
       {

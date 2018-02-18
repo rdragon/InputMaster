@@ -7,36 +7,35 @@ namespace InputMaster.Hooks
   public class ModeHook : Actor, IComboHook
   {
     /// <summary>
+    /// Returns whether a mode is active.
+    /// </summary>
+    public bool Active => _activeMode != null;
+    /// <summary>
     /// Collection of all available modes.
     /// </summary>
-    private readonly Dictionary<string, Mode> Modes = new Dictionary<string, Mode>();
-    private readonly ModeViewer ModeViewer = new ModeViewer();
+    private readonly Dictionary<string, Mode> _modes = new Dictionary<string, Mode>();
+    private readonly ModeViewer _modeViewer = new ModeViewer();
     /// <summary>
     /// Currently active mode, or null when no mode is active.
     /// </summary>
-    private Mode ActiveMode;
+    private Mode _activeMode;
     /// <summary>
     /// The hotkeys that match the input buffer (for multi-key modes).
     /// </summary>
-    private IEnumerable<ModeHotkey> ModeHotkeys;
+    private IEnumerable<ModeHotkey> _modeHotkeys;
     /// <summary>
     /// The number of inputs already in the buffer (for multi-key modes).
     /// </summary>
-    private int InputCount;
-    private bool Hidden;
-
-    /// <summary>
-    /// Returns whether a mode is active.
-    /// </summary>
-    public bool Active => ActiveMode != null;
+    private int _inputCount;
+    private bool _hidden;
 
     public ModeHook()
     {
       Env.Parser.NewParserOutput += parserOutput =>
       {
-        Modes.Clear();
+        _modes.Clear();
         foreach (var mode in parserOutput.Modes)
-          Modes[mode.Name] = mode;
+          _modes[mode.Name] = mode;
       };
     }
 
@@ -44,7 +43,7 @@ namespace InputMaster.Hooks
     public void EnterMode(string name, [ValidFlags("h")]string flags = "")
     {
       EnterMode(name, Input.None);
-      Hidden = flags.Contains('h');
+      _hidden = flags.Contains('h');
     }
 
     [Command]
@@ -56,37 +55,29 @@ namespace InputMaster.Hooks
     [Command(CommandTypes.ModeOnly)]
     public void LeaveMode()
     {
-      ModeViewer.Hide();
+      _modeViewer.Hide();
       ClearActiveMode();
     }
 
     private void EnterMode(string name, Input input = Input.None)
     {
-      if (Modes.TryGetValue(name, out var mode))
-      {
+      if (_modes.TryGetValue(name, out var mode))
         EnterMode(mode, input);
-      }
       else
-      {
         Env.Notifier.Error($"Mode '{name}' not found.");
-      }
     }
 
     public void EnterMode(Mode mode, Input input = Input.None)
     {
       ClearActiveMode();
-      ActiveMode = mode;
+      _activeMode = mode;
       ClearInput();
       if (input != Input.None)
       {
         if (!mode.IsComposeMode)
-        {
           Handle(new ComboArgs(new Combo(input)));
-        }
         else
-        {
           Env.Notifier.Error($"Cannot use '{nameof(EnterModeHot)}' on a {Constants.ComposeModeSectionIdentifier} '{mode.Name}'.");
-        }
       }
     }
 
@@ -98,21 +89,17 @@ namespace InputMaster.Hooks
     public string GetTestStateInfo()
     {
       if (Active)
-      {
         return nameof(ModeHook) + Helper.GetBindingsSuffix(Active, nameof(Active));
-      }
       return "";
     }
 
     public void Handle(ComboArgs e)
     {
-      if (ActiveMode.IsComposeMode)
-      {
+      if (_activeMode.IsComposeMode)
         HandleComposeMode(e);
-      }
       else
       {
-        foreach (var modeHotkey in ModeHotkeys)
+        foreach (var modeHotkey in _modeHotkeys)
         {
           if (modeHotkey.Chord.TestPosition(0, e.Combo))
           {
@@ -143,87 +130,74 @@ namespace InputMaster.Hooks
 
     private void ClearActiveMode()
     {
-      if (ActiveMode != null)
+      if (_activeMode != null)
       {
-        ActiveMode = null;
-        Hidden = false;
+        _activeMode = null;
+        _hidden = false;
       }
     }
 
     private void ClearInput()
     {
-      InputCount = 0;
-      ModeHotkeys = ActiveMode.GetHotkeys();
+      _inputCount = 0;
+      _modeHotkeys = _activeMode.GetHotkeys();
     }
 
     private void HandleComposeMode(ComboArgs e)
     {
       if (e.Combo.Input.IsMouseInput())
-      {
         return;
-      }
 
-      // Capture any non-modifier key. Modifier keys should not be captured as that would prevent the key from modifying the virtual modifier state.
+      // Capture any non-modifier key. Modifier keys should not be captured as that would prevent the key from modifying the virtual
+      // modifier state.
       if (!e.Combo.Input.IsModifierKey())
-      {
         e.Capture = true;
-      }
 
       // Check for hit, update hotkeys and input count.
       ModeHotkey hit = null;
-      var oldModeHotkeys = ModeHotkeys;
-      var oldCount = InputCount;
+      var oldModeHotkeys = _modeHotkeys;
+      var oldCount = _inputCount;
       if (!e.Combo.Input.IsModifierKey())
       {
         var newModeHotkeys = new List<ModeHotkey>();
-        foreach (var modeHotkey in ModeHotkeys)
+        foreach (var modeHotkey in _modeHotkeys)
         {
-          if (modeHotkey.Chord.TestPosition(InputCount, e.Combo))
+          if (modeHotkey.Chord.TestPosition(_inputCount, e.Combo))
           {
-            if (modeHotkey.Chord.Length - 1 == InputCount)
+            if (modeHotkey.Chord.Length - 1 == _inputCount)
             {
               if (hit == null || modeHotkey.Chord.IsMoreSpecificThan(hit.Chord))
-              {
                 hit = modeHotkey;
-              }
             }
             else
-            {
               newModeHotkeys.Add(modeHotkey);
-            }
           }
         }
-        InputCount++;
-        ModeHotkeys = newModeHotkeys;
+        _inputCount++;
+        _modeHotkeys = newModeHotkeys;
       }
-      else if (InputCount == 0)
-      {
-        hit = ModeHotkeys.FirstOrDefault(z => z.Chord.Length == 1 && z.Chord.TestPosition(0, e.Combo));
-      }
+      else if (_inputCount == 0)
+        hit = _modeHotkeys.FirstOrDefault(z => z.Chord.Length == 1 && z.Chord.TestPosition(0, e.Combo));
 
       if (hit == null)
       {
         if (e.Combo == Env.Config.ClearModeCombo)
-        {
           ClearInput();
-        }
         else if (e.Combo == Env.Config.ShowModeCombo)
         {
-          ModeHotkeys = oldModeHotkeys;
-          InputCount = oldCount;
+          _modeHotkeys = oldModeHotkeys;
+          _inputCount = oldCount;
           ToggleViewerVisibility();
         }
         else if (e.Combo == Env.Config.PrintModeCombo)
         {
-          ModeHotkeys = oldModeHotkeys;
-          InputCount = oldCount;
+          _modeHotkeys = oldModeHotkeys;
+          _inputCount = oldCount;
           Helper.ShowSelectableText(GetDisplayText());
           LeaveMode();
         }
         else if (Env.Config.ClearModeCombos.Contains(e.Combo))
-        {
           LeaveMode();
-        }
       }
       else
       {
@@ -237,20 +211,19 @@ namespace InputMaster.Hooks
           Env.Notifier.WriteError(ex);
         }
       }
-      ModeViewer.UpdateText(GetDisplayText());
+      _modeViewer.UpdateText(GetDisplayText());
     }
 
     private void ToggleViewerVisibility()
     {
-      if (!Hidden)
-      {
-        ModeViewer.ToggleVisibility(GetDisplayText());
-      }
+      if (!_hidden)
+        _modeViewer.ToggleVisibility(GetDisplayText());
     }
 
     private string GetDisplayText()
     {
-      var modeHotkeys = new List<ModeHotkey>(ModeHotkeys).Where(z => z.Description != null && !z.Description.Contains(Env.Config.HiddenTag)).ToList();
+      var modeHotkeys = new List<ModeHotkey>(_modeHotkeys).Where(z => z.Description != null &&
+        !z.Description.Contains(Env.Config.HiddenTag)).ToList();
       modeHotkeys.Sort((a, b) => string.CompareOrdinal(a.Description, b.Description));
       return string.Join("\n", modeHotkeys.Select(z => z.Description));
     }

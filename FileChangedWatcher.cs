@@ -6,26 +6,26 @@ namespace InputMaster
 {
   public class FileChangedWatcher : IDisposable
   {
-    private readonly FileSystemWatcher FileSystemWatcher;
-    private readonly string File;
-    private string PreviousContents;
+    private readonly FileSystemWatcher _fileSystemWatcher;
+    private readonly string _file;
+    private string _previousContents;
 
     public FileChangedWatcher(string file)
     {
-      File = file;
-      FileSystemWatcher = new FileSystemWatcher(Path.GetDirectoryName(File), Path.GetFileName(File))
+      _file = file;
+      _fileSystemWatcher = new FileSystemWatcher(Path.GetDirectoryName(_file), Path.GetFileName(_file))
       {
         SynchronizingObject = Env.Notifier.SynchronizingObject,
         EnableRaisingEvents = true
       };
-      FileSystemWatcher.Changed += async (s, e) => await ChangedAsync();
+      _fileSystemWatcher.Changed += async (s, e) => await ChangedAsync();
     }
 
     public event Action<string> TextChanged = delegate { };
 
     public void Dispose()
     {
-      FileSystemWatcher.Dispose();
+      _fileSystemWatcher.Dispose();
     }
 
     public Task RaiseChangedEventAsync()
@@ -35,10 +35,10 @@ namespace InputMaster
 
     private async Task ChangedAsync()
     {
-      var text = await Helper.ReadAllTextAsync(File);
-      if (text != PreviousContents)
+      var text = await Helper.ReadAllTextAsync(_file);
+      if (text != _previousContents)
       {
-        PreviousContents = text;
+        _previousContents = text;
         TextChanged(text);
       }
     }

@@ -4,6 +4,11 @@ namespace InputMaster.TextEditor
 {
   public class TitleTextPair
   {
+    [JsonProperty]
+    public string Title { get; private set; }
+    [JsonProperty]
+    public string Text { get; private set; }
+
     public TitleTextPair() { }
 
     public TitleTextPair(string str)
@@ -20,11 +25,6 @@ namespace InputMaster.TextEditor
       Title = title;
       Text = text;
     }
-
-    [JsonProperty]
-    public string Title { get; private set; }
-    [JsonProperty]
-    public string Text { get; private set; }
 
     public override string ToString()
     {

@@ -122,22 +122,4 @@ namespace InputMaster
       return account ?? this;
     }
   }
-
-  public class AccountModel
-  {
-    public string Title { get; }
-    public string LoginName { get; }
-    public string Password { get; }
-    public string Extra { get; }
-    public string MatrixDecomposition { get; }
-
-    public AccountModel(string title, string loginName, string password, string extra, string matrixDecomposition)
-    {
-      Title = title;
-      LoginName = loginName;
-      Password = password;
-      Extra = extra;
-      MatrixDecomposition = matrixDecomposition;
-    }
-  }
 }

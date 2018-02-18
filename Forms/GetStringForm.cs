@@ -9,8 +9,8 @@ namespace InputMaster.Forms
   /// </summary>
   public sealed partial class GetStringForm : ThemeForm
   {
-    private bool StartWithFindDialog;
-    private bool ForceForeground;
+    private readonly bool _startWithFindDialog;
+    private readonly bool _forceForeground;
 
     public GetStringForm(string title, string defaultValue, bool selectAll, bool startWithFindDialog, bool forceForeground,
       bool containsJson)
@@ -21,8 +21,8 @@ namespace InputMaster.Forms
       RichTextBox.Text = defaultValue;
       if (selectAll)
         RichTextBox.SelectAll();
-      StartWithFindDialog = startWithFindDialog;
-      ForceForeground = forceForeground;
+      _startWithFindDialog = startWithFindDialog;
+      _forceForeground = forceForeground;
     }
 
     public bool TryGetValue(out string value)
@@ -53,12 +53,12 @@ namespace InputMaster.Forms
 
     private async void GetStringForm_Shown(object sender, EventArgs e)
     {
-      if (ForceForeground)
+      if (_forceForeground)
       {
         ForceToForeground();
         TopMost = true;
       }
-      if (StartWithFindDialog)
+      if (_startWithFindDialog)
       {
         await Task.Delay(50);
         await RichTextBox.ShowFindDialog();

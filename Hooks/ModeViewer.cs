@@ -2,7 +2,7 @@
 {
   public class ModeViewer
   {
-    private string Text;
+    private string _text;
 
     public void Hide()
     {
@@ -11,25 +11,21 @@
 
     public void ToggleVisibility(string text)
     {
-      SetText(string.IsNullOrEmpty(Text) ? text : "");
+      SetText(string.IsNullOrEmpty(_text) ? text : "");
     }
 
     public void SetText(string text)
     {
-      if (text == Text)
-      {
+      if (text == _text)
         return;
-      }
-      Text = text;
-      Env.Notifier.SetPersistentText(Text);
+      _text = text;
+      Env.Notifier.SetPersistentText(_text);
     }
 
     public void UpdateText(string text)
     {
-      if (string.IsNullOrEmpty(Text))
-      {
+      if (string.IsNullOrEmpty(_text))
         return;
-      }
       SetText(text);
     }
   }

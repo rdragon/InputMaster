@@ -10,32 +10,32 @@ namespace InputMaster
   [JsonConverter(typeof(ChordJsonConverter))]
   public class Chord : IEquatable<Chord>, IEnumerable<Combo>
   {
-    private readonly List<Combo> CombosReversed;
-    private int HashCode;
-    public int Length => CombosReversed.Count;
+    private readonly List<Combo> _combosReversed;
+    private int _hashCode;
+    public int Length => _combosReversed.Count;
 
     public Chord(IEnumerable<Combo> combos)
     {
-      CombosReversed = combos.Reverse().ToList();
-      foreach (var combo in CombosReversed)
-        HashCode = HashCode * 1000000007 + combo.GetHashCode();
+      _combosReversed = combos.Reverse().ToList();
+      foreach (var combo in _combosReversed)
+        _hashCode = _hashCode * 1000000007 + combo.GetHashCode();
     }
 
     public Chord(int capacity)
     {
-      CombosReversed = new List<Combo>(capacity);
+      _combosReversed = new List<Combo>(capacity);
     }
 
     public void InsertAtStart(Combo combo)
     {
-      CombosReversed.Add(combo);
-      HashCode = HashCode * 1000000007 + combo.GetHashCode();
+      _combosReversed.Add(combo);
+      _hashCode = _hashCode * 1000000007 + combo.GetHashCode();
     }
 
     public void Clear()
     {
-      CombosReversed.Clear();
-      HashCode = 0;
+      _combosReversed.Clear();
+      _hashCode = 0;
     }
 
     public bool HasPrefix(Chord other)
@@ -43,14 +43,14 @@ namespace InputMaster
       if (other.Length > Length)
         return false;
       for (var i = 0; i < other.Length; i++)
-        if (other.CombosReversed[other.Length - 1 - i] != CombosReversed[Length - 1 - i])
+        if (other._combosReversed[other.Length - 1 - i] != _combosReversed[Length - 1 - i])
           return false;
       return true;
     }
 
     public override int GetHashCode()
     {
-      return HashCode;
+      return _hashCode;
     }
 
     public override bool Equals(object obj)
@@ -63,7 +63,7 @@ namespace InputMaster
       if (other == null || other.Length != Length)
         return false;
       for (var i = 0; i < Length; i++)
-        if (CombosReversed[i] != other.CombosReversed[i])
+        if (_combosReversed[i] != other._combosReversed[i])
           return false;
       return true;
     }
@@ -84,12 +84,12 @@ namespace InputMaster
 
     public override string ToString()
     {
-      return string.Join("", CombosReversed.Reverse<Combo>().Select(z => z.ToString()));
+      return string.Join("", _combosReversed.Reverse<Combo>().Select(z => z.ToString()));
     }
 
     public IEnumerator<Combo> GetEnumerator()
     {
-      return CombosReversed.Reverse<Combo>().GetEnumerator();
+      return _combosReversed.Reverse<Combo>().GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator()
@@ -99,7 +99,7 @@ namespace InputMaster
 
     public bool TestPosition(int index, Combo combo)
     {
-      return index < Length && CombosReversed[Length - 1 - index].ModeEquals(combo);
+      return index < Length && _combosReversed[Length - 1 - index].ModeEquals(combo);
     }
 
     public bool IsMoreSpecificThan(Chord other)
@@ -109,26 +109,8 @@ namespace InputMaster
 
     private int GetComparisonValue()
     {
-      var anys = CombosReversed.Where(z => z.Input == Input.Any).ToList();
+      var anys = _combosReversed.Where(z => z.Input == Input.Any).ToList();
       return anys.Select(z => Helper.CountOnes((int)z.Modifiers)).Sum() - 999 * anys.Count;
-    }
-  }
-
-  public class ChordJsonConverter : JsonConverter
-  {
-    public override bool CanConvert(Type objectType)
-    {
-      return objectType == typeof(Chord);
-    }
-
-    public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
-    {
-      return Env.Config.DefaultChordReader.CreateChord(new LocatedString(reader.Value.ToString()));
-    }
-
-    public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
-    {
-      writer.WriteValue(value.ToString());
     }
   }
 }

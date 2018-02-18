@@ -30,9 +30,7 @@ namespace InputMaster
     public static string ReadIdentifierTokenString(LocatedString locatedString)
     {
       if (Regex.IsMatch(locatedString.Value, "^" + Constants.IdentifierTokenPattern + "$"))
-      {
         return locatedString.Value.Substring(1, locatedString.Length - 2);
-      }
       throw new ParseException(locatedString, "Not in correct format. Expecting an identifier token.");
     }
 
@@ -64,8 +62,8 @@ namespace InputMaster
       }
     }
 
-    public static async Task StartProcessAsync(string fileName, string userName, SecureString password, string domain, string arguments = "",
-      bool captureForeground = false)
+    public static async Task StartProcessAsync(string fileName, string userName, SecureString password, string domain,
+      string arguments = "", bool captureForeground = false)
     {
       await Task.Yield(); // See TryGetStringAsync.
       if (captureForeground)
@@ -177,15 +175,11 @@ namespace InputMaster
         {
           var s = Clipboard.GetText();
           if (!string.IsNullOrEmpty(s))
-          {
             return RemoveCarriageReturns(s);
-          }
         }
         catch (ExternalException) { }
         if (i > 1)
-        {
           await Task.Delay(Env.Config.ClipboardDelay);
-        }
       }
       throw new IOException("Failed to retrieve text data from the clipboard.");
     }
@@ -201,9 +195,7 @@ namespace InputMaster
         }
         catch (ExternalException) { }
         if (i > 1)
-        {
           await Task.Delay(Env.Config.ClipboardDelay);
-        }
       }
       throw new IOException("Failed to write text data to the clipboard.");
     }
@@ -219,9 +211,7 @@ namespace InputMaster
         }
         catch (ExternalException) { }
         if (i > 1)
-        {
           await Task.Delay(Env.Config.ClipboardDelay);
-        }
       }
       throw new IOException("Failed to clear the clipboard.");
     }
@@ -253,13 +243,9 @@ namespace InputMaster
     private static bool IsPowerOfTwo(int n)
     {
       if ((n & 1) != 0)
-      {
         return n == 1;
-      }
       if (n != 0)
-      {
         return IsPowerOfTwo(n >> 1);
-      }
       return false;
     }
 
@@ -278,9 +264,7 @@ namespace InputMaster
       for (int i = 0; i < values.Length; i++)
       {
         if (values[i] == null)
-        {
           throw new ArgumentNullException($"Argument {i + 1} is null.");
-        }
       }
     }
 
@@ -288,9 +272,7 @@ namespace InputMaster
     {
       ForbidNull(str);
       if (str.Length == 0)
-      {
         throw new ArgumentException("String is empty.", name);
-      }
     }
 
     public static void ForbidWhitespace(string str, string name = "(unspecified)")
@@ -298,9 +280,7 @@ namespace InputMaster
       ForbidNull(str);
       ForbidEmpty(str, name);
       if (string.IsNullOrWhiteSpace(str))
-      {
         throw new ArgumentException("String consists of whitespace only.", name);
-      }
     }
 
     /// <summary>
@@ -357,9 +337,7 @@ namespace InputMaster
       ForbidWhitespace(name);
       var invalidChars = Path.GetInvalidFileNameChars();
       if (invalidChars.Contains(replacement))
-      {
         throw new ArgumentException($"Invalid file name character '{replacement}' used as replacement character.", nameof(replacement));
-      }
       return new string(name.Select(c => invalidChars.Contains(c) ? replacement : c).ToArray());
     }
 
@@ -372,9 +350,7 @@ namespace InputMaster
       if (info.Exists)
       {
         foreach (var file in info.GetFiles("*", SearchOption.AllDirectories))
-        {
           file.Attributes = FileAttributes.Normal;
-        }
         info.Delete(true);
       }
     }
@@ -421,9 +397,7 @@ namespace InputMaster
     {
       RequireInInterval(index, nameof(index), 0, text.Length);
       if (index == 0)
-      {
         return 0;
-      }
       return text.LastIndexOf('\n', index - 1) + 1;
     }
 
@@ -436,9 +410,7 @@ namespace InputMaster
       for (; index < text.Length; index++)
       {
         if (text[index] == '\n')
-        {
           break;
-        }
       }
       return index;
     }
@@ -449,22 +421,14 @@ namespace InputMaster
     public static string Truncate(string text, int length)
     {
       if (text == null)
-      {
         return null;
-      }
       if (text.Length <= length)
-      {
         return text;
-      }
       if (length < 3)
-      {
         throw new ArgumentOutOfRangeException(nameof(length), length, "Length should be at least 3.");
-      }
       var i = length - 3;
       if (char.IsLowSurrogate(text[i]))
-      {
         i--;
-      }
       return text.Substring(0, i) + "...";
     }
 
@@ -476,16 +440,12 @@ namespace InputMaster
     {
       text = Parser.RunPreprocessor(text);
       if (text.Length > 1 && text[0] == '/' && text[text.Length - 1] == '/')
-      {
         text = text.Substring(1, text.Length - 2);
-      }
       else
       {
         text = Regex.Escape(text);
         if (fullMatchIfLiteral)
-        {
           text = "^" + text + "$";
-        }
       }
       return new Regex(text, options);
     }
@@ -507,14 +467,13 @@ namespace InputMaster
     }
 
     /// <summary>
-    /// For each two adjacent lines with the same indentation and that both contain a column boundary, the column boundaries are aligned. A column boundary is a string of at least <paramref name="minSpaceCount"/> spaces (outside the indentation).
+    /// For each two adjacent lines with the same indentation and that both contain a column boundary, the column boundaries are aligned.
+    /// A column boundary is a string of at least <paramref name="minSpaceCount"/> spaces (outside the indentation).
     /// </summary>
     public static string AlignColumns(string text, int minSpaceCount = 2)
     {
       if (text == null)
-      {
         return null;
-      }
       RequireAtLeast(minSpaceCount, nameof(minSpaceCount), 1);
       var lines = text.Split('\n');
       AlignColumns(lines);
@@ -522,15 +481,14 @@ namespace InputMaster
     }
 
     /// <summary>
-    /// For each two adjacent lines with the same indentation and that both contain a column boundary, the column boundaries are aligned. A column boundary is a string of at least <paramref name="minSpaceCount"/> spaces (outside the indentation).
+    /// For each two adjacent lines with the same indentation and that both contain a column boundary, the column boundaries are aligned.
+    /// A column boundary is a string of at least <paramref name="minSpaceCount"/> spaces (outside the indentation).
     /// </summary>
     private static void AlignColumns(string[] lines, int minSpaceCount = 2)
     {
       RequireAtLeast(minSpaceCount, nameof(minSpaceCount), 1);
       if (lines == null)
-      {
         return;
-      }
       var indents = new int[lines.Length];
       var columns = new int[lines.Length];
       var spaces = new string(' ', minSpaceCount);
@@ -560,9 +518,7 @@ namespace InputMaster
           i = j;
         }
         else
-        {
           i++;
-        }
       }
     }
 
@@ -575,15 +531,11 @@ namespace InputMaster
     public static string GetBindingsSuffix(params object[] arguments)
     {
       if (arguments.Length % 2 == 1)
-      {
         throw new ArgumentException("Expecting an even number of arguments.");
-      }
       var n = arguments.Length / 2;
       var bindings = new string[n];
       for (var i = 0; i < n; i++)
-      {
         bindings[i] = $"{arguments[2 * i + 1]} = {arguments[2 * i]}";
-      }
       var sb = new StringBuilder();
       sb.Append(" (");
       sb.Append(string.Join(", ", bindings));
@@ -594,25 +546,20 @@ namespace InputMaster
     public static void RequireInInterval<T>(T value, string name, T min, T max) where T : IComparable<T>
     {
       if (value.CompareTo(min) < 0 || value.CompareTo(max) > 0)
-      {
-        throw new ArgumentOutOfRangeException(name, "Argument out of range" + GetBindingsSuffix(value, name, min, nameof(min), max, nameof(max)));
-      }
+        throw new ArgumentOutOfRangeException(name, "Argument out of range" + GetBindingsSuffix(value, name, min, nameof(min), max,
+          nameof(max)));
     }
 
     public static void RequireEqual<T>(T value, string name, T target) where T : IEquatable<T>
     {
       if (!value.Equals(target))
-      {
         throw new ArgumentOutOfRangeException(name, "Arguments are not equal" + GetBindingsSuffix(value, name, target, nameof(target)));
-      }
     }
 
     public static void RequireAtLeast<T>(T value, string name, T min) where T : IComparable<T>
     {
       if (value.CompareTo(min) < 0)
-      {
         throw new ArgumentOutOfRangeException(name, "Argument out of range" + GetBindingsSuffix(value, name, min, nameof(min)));
-      }
     }
 
     /// <summary>
@@ -621,9 +568,7 @@ namespace InputMaster
     public static void RequireAtMost<T>(T value, string name, T max) where T : IComparable<T>
     {
       if (value.CompareTo(max) > 0)
-      {
         throw new ArgumentOutOfRangeException(name, "Argument out of range" + GetBindingsSuffix(value, name, max, nameof(max)));
-      }
     }
 
     public static IEnumerable<(T1, T2, T3)> Zip3<T1, T2, T3>(
@@ -636,18 +581,14 @@ namespace InputMaster
       using (var e3 = third.GetEnumerator())
       {
         while (e1.MoveNext() && e2.MoveNext() && e3.MoveNext())
-        {
           yield return (e1.Current, e2.Current, e3.Current);
-        }
       }
     }
 
     public static void RequireTrue(bool condition)
     {
       if (!condition)
-      {
         throw new ArgumentException("Condition is false.");
-      }
     }
 
     public static string RemoveCarriageReturns(string text)
@@ -658,9 +599,7 @@ namespace InputMaster
     public static void ForbidCarriageReturn(ref string text)
     {
       if (!text.Contains('\r'))
-      {
         return;
-      }
       Env.Notifier.Error("String contains carriage return(s)." + GetBindingsSuffix(Truncate(text, 50), nameof(text)));
       text = RemoveCarriageReturns(text);
     }
@@ -740,9 +679,7 @@ namespace InputMaster
     {
       var sb = new StringBuilder();
       for (var i = 0; i < length; i++)
-      {
         sb.Append(GetRandomNameChar());
-      }
       return sb.ToString();
     }
 
@@ -750,9 +687,7 @@ namespace InputMaster
     {
       var sb = new StringBuilder();
       for (var i = 0; i < length; i++)
-      {
         sb.Append(GetRandomNumberChar());
-      }
       return sb.ToString();
     }
 
@@ -770,9 +705,7 @@ namespace InputMaster
     {
       var sb = new StringBuilder();
       foreach (var c in Env.Config.DefaultEmail)
-      {
         sb.Append(c == 'X' ? GetRandomNameChar() : c);
-      }
       return sb.ToString();
     }
 

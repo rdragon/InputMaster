@@ -6,12 +6,12 @@ namespace UnitTests
 {
   public class TestInjector : IInjector
   {
-    private readonly List<Action> Actions = new List<Action>();
-    private readonly IInputHook TargetHook;
+    private readonly List<Action> _actions = new List<Action>();
+    private readonly IInputHook _targetHook;
 
     public TestInjector(IInputHook targetHook)
     {
-      TargetHook = targetHook;
+      _targetHook = targetHook;
     }
 
     public IInjector Add(char c)
@@ -21,34 +21,30 @@ namespace UnitTests
 
     public IInjector Add(Input input, bool down)
     {
-      Actions.Add(() => { TargetHook.Handle(new InputArgs(input, down)); });
+      _actions.Add(() => { _targetHook.Handle(new InputArgs(input, down)); });
       return this;
     }
 
     public Action Compile()
     {
-      var actions = Actions.ToArray();
+      var actions = _actions.ToArray();
       return () =>
       {
         foreach (var action in actions)
-        {
           action();
-        }
       };
     }
 
     public void Run()
     {
-      foreach (var action in Actions)
-      {
+      foreach (var action in _actions)
         action();
-      }
-      Actions.Clear();
+      _actions.Clear();
     }
 
     public IInjector CreateInjector()
     {
-      return new TestInjector(TargetHook);
+      return new TestInjector(_targetHook);
     }
   }
 }

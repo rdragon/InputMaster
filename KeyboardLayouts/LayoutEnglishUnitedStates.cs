@@ -10,11 +10,12 @@ namespace InputMaster.KeyboardLayouts
     {
       var chars = "`-=[];'\\,./0123456789abcdefghijklmnopqrstuvwxyz";
       var shiftedChars = "~_+{}:\"|<>?)!@#$%^&*(ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      var inputs = new[] { Input.Grave, Input.Dash, Input.Is, Input.LBracket, Input.RBracket, Input.Semicolon, Input.Quote, Input.Backslash, Input.Comma, Input.Period, Input.Slash, Input.D0, Input.D1, Input.D2, Input.D3, Input.D4, Input.D5, Input.D6, Input.D7, Input.D8, Input.D9, Input.A, Input.B, Input.C, Input.D, Input.E, Input.F, Input.G, Input.H, Input.I, Input.J, Input.K, Input.L, Input.M, Input.N, Input.O, Input.P, Input.Q, Input.R, Input.S, Input.T, Input.U, Input.V, Input.W, Input.X, Input.Y, Input.Z };
+      var inputs = new[] { Input.Grave, Input.Dash, Input.Is, Input.LBracket, Input.RBracket, Input.Semicolon, Input.Quote, Input.Backslash,
+        Input.Comma, Input.Period, Input.Slash, Input.D0, Input.D1, Input.D2, Input.D3, Input.D4, Input.D5, Input.D6, Input.D7, Input.D8,
+        Input.D9, Input.A, Input.B, Input.C, Input.D, Input.E, Input.F, Input.G, Input.H, Input.I, Input.J, Input.K, Input.L, Input.M,
+        Input.N, Input.O, Input.P, Input.Q, Input.R, Input.S, Input.T, Input.U, Input.V, Input.W, Input.X, Input.Y, Input.Z };
       foreach (var tuple in Helper.Zip3(inputs, chars, shiftedChars))
-      {
         AddKey(tuple.Item1, tuple.Item2, tuple.Item3);
-      }
       AddKey(Input.Space, ' ');
     }
 

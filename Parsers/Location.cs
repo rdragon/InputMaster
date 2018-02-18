@@ -5,19 +5,18 @@ namespace InputMaster.Parsers
   public struct Location : IEquatable<Location>
   {
     public static readonly Location Unknown = new Location();
-
-    private readonly int Line;
+    private readonly int _line;
 
     public Location(int line, int column)
     {
-      Line = line >= 1 ? line : throw new ArgumentOutOfRangeException(nameof(line));
+      _line = line >= 1 ? line : throw new ArgumentOutOfRangeException(nameof(line));
       Column = column >= 1 ? column : throw new ArgumentOutOfRangeException(nameof(column));
     }
 
     public int Column { get; }
-    public Location NextColumn => HasLocation ? new Location(Line, Column + 1) : this;
-    public Location NextLine => HasLocation ? new Location(Line + 1, 1) : this;
-    private bool HasLocation => Line > 0;
+    public Location NextColumn => HasLocation ? new Location(_line, Column + 1) : this;
+    public Location NextLine => HasLocation ? new Location(_line + 1, 1) : this;
+    private bool HasLocation => _line > 0;
 
     public static bool operator ==(Location a, Location b)
     {
@@ -32,20 +31,18 @@ namespace InputMaster.Parsers
     public Location AddColumns(int count)
     {
       if (count < 0)
-      {
         throw new ArgumentOutOfRangeException(nameof(count));
-      }
-      return HasLocation ? new Location(Line, Column + count) : this;
+      return HasLocation ? new Location(_line, Column + count) : this;
     }
 
     public override string ToString()
     {
-      return HasLocation ? $"line {Line}, column {Column}" : "(unknown location)";
+      return HasLocation ? $"line {_line}, column {Column}" : "(unknown location)";
     }
 
     public override int GetHashCode()
     {
-      return Line * 1000000007 + Column;
+      return _line * 1000000007 + Column;
     }
 
     public override bool Equals(object obj)
@@ -55,7 +52,7 @@ namespace InputMaster.Parsers
 
     public bool Equals(Location other)
     {
-      return Line == other.Line && Column == other.Column;
+      return _line == other._line && Column == other.Column;
     }
   }
 }

@@ -25,4 +25,6 @@ namespace InputMaster
   {
     None = 0, UseCipher = 1, UserEditable = 2, SavePeriodically = 4, Exportable = 8
   }
+
+  public enum RegexSectionType { Window, Process }
 }

@@ -76,9 +76,7 @@ namespace InputMaster
     {
       var sb = new StringBuilder();
       foreach (var modifier in Helper.Modifiers.Where(z => modifiers.HasFlag(z)))
-      {
         sb.Append(Helper.CreateTokenString(modifier.ToString()));
-      }
       return sb.ToString();
     }
 
@@ -117,21 +115,15 @@ namespace InputMaster
     {
       Helper.RequireInInterval(count, nameof(count), 0, 9999);
       for (var i = 0; i < count; i++)
-      {
         stream.Add(c);
-      }
       return (T)stream;
     }
 
     public static T Add<T>(this IInjectorStream<T> stream, Modifiers modifiers, bool down)
     {
       foreach (var modifier in Helper.Modifiers.Where(z => modifiers.HasFlag(z)))
-      {
         if (Env.Config.TryGetModifierKey(modifier, out var input))
-        {
           stream.Add(input, down);
-        }
-      }
       return (T)stream;
     }
 
@@ -156,9 +148,7 @@ namespace InputMaster
     public static T Add<T>(this IInjectorStream<T> stream, IEnumerable<Combo> combos)
     {
       foreach (var combo in combos)
-      {
         stream.Add(combo);
-      }
       return (T)stream;
     }
 

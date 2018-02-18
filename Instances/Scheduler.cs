@@ -34,7 +34,7 @@ namespace InputMaster.Instances
 
     private async Task<Scheduler> Initialize()
     {
-      var stateHandler = Env.StateHandlerFactory.Create(new MyState(), Path.Combine(Env.Config.CacheDir, nameof(Scheduler)),
+      var stateHandler = Env.StateHandlerFactory.Create(new MyState(), Path.Combine(Env.Config.CacheDir, nameof(Scheduler) + ".json"),
         StateHandlerFlags.SavePeriodically);
       _state = await stateHandler.LoadAsync();
       return this;
@@ -90,18 +90,17 @@ namespace InputMaster.Instances
 
     private class Job
     {
-      private readonly Action Action;
-      private readonly Func<Task> Function;
-
       public string Name { get; }
       public TimeSpan Delay { get; }
       public TimeSpan? RetryDelay { get; }
+      private readonly Action _action;
+      private readonly Func<Task> _function;
 
       public Job(string name, Action action, Func<Task> function, TimeSpan delay, TimeSpan? retryDelay)
       {
         Name = name;
-        Action = action;
-        Function = function;
+        _action = action;
+        _function = function;
         Delay = delay;
         RetryDelay = retryDelay;
       }
@@ -110,10 +109,10 @@ namespace InputMaster.Instances
       {
         try
         {
-          if (Function != null)
-            await Function();
+          if (_function != null)
+            await _function();
           else
-            Action();
+            _action();
           return true;
         }
         catch (Exception ex) when (!Helper.IsFatalException(ex))

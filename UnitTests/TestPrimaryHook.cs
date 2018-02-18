@@ -4,30 +4,28 @@ namespace UnitTests
 {
   public class TestPrimaryHook : IInputHook
   {
-    private readonly IInputHook TargetHook;
+    private readonly IInputHook _targetHook;
 
     public TestPrimaryHook(IInputHook targetHook)
     {
-      TargetHook = targetHook;
+      _targetHook = targetHook;
     }
 
     public string GetStateInfo()
     {
-      return TargetHook.GetStateInfo();
+      return _targetHook.GetStateInfo();
     }
 
     public void Handle(InputArgs e)
     {
-      TargetHook.Handle(e);
+      _targetHook.Handle(e);
       if (!e.Capture)
-      {
         Env.CreateInjector().Add(e.Input, e.Down).Run();
-      }
     }
 
     public void Reset()
     {
-      TargetHook.Reset();
+      _targetHook.Reset();
     }
   }
 }

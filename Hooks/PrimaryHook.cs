@@ -10,21 +10,21 @@ namespace InputMaster.Hooks
   /// </summary>
   public class PrimaryHook
   {
-    private readonly IInputHook TargetHook;
-    private readonly HookProcedureFunction HookProcedureFunction;
-    private HookHandle HookHandle;
-    private HookHandle MouseHookHandle;
+    private readonly IInputHook _targetHook;
+    private readonly HookProcedureFunction _hookProcedureFunction;
+    private HookHandle _hookHandle;
+    private HookHandle _mouseHookHandle;
 
     public PrimaryHook(IInputHook targetHook)
     {
-      HookProcedureFunction = HookProcedure; // So the garbage collector does not free the procedure.
-      TargetHook = targetHook;
+      _hookProcedureFunction = HookProcedure; // So the garbage collector does not free the procedure.
+      _targetHook = targetHook;
       Env.App.Run += Register;
-      Env.App.Exiting += TargetHook.Reset;
+      Env.App.Exiting += _targetHook.Reset;
       Env.App.Unhook += () =>
       {
-        HookHandle?.Dispose();
-        MouseHookHandle?.Dispose();
+        _hookHandle?.Dispose();
+        _mouseHookHandle?.Dispose();
       };
     }
 
@@ -80,31 +80,24 @@ namespace InputMaster.Hooks
 
     public void Register()
     {
-      HookHandle = NativeMethods.SetWindowsHookEx(HookType.LowLevelKeyboardHook, HookProcedureFunction, IntPtr.Zero, 0);
-      if (HookHandle.IsInvalid)
-      {
+      _hookHandle = NativeMethods.SetWindowsHookEx(HookType.LowLevelKeyboardHook, _hookProcedureFunction, IntPtr.Zero, 0);
+      if (_hookHandle.IsInvalid)
         throw new Win32Exception(Marshal.GetLastWin32Error(), "Failed to register low-level keyboard hook.");
-      }
-      MouseHookHandle = NativeMethods.SetWindowsHookEx(HookType.LowLevelMouseHook, HookProcedureFunction, IntPtr.Zero, 0);
-      if (MouseHookHandle.IsInvalid)
-      {
+      _mouseHookHandle = NativeMethods.SetWindowsHookEx(HookType.LowLevelMouseHook, _hookProcedureFunction, IntPtr.Zero, 0);
+      if (_mouseHookHandle.IsInvalid)
         throw new Win32Exception(Marshal.GetLastWin32Error(), "Failed to register low-level mouse hook.");
-      }
     }
 
     private IntPtr HookProcedure(int code, IntPtr wParam, IntPtr lParam)
     {
       var captured = false;
-
       try
       {
         if (code >= 0 && TryReadMessage((WindowMessage)wParam, lParam, out var e))
         {
           if (Env.Config.CaptureLmb && e.Input == Input.Lmb)
-          {
             captured = true;
-          }
-          TargetHook.Handle(e);
+          _targetHook.Handle(e);
           captured = e.Capture;
         }
       }

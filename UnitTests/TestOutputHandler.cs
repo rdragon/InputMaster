@@ -5,37 +5,30 @@ namespace UnitTests
 {
   public class TestOutputHandler : IInputHook
   {
-    private Modifiers Modifiers;
-
-    private readonly StringBuilder Output = new StringBuilder();
+    private readonly StringBuilder _output = new StringBuilder();
+    private Modifiers _modifiers;
 
     public void Handle(InputArgs e)
     {
       if (e.Input.IsModifierKey())
       {
         if (e.Down)
-        {
-          Modifiers |= e.Input.ToModifier();
-        }
+          _modifiers |= e.Input.ToModifier();
         else
-        {
-          Modifiers &= ~e.Input.ToModifier();
-        }
+          _modifiers &= ~e.Input.ToModifier();
       }
       else if (e.Down)
-      {
-        Output.Append(new Combo(e.Input, Modifiers));
-      }
+        _output.Append(new Combo(e.Input, _modifiers));
     }
 
     public void Reset()
     {
-      Output.Clear();
+      _output.Clear();
     }
 
     public string GetStateInfo()
     {
-      return Output.ToString();
+      return _output.ToString();
     }
   }
 }

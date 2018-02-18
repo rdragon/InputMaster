@@ -7,11 +7,11 @@ namespace InputMaster.Actors
 {
   public class ColorTracker : Actor
   {
-    private readonly Timer Timer = new Timer { Interval = 100 };
+    private readonly Timer _timer = new Timer { Interval = 100 };
 
     public ColorTracker()
     {
-      Timer.Tick += (s, e) =>
+      _timer.Tick += (s, e) =>
       {
         Env.Notifier.SetPersistentText(GetColor(Cursor.Position).ToString());
       };
@@ -19,17 +19,15 @@ namespace InputMaster.Actors
       Env.FlagManager.FlagsChanged += () =>
       {
         if (Env.FlagManager.HasFlag(nameof(ColorTracker)))
-        {
-          Timer.Start();
-        }
+          _timer.Start();
         else
         {
-          Timer.Stop();
+          _timer.Stop();
           Env.Notifier.SetPersistentText("");
         }
       };
 
-      Env.App.Exiting += Timer.Dispose;
+      Env.App.Exiting += _timer.Dispose;
     }
 
     [Command]

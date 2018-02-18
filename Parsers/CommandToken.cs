@@ -4,23 +4,22 @@ namespace InputMaster.Parsers
 {
   public class CommandToken
   {
-    private readonly Command Command;
+    public LocatedString LocatedName { get; }
+    public LocatedString LocatedArguments { get; }
+    public Action<Combo> Action { get; }
+    private readonly Command _command;
 
     public CommandToken(Command command, LocatedString locatedName, LocatedString locatedArguments, Action<Combo> action)
     {
-      Command = command;
+      _command = command;
       LocatedName = locatedName;
       LocatedArguments = locatedArguments;
       Action = action;
     }
 
-    public LocatedString LocatedName { get; }
-    public LocatedString LocatedArguments { get; }
-    public Action<Combo> Action { get; }
-
     public bool HasFlag(CommandTypes commandTypes)
     {
-      return Command.CommandTypes.HasFlag(commandTypes);
+      return _command.CommandTypes.HasFlag(commandTypes);
     }
 
     public override string ToString()

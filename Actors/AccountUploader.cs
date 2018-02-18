@@ -214,7 +214,7 @@ namespace InputMaster.Actors
       _state.CyptroNeedsUpdate = false;
     }
 
-    private class MyState : IState
+    public class MyState : IState
     {
       public string AccountUploadPassword { get; set; }
       public string PartialAccountPassword { get; set; }
@@ -233,7 +233,7 @@ namespace InputMaster.Actors
       }
     }
 
-    public class Entry
+    private class Entry
     {
       public string Id { get; set; }
       public string Title { get; set; }

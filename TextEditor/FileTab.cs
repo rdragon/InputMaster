@@ -11,26 +11,26 @@ namespace InputMaster.TextEditor
 {
   public class FileTab
   {
-    private readonly TextEditorForm TextEditorForm;
-    private readonly FileManager FileManager;
-    private RichTextBoxPlus Panel;
-    private RichTextBoxPlus Rtb;
-    private bool Changed;
-    private bool ShouldUpdatePanel;
+    public string Name { get; }
+    public TabPage TabPage { get; }
+    private readonly TextEditorForm _textEditorForm;
+    private readonly FileManager _fileManager;
+    private RichTextBoxPlus _panel;
+    private RichTextBoxPlus _rtb;
+    private bool _changed;
+    private bool _shouldUpdatePanel;
 
     public FileTab(string name, TextEditorForm textEditorForm, FileManager fileManager, TabPage tabPage)
     {
       Name = name;
-      TextEditorForm = textEditorForm;
-      FileManager = fileManager;
+      _textEditorForm = textEditorForm;
+      _fileManager = fileManager;
       TabPage = tabPage;
     }
 
-    public string Name { get; }
     public string File => FileManager.GetFile(Name);
-    public string Title => FileManager.GetTitle(Name);
-    public string Text => Rtb.Text;
-    public TabPage TabPage { get; }
+    public string Title => _fileManager.GetTitle(Name);
+    public string Text => _rtb.Text;
 
     public async Task InitializeAsync()
     {
@@ -46,7 +46,7 @@ namespace InputMaster.TextEditor
         TabStop = false
       };
 
-      Panel = new RichTextBoxPlus
+      _panel = new RichTextBoxPlus
       {
         Dock = DockStyle.Fill,
         Parent = splitContainer.Panel1,
@@ -56,7 +56,7 @@ namespace InputMaster.TextEditor
         TabStop = false
       };
 
-      Rtb = new RichTextBoxPlus
+      _rtb = new RichTextBoxPlus
       {
         Dock = DockStyle.Fill,
         Parent = splitContainer.Panel2,
@@ -67,23 +67,21 @@ namespace InputMaster.TextEditor
       };
 
       UpdatePanel(true);
-      if (TextEditorForm.TryGetPosition(Name, out var rtbPosition))
-        Rtb.LoadPosition(rtbPosition);
+      if (_textEditorForm.TryGetPosition(Name, out var rtbPosition))
+        _rtb.LoadPosition(rtbPosition);
 
-      Changed = false;
+      _changed = false;
 
-      Rtb.TextChanged += (s, e) =>
+      _rtb.TextChanged += (s, e) =>
       {
-        Changed = true;
-        ShouldUpdatePanel = true;
+        _changed = true;
+        _shouldUpdatePanel = true;
       };
 
-      Rtb.KeyDown += async (s, e) =>
+      _rtb.KeyDown += async (s, e) =>
       {
         if (e.Handled)
-        {
           return;
-        }
         switch (e.KeyData)
         {
           case Keys.F6:
@@ -118,10 +116,10 @@ namespace InputMaster.TextEditor
         }
       };
 
-      Panel.MouseClick += (s, e) =>
+      _panel.MouseClick += (s, e) =>
       {
-        Rtb.Focus();
-        MoveCaretToSection(Panel.GetCurrentLine());
+        _rtb.Focus();
+        MoveCaretToSection(_panel.GetCurrentLine());
       };
 
       Env.FlagManager.FlagsChanged += FlagsChanged;
@@ -147,7 +145,8 @@ namespace InputMaster.TextEditor
     }
 
     /// <summary>
-    /// Returns an index i such that on position i - 1 the last non-whitespace character of the section containing the given index is found, or -1 on failure.
+    /// Returns an index i such that on position i - 1 the last non-whitespace character of the section containing the given index is found,
+    /// or -1 on failure.
     /// </summary>
     private static int GetAppendIndex(string padded, int index)
     {
@@ -166,11 +165,11 @@ namespace InputMaster.TextEditor
 
     public void UpdatePanel(bool force = false)
     {
-      if (!force && !ShouldUpdatePanel)
+      if (!force && !_shouldUpdatePanel)
         return;
-      ShouldUpdatePanel = false;
+      _shouldUpdatePanel = false;
       var sb = new StringBuilder();
-      foreach (var line in Rtb.Lines)
+      foreach (var line in _rtb.Lines)
       {
         if (line.Length >= 3 && line.StartsWith(Constants.TextEditorSectionIdentifier + " "))
         {
@@ -180,17 +179,17 @@ namespace InputMaster.TextEditor
         }
       }
       var text = sb.ToString();
-      if (Panel.Text != text)
-        Panel.Text = text;
+      if (_panel.Text != text)
+        _panel.Text = text;
     }
 
     public async Task SaveAsync()
     {
-      TextEditorForm.UpdatePosition(Name, Rtb.GetPosition());
-      if (!Changed)
+      _textEditorForm.UpdatePosition(Name, _rtb.GetPosition());
+      if (!_changed)
         return;
       await Env.Cipher.EncryptToFileAsync(File, new TitleTextPair(Title, Text).ToString());
-      Changed = false;
+      _changed = false;
     }
 
     public async Task SaveAndCloseAsync()
@@ -201,22 +200,22 @@ namespace InputMaster.TextEditor
 
     private void Delete()
     {
-      Changed = false;
-      FileManager.DeleteFile(Name);
-      TextEditorForm.RemovePosition(Name);
+      _changed = false;
+      _fileManager.DeleteFile(Name);
+      _textEditorForm.RemovePosition(Name);
       Close();
     }
 
     public void Close()
     {
       Env.FlagManager.FlagsChanged -= FlagsChanged;
-      TextEditorForm.RemoveFileTab(this);
+      _textEditorForm.RemoveFileTab(this);
       TabPage.Dispose();
     }
 
     public void SelectRtb()
     {
-      Rtb.Select();
+      _rtb.Select();
     }
 
     private void MoveCaretToSection(string section)
@@ -226,31 +225,29 @@ namespace InputMaster.TextEditor
 
     private void MoveSelectedLines(string section)
     {
-      Rtb.SuspendPainting();
+      _rtb.SuspendPainting();
       var padded = GetPaddedText(Text);
-      var i = Rtb.SelectionStart + 1;
-      var j = i + Math.Max(0, Rtb.SelectionLength - 1);
+      var i = _rtb.SelectionStart + 1;
+      var j = i + Math.Max(0, _rtb.SelectionLength - 1);
       var cutIndex = Helper.GetLineStart(padded, i);
       var k = Helper.GetLineEnd(padded, j);
       var copyLength = k - cutIndex;
       var cutLength = copyLength + (k < padded.Length ? 1 : 0);
       var copiedText = padded.Substring(cutIndex, copyLength);
-      Rtb.Select(cutIndex - 1, cutLength);
-      Rtb.SelectedText = "";
+      _rtb.Select(cutIndex - 1, cutLength);
+      _rtb.SelectedText = "";
       padded = GetPaddedText(Text);
       var insertIndex = GetAppendIndex(padded, section);
       if (insertIndex == -1)
-      {
-        Rtb.SelectedText = copiedText + "\n";
-      }
+        _rtb.SelectedText = copiedText + "\n";
       else
       {
-        Rtb.Select(insertIndex - 1, 0);
-        var lengthBefore = Rtb.TextLength;
-        Rtb.SelectedText = "\n" + copiedText;
-        Rtb.Select(cutIndex - 1 + (insertIndex < cutIndex ? Rtb.TextLength - lengthBefore : 0), 0);
+        _rtb.Select(insertIndex - 1, 0);
+        var lengthBefore = _rtb.TextLength;
+        _rtb.SelectedText = "\n" + copiedText;
+        _rtb.Select(cutIndex - 1 + (insertIndex < cutIndex ? _rtb.TextLength - lengthBefore : 0), 0);
       }
-      Rtb.ResumePainting();
+      _rtb.ResumePainting();
     }
 
     private void MoveCaretToSection(string padded, string section)
@@ -258,45 +255,43 @@ namespace InputMaster.TextEditor
       var index = GetStartOfSection(padded, section);
       if (index != -1)
       {
-        Rtb.Select(index - 1, 0);
-        Rtb.ScrollToCaret();
+        _rtb.Select(index - 1, 0);
+        _rtb.ScrollToCaret();
         var i = GetAppendIndex(padded, index);
         Helper.RequireTrue(i != -1);
-        Rtb.Select(i - 1, 0);
+        _rtb.Select(i - 1, 0);
       }
     }
 
     private void MoveCaretToEndOfSection()
     {
       var padded = GetPaddedText(Text);
-      var i = GetAppendIndex(padded, Rtb.SelectionStart + 1);
+      var i = GetAppendIndex(padded, _rtb.SelectionStart + 1);
       if (i != -1)
-        Rtb.Select(i - 1, 0);
+        _rtb.Select(i - 1, 0);
     }
 
     private void MoveCaretToTopOfSection()
     {
       var padded = GetPaddedText(Text);
-      var i = padded.LastIndexOf($"\n{Constants.TextEditorSectionIdentifier} ", Rtb.SelectionStart + 1, StringComparison.Ordinal);
+      var i = padded.LastIndexOf($"\n{Constants.TextEditorSectionIdentifier} ", _rtb.SelectionStart + 1, StringComparison.Ordinal);
       if (i == -1)
-      {
-        Rtb.Select(0, 0);
-      }
+        _rtb.Select(0, 0);
       else
       {
         i++;
-        Rtb.Select(i - 1, 0);
-        Rtb.ScrollToCaret();
+        _rtb.Select(i - 1, 0);
+        _rtb.ScrollToCaret();
         var j = Helper.GetLineEnd(padded, i) + 1;
         if (j >= padded.Length)
           j = padded.Length - 1;
-        Rtb.Select(j - 1, 0);
+        _rtb.Select(j - 1, 0);
       }
     }
 
     private void OpenMode(Action<string> action)
     {
-      var sections = Panel.Lines.Where(z => !string.IsNullOrEmpty(z));
+      var sections = _panel.Lines.Where(z => !string.IsNullOrEmpty(z));
       var mode = new Mode(Title, true);
       foreach (var section in sections)
       {
@@ -319,14 +314,14 @@ namespace InputMaster.TextEditor
         if (MessageBox.Show("Are you sure you want to delete this file?", "Delete file", MessageBoxButtons.YesNo) == DialogResult.Yes)
         {
           Delete();
-          FileManager.CompileTextEditorMode();
+          _fileManager.CompileTextEditorMode();
         }
         return;
       }
       TabPage.Text = Helper.StripTags(title);
-      FileManager.SetTitle(Name, title);
-      FileManager.CompileTextEditorMode();
-      Changed = true;
+      _fileManager.SetTitle(Name, title);
+      _fileManager.CompileTextEditorMode();
+      _changed = true;
     }
 
     private void Compile()
@@ -340,7 +335,7 @@ namespace InputMaster.TextEditor
 
     private void FlagsChanged()
     {
-      Rtb.ReadOnly = Env.FlagManager.HasFlag("ReadOnly") || Program.ReadOnly;
+      _rtb.ReadOnly = Env.FlagManager.HasFlag("ReadOnly") || Program.ReadOnly;
     }
   }
 }

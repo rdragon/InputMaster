@@ -4,24 +4,23 @@ namespace InputMaster.Hooks
 {
   public class ComboHook : IComboHook
   {
-    private readonly Combo[] Buffer = new Combo[Env.Config.MaxChordLength];
-    private readonly Chord Chord = new Chord(Env.Config.MaxChordLength);
-    private int Length;
-    private HotkeyCollection HotkeyCollection = new HotkeyCollection();
-
-    public bool Active => HotkeyCollection != null;
+    public bool Active => _hotkeyCollection != null;
+    private readonly Combo[] _buffer = new Combo[Env.Config.MaxChordLength];
+    private readonly Chord _chord = new Chord(Env.Config.MaxChordLength);
+    private int _length;
+    private HotkeyCollection _hotkeyCollection = new HotkeyCollection();
 
     public ComboHook()
     {
       Env.Parser.NewParserOutput += parserOutput =>
       {
-        HotkeyCollection = parserOutput.HotkeyCollection;
+        _hotkeyCollection = parserOutput.HotkeyCollection;
       };
     }
 
     public void Reset()
     {
-      Length = 0;
+      _length = 0;
     }
 
     public string GetTestStateInfo()
@@ -34,27 +33,25 @@ namespace InputMaster.Hooks
     {
       Env.ForegroundListener.Update();
       Action<Combo> action = null;
-      Chord.Clear();
+      _chord.Clear();
       var combo = e.Combo;
       if (!combo.Input.IsModifierKey())
       {
-        Buffer[Length++ % Buffer.Length] = combo;
-        var i = Length;
-        var k = Math.Min(HotkeyCollection.MaxChordLength, Length);
+        _buffer[_length++ % _buffer.Length] = combo;
+        var i = _length;
+        var k = Math.Min(_hotkeyCollection.MaxChordLength, _length);
         for (var j = 0; j < k; j++)
         {
-          Chord.InsertAtStart(Buffer[--i % Buffer.Length]);
-          if (HotkeyCollection.TryGetAction(Chord, out var action1))
+          _chord.InsertAtStart(_buffer[--i % _buffer.Length]);
+          if (_hotkeyCollection.TryGetAction(_chord, out var action1))
             action = action1;
         }
       }
       else
       {
-        Chord.InsertAtStart(combo);
-        if (HotkeyCollection.TryGetAction(Chord, out var action1))
-        {
+        _chord.InsertAtStart(combo);
+        if (_hotkeyCollection.TryGetAction(_chord, out var action1))
           action = action1;
-        }
       }
       if (action != null)
       {

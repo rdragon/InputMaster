@@ -7,7 +7,7 @@ namespace InputMaster.Instances
 {
   public class CommandCollection : ICommandCollection
   {
-    private readonly Dictionary<string, Command> Commands = new Dictionary<string, Command>();
+    private readonly Dictionary<string, Command> _commands = new Dictionary<string, Command>();
 
     public void AddActor(object actor)
     {
@@ -16,15 +16,11 @@ namespace InputMaster.Instances
         BindingFlags.Public | BindingFlags.NonPublic))
       {
         if (!TryGetCommandTypes(methodInfo, out var commandTypes))
-        {
           continue;
-        }
         var name = methodInfo.Name;
-        if (Commands.ContainsKey(name))
-        {
+        if (_commands.ContainsKey(name))
           throw new AmbiguousMatchException("Duplicate command found" + Helper.GetBindingsSuffix(name, nameof(name)));
-        }
-        Commands[name] = new Command(actor, methodInfo, commandTypes);
+        _commands[name] = new Command(actor, methodInfo, commandTypes);
       }
     }
 
@@ -41,10 +37,8 @@ namespace InputMaster.Instances
 
     public Command GetCommand(LocatedString locatedName)
     {
-      if (Commands.TryGetValue(locatedName.Value, out var command) || Commands.TryGetValue(locatedName.Value + "Async", out command))
-      {
+      if (_commands.TryGetValue(locatedName.Value, out var command) || _commands.TryGetValue(locatedName.Value + "Async", out command))
         return command;
-      }
       throw new ParseException(locatedName, "Command not found.");
     }
   }

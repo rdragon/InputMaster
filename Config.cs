@@ -13,31 +13,10 @@ using System.Threading.Tasks;
 namespace InputMaster
 {
   /// <summary>
-  /// All properties are thread-safe.
+  /// All public properties are thread-safe.
   /// </summary>
   public class Config
   {
-    protected readonly Dictionary<string, string> PreprocessorReplaces = new Dictionary<string, string>();
-    protected readonly Dictionary<string, Input> CustomInputs = new Dictionary<string, Input>();
-    protected readonly Dictionary<string, Combo> CustomCombos = new Dictionary<string, Combo>();
-    private readonly Dictionary<Input, Modifiers> ModifierDict = new Dictionary<Input, Modifiers>();
-    private readonly Dictionary<Modifiers, Input> ModifierKeyDict = new Dictionary<Modifiers, Input>();
-
-    public Config()
-    {
-      foreach (var pair in ConfigHelper.ModifierKeys)
-      {
-        var input = pair.Item1;
-        var modifier = pair.Item2;
-        if (!ModifierKeyDict.ContainsKey(modifier))
-          ModifierKeyDict.Add(modifier, input);
-        ModifierDict.Add(input, modifier);
-      }
-      var modifierWithoutKey = Helper.Modifiers.FirstOrDefault(z => !ModifierKeyDict.ContainsKey(z));
-      if (modifierWithoutKey != Modifiers.None)
-        throw new FatalException($"No modifier key found for modifier {modifierWithoutKey}.");
-    }
-
     public virtual string DataDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
       "InputMaster");
     public virtual string DefaultWebBrowser { get; } = @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe";
@@ -48,7 +27,7 @@ namespace InputMaster
     public virtual string CacheDir => DataDir;
     public virtual string TextEditorDir => Path.Combine(DataDir, "TextEditor");
     public virtual string HotkeyFile => Path.Combine(DataDir, "Hotkeys.im");
-    public virtual string WindowHandleFile => Path.Combine(CacheDir, "WindowHandle");
+    public virtual string WindowHandleFile => Path.Combine(CacheDir, "WindowHandle.txt");
     public virtual string ErrorLogFile => Path.Combine(CacheDir, "ErrorLog.txt");
     public virtual string DefaultTextEditor => Path.Combine(Environment.SystemDirectory, "notepad.exe");
     public virtual string ScreenshotsDir => Path.Combine(DataDir, "Screenshots");
@@ -117,6 +96,27 @@ namespace InputMaster
     public virtual Color BackgroundColor { get; } = Color.White;
     public virtual Font Font { get; } = new Font("Consolas", 11);
 
+    protected Dictionary<string, string> PreprocessorReplaces { get; } = new Dictionary<string, string>();
+    protected Dictionary<string, Input> CustomInputs { get; } = new Dictionary<string, Input>();
+    protected Dictionary<string, Combo> CustomCombos { get; } = new Dictionary<string, Combo>();
+    private readonly Dictionary<Input, Modifiers> _modifierDict = new Dictionary<Input, Modifiers>();
+    private readonly Dictionary<Modifiers, Input> _modifierKeyDict = new Dictionary<Modifiers, Input>();
+
+    public Config()
+    {
+      foreach (var pair in ConfigHelper.ModifierKeys)
+      {
+        var input = pair.Item1;
+        var modifier = pair.Item2;
+        if (!_modifierKeyDict.ContainsKey(modifier))
+          _modifierKeyDict.Add(modifier, input);
+        _modifierDict.Add(input, modifier);
+      }
+      var modifierWithoutKey = Helper.Modifiers.FirstOrDefault(z => !_modifierKeyDict.ContainsKey(z));
+      if (modifierWithoutKey != Modifiers.None)
+        throw new FatalException($"No modifier key found for modifier {modifierWithoutKey}.");
+    }
+
     public virtual Form CreateMainForm()
     {
       return new NotifyForm();
@@ -146,8 +146,8 @@ namespace InputMaster
       return Task.FromResult(new byte[KeySize]);
     }
 
-    public bool TryGetModifierKey(Modifiers modifier, out Input input) => ModifierKeyDict.TryGetValue(modifier, out input);
-    public bool TryGetModifier(Input input, out Modifiers modifier) => ModifierDict.TryGetValue(input, out modifier);
+    public bool TryGetModifierKey(Modifiers modifier, out Input input) => _modifierKeyDict.TryGetValue(modifier, out input);
+    public bool TryGetModifier(Input input, out Modifiers modifier) => _modifierDict.TryGetValue(input, out modifier);
     public bool TryGetCustomCombo(string name, out Combo combo) => CustomCombos.TryGetValue(name, out combo);
     public bool TryGetCustomInput(string name, out Input input) => CustomInputs.TryGetValue(name, out input);
     public bool TryGetPreprocessorReplace(string key, out string value) => PreprocessorReplaces.TryGetValue(key, out value);

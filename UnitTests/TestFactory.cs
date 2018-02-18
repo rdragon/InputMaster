@@ -11,7 +11,7 @@ namespace UnitTests
 {
   public class TestFactory
   {
-    private readonly TestOutputHandler OutputHandler = new TestOutputHandler();
+    private readonly TestOutputHandler _outputHandler = new TestOutputHandler();
 
     public void Run()
     {
@@ -34,10 +34,10 @@ namespace UnitTests
         Env.FlagManager = FlagManager.GetFlagManagerAsync().Result;
         Env.Scheduler = Scheduler.GetSchedulerAsync().Result;
         Env.ProcessManager = new ProcessManager();
-        Env.Injector = new TestInjector(OutputHandler);
+        Env.Injector = new TestInjector(_outputHandler);
         Env.PasswordMatrix = new PasswordMatrix(InputMaster.Properties.Resources.PasswordMatrix6x5);
         Env.AccountManager = new Mock<AccountManager>().Object;
-        new TestBrain(OutputHandler).Run();
+        new TestBrain(_outputHandler).Run();
       }
       catch (Exception ex) when (Helper.HasAssertFailed(ex))
       {

@@ -63,9 +63,6 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="JetBrains.Annotations, Version=10.4.0.0, Culture=neutral, PublicKeyToken=1010a0d8d6380325, processorArchitecture=MSIL">
-      <HintPath>packages\JetBrains.Annotations.10.4.0\lib\net\JetBrains.Annotations.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
     <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>packages\Newtonsoft.Json.10.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
@@ -92,24 +89,30 @@
     <Compile Include="AccountManager.cs" />
     <Compile Include="Actors\AccountUploader.cs" />
     <Compile Include="Actors\CustomNotifyIcon.cs" />
+    <Compile Include="Actors\Enums.cs" />
     <Compile Include="Actors\GitExecutor.cs" />
+    <Compile Include="Actors\Rest.cs" />
     <Compile Include="Actors\SimpleGitExecutor.cs" />
     <Compile Include="Actors\PasswordMatrixGenerator.cs" />
     <Compile Include="Actors\CyptroUpdater.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="JsonStateHandler.cs" />
     <Compile Include="JsonStateHandlerFactory.cs" />
+    <Compile Include="Parsers\Enums.cs" />
     <Compile Include="PasswordMatrix.cs" />
     <Compile Include="Instances\App.cs" />
     <Compile Include="Constants.cs" />
+    <Compile Include="Rik\KeyProvider.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="StateExporter.cs" />
     <Compile Include="TextEditor\TitleNamePair.cs" />
-    <Compile Include="ValueProvider.cs" />
     <Compile Include="Attributes.cs" />
+    <Compile Include="Rik\ConfigRik.cs" />
     <Compile Include="Parsers\DynamicHotkeyCollection.cs" />
     <Compile Include="Chord.cs" />
     <Compile Include="Actors\VarActor.cs" />
+    <Compile Include="Rik\CrateHelper.cs" />
+    <Compile Include="Rik\ActorRik.cs" />
     <Compile Include="Instances\Factory.cs" />
     <Compile Include="Forms\GetStringLineForm.cs">
       <SubType>Form</SubType>
@@ -138,7 +141,6 @@
     <Compile Include="TextEditor\TitleTextPair.cs" />
     <Compile Include="TextEditor\FileTab.cs" />
     <Compile Include="TextEditor\FileManager.cs" />
-    <Compile Include="TitleFilter.cs" />
     <Compile Include="Win32\Definitions.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>

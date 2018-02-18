@@ -9,34 +9,29 @@ namespace InputMaster.Parsers
   /// </summary>
   public abstract class CharReader
   {
-    private readonly string Text;
-    private int Index;
+    protected bool EndOfStream => _index == _text.Length;
+    protected bool EndOfLine => Current == '\n';
+    protected char Current => EndOfStream ? '\n' : _text[_index];
+    protected Location Location { get; private set; }
+    private readonly string _text;
+    private int _index;
 
     protected CharReader(LocatedString locatedString)
     {
       var text = locatedString.Value;
       if (text.Contains('\t'))
-      {
         throw new ParseException("Tab character(s) found in input. Please use spaces only.");
-      }
       Helper.ForbidCarriageReturn(ref text);
-      Text = text;
+      _text = text;
       Location = locatedString.Location;
     }
-
-    protected bool EndOfStream => Index == Text.Length;
-    protected bool EndOfLine => Current == '\n';
-    protected char Current => EndOfStream ? '\n' : Text[Index];
-    protected Location Location { get; private set; }
 
     protected char Read()
     {
       if (EndOfStream)
-      {
         return Current;
-      }
       Location = EndOfLine ? Location.NextLine : Location.NextColumn;
-      return Text[Index++];
+      return _text[_index++];
     }
 
     protected void Read(char c)
@@ -48,9 +43,7 @@ namespace InputMaster.Parsers
     protected void ReadMany(char c)
     {
       while (!EndOfStream && Current == c)
-      {
         Read();
-      }
     }
 
     protected void ReadSome(char c)
@@ -67,48 +60,36 @@ namespace InputMaster.Parsers
     protected void Read(string text)
     {
       foreach (var c in text)
-      {
         Read(c);
-      }
     }
 
     protected bool TryRead(string text)
     {
       if (!At(text))
-      {
         return false;
-      }
       Read(text);
       return true;
     }
 
     protected bool At(Regex regex)
     {
-      return regex.IsMatch(Text.Substring(Index));
+      return regex.IsMatch(_text.Substring(_index));
     }
 
     protected void ForbidEndOfStream()
     {
       if (EndOfStream)
-      {
         throw CreateException("Unexpected end of stream.");
-      }
     }
 
     protected void Require(char c)
     {
       if (c == Current)
-      {
         return;
-      }
       if (EndOfStream)
-      {
         throw CreateException($"Unexpected end of stream, expecting '{c}'.");
-      }
       if (EndOfLine)
-      {
         throw CreateException($"Unexpected end of line, expecting '{c}'.");
-      }
       throw CreateException($"Unexpected character '{Current}', expecting '{c}'.");
     }
 
@@ -125,9 +106,7 @@ namespace InputMaster.Parsers
     {
       ForbidEndOfStream();
       if (Current < 'A' || Current > 'Z')
-      {
         throw CreateException($"Unexpected character '{Current}'. An identifier should start with an upper case letter.");
-      }
       return ReadWhile(Constants.IsIdentifierCharacter);
     }
 
@@ -138,18 +117,16 @@ namespace InputMaster.Parsers
 
     private bool At(string text)
     {
-      return (!EndOfStream || text.Length == 0) && Text.Substring(Index).StartsWith(text);
+      return (!EndOfStream || text.Length == 0) && _text.Substring(_index).StartsWith(text);
     }
 
     private LocatedString ReadWhile(Func<char, bool> func)
     {
       var location = Location;
-      var startIndex = Index;
+      var startIndex = _index;
       while (!EndOfStream && func(Current))
-      {
         Read();
-      }
-      return new LocatedString(Text.Substring(startIndex, Index - startIndex), location);
+      return new LocatedString(_text.Substring(startIndex, _index - startIndex), location);
     }
   }
 }

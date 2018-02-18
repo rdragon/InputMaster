@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
+using InputMaster.Parsers;
 using InputMaster.Win32;
-using JetBrains.Annotations;
 using Microsoft.Win32.SafeHandles;
+using Newtonsoft.Json;
 
 namespace InputMaster
 {
-  [UsedImplicitly]
   public class HookHandle : SafeHandleZeroOrMinusOneIsInvalid
   {
     public HookHandle() : base(true) { }
@@ -48,6 +49,46 @@ namespace InputMaster
     }
 
     public int Column { get; set; }
+  }
+
+  public class FlagSection : StandardSection
+  {
+    private readonly string _flag;
+
+    public FlagSection(StandardSection parent, string text) : base(parent)
+    {
+      _flag = text;
+    }
+
+    protected override bool ComputeEnabled()
+    {
+      return Env.FlagManager.HasFlag(_flag);
+    }
+  }
+
+  public class RegexSection : StandardSection
+  {
+    private readonly Regex _regex;
+    private readonly RegexSectionType _type;
+
+    public RegexSection(StandardSection parent, Regex regex, RegexSectionType type) : base(parent)
+    {
+      _regex = regex;
+      if (!Enum.IsDefined(typeof(RegexSectionType), type))
+        throw new ArgumentOutOfRangeException(nameof(type));
+      _type = type;
+    }
+
+    protected override bool ComputeEnabled()
+    {
+      string s;
+      switch (_type)
+      {
+        case RegexSectionType.Window: s = Env.ForegroundListener.ForegroundWindowTitle; break;
+        default: s = Env.ForegroundListener.ForegroundProcessName; break;
+      }
+      return _regex.IsMatch(s);
+    }
   }
 
   public class ModeHotkey
@@ -174,6 +215,78 @@ namespace InputMaster
     {
       File = file;
       Flags = flags;
+    }
+  }
+
+  public class AccountModel
+  {
+    public string Title { get; }
+    public string LoginName { get; }
+    public string Password { get; }
+    public string Extra { get; }
+    public string MatrixDecomposition { get; }
+
+    public AccountModel(string title, string loginName, string password, string extra, string matrixDecomposition)
+    {
+      Title = title;
+      LoginName = loginName;
+      Password = password;
+      Extra = extra;
+      MatrixDecomposition = matrixDecomposition;
+    }
+  }
+
+  public class ChordJsonConverter : JsonConverter
+  {
+    public override bool CanConvert(Type objectType)
+    {
+      return objectType == typeof(Chord);
+    }
+
+    public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+    {
+      return Env.Config.DefaultChordReader.CreateChord(new LocatedString(reader.Value.ToString()));
+    }
+
+    public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+    {
+      writer.WriteValue(value.ToString());
+    }
+  }
+
+  [JsonConverter(typeof(TitleFilterJsonConverter))]
+  public class TitleFilter
+  {
+    public string Value { get; }
+    private readonly Regex _regex;
+
+    public TitleFilter(string value)
+    {
+      Value = value;
+      _regex = Helper.GetRegex(Value, RegexOptions.IgnoreCase);
+    }
+
+    public bool IsEnabled()
+    {
+      return _regex.IsMatch(Env.ForegroundListener.ForegroundWindowTitle);
+    }
+  }
+
+  public class TitleFilterJsonConverter : JsonConverter
+  {
+    public override bool CanConvert(Type objectType)
+    {
+      return objectType == typeof(TitleFilter);
+    }
+
+    public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+    {
+      return new TitleFilter(reader.Value.ToString());
+    }
+
+    public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+    {
+      writer.WriteValue(((TitleFilter)value).Value);
     }
   }
 }

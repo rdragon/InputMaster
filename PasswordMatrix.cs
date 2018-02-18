@@ -45,9 +45,7 @@ namespace InputMaster
     {
       var path = GetPath(blueprint).ToList();
       if (path.Any(z => Math.Min(z.X, z.Y) < 0 || Width <= z.X || Height <= z.Y))
-      {
         return null;
-      }
       return new string(path.Select(z => _matrix[z.Y * Width + z.X]).ToArray());
     }
 
@@ -123,9 +121,7 @@ namespace InputMaster
         }
       }
       if (!d2.HasValue)
-      {
         throw new ArgumentException($"Expecting two direction for shape '{blueprint.Shape}'.");
-      }
       var a = d1;
       var b = d2.Value;
       if (blueprint.Shape == BlueprintShape.Stairs)
@@ -235,7 +231,7 @@ namespace InputMaster
       }
     }
 
-    private class MyState : IState
+    public class MyState : IState
     {
       public string Matrix { get; set; }
 

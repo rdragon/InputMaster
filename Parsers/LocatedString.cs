@@ -13,6 +13,9 @@ namespace InputMaster.Parsers
     private static readonly string DelimiterPattern = $" *{Regex.Escape(Constants.ArgumentDelimiter)} *";
     private static readonly Regex DelimiterRegex = new Regex($"{DelimiterPattern}| +");
     private static readonly Regex DelimiterRegexAllowSpace = new Regex(DelimiterPattern);
+    public string Value { get; }
+    public Location Location { get; }
+    public int Length => Value.Length;
 
     public LocatedString(string text) : this(text, Location.Unknown) { }
 
@@ -21,10 +24,6 @@ namespace InputMaster.Parsers
       Value = text;
       Location = location;
     }
-
-    public string Value { get; }
-    public Location Location { get; }
-    public int Length => Value.Length;
 
     public static bool operator ==(LocatedString a, LocatedString b)
     {
@@ -56,26 +55,18 @@ namespace InputMaster.Parsers
     {
       var count = Split(delimiter).Length;
       if (targetCount != -1 && count != targetCount)
-      {
         throw GetException(targetCount);
-      }
       return this;
     }
 
     private Exception GetException(int targetCount = -1, int minCount = -1, int maxCount = -1)
     {
       if (targetCount != -1)
-      {
         return CreateException($"Wrong number of arguments given, expecting {targetCount} arguments.");
-      }
       if (minCount != -1)
-      {
         return CreateException($"Not enough arguments given, expecting at least {minCount}.");
-      }
       if (maxCount != -1)
-      {
         return CreateException($"Too many arguments given, expecting at most {maxCount}.");
-      }
       throw new ArgumentException("All arguments are -1.");
     }
 
@@ -136,9 +127,7 @@ namespace InputMaster.Parsers
         if (current.Length == 0)
         {
           if (parameterInfo.IsOptional)
-          {
             break;
-          }
           throw GetException(minCount: myParameterInfos.TakeWhile(z => !z.IsOptional).Count());
         }
         var regex = parameterInfo.IsDefined(typeof(AllowSpacesAttribute)) ? DelimiterRegexAllowSpace : DelimiterRegex;
@@ -157,9 +146,7 @@ namespace InputMaster.Parsers
         arguments.Add(argument.ReadArgument(parameterInfo));
       }
       if (current.Length > 0)
-      {
         throw GetException(maxCount: myParameterInfos.Count);
-      }
       return arguments.Concat(Enumerable.Repeat(Type.Missing, myParameterInfos.Count - arguments.Count));
     }
 
@@ -178,75 +165,48 @@ namespace InputMaster.Parsers
       if (type == typeof(int) || type == typeof(int?))
       {
         if (!int.TryParse(Value, out var x))
-        {
           throw CreateException("Failed to parse as int.");
-        }
         if (!parameterInfo.IsDefined(typeof(ValidRangeAttribute)))
-        {
           return x;
-        }
         var range = parameterInfo.GetCustomAttribute<ValidRangeAttribute>();
         if (x < range.Minimum || x > range.Maximum)
-        {
-          throw CreateException("Argument out of range" + Helper.GetBindingsSuffix(x, nameof(x), range.Minimum, "min", range.Maximum, "max"));
-        }
+          throw CreateException("Argument out of range" + Helper.GetBindingsSuffix(x, nameof(x), range.Minimum, "min", range.Maximum,
+            "max"));
         return x;
       }
       if (type == typeof(TimeSpan) || type == typeof(TimeSpan?))
       {
         if (TimeSpan.TryParse(Value, out var x))
-        {
           return x;
-        }
         throw CreateException("Failed to parse as TimeSpan.");
       }
       if (type == typeof(DirectoryInfo))
-      {
         return new DirectoryInfo(Value);
-      }
       if (type == typeof(FileInfo))
-      {
         return new FileInfo(Value);
-      }
       if (type == typeof(Action))
-      {
         return Env.CreateInjector().Add(this, Env.Config.DefaultInputReader).Compile();
-      }
       if (type == typeof(IInjector))
-      {
         return Env.CreateInjector().Add(this, Env.Config.DefaultInputReader);
-      }
       if (type == typeof(string))
       {
         if (!parameterInfo.IsDefined(typeof(ValidFlagsAttribute)))
-        {
           return Value;
-        }
         var flagsString = parameterInfo.GetCustomAttribute<ValidFlagsAttribute>().FlagsString;
         foreach (var c in Value.Where(z => !char.IsWhiteSpace(z)))
-        {
           if (!flagsString.Contains(c))
-          {
             throw CreateException($"Invalid flag '{c}', expecting one of \"{flagsString}\".");
-          }
-        }
         return Value;
       }
       if (type == typeof(LocatedString) || type == typeof(LocatedString?))
-      {
         return this;
-      }
       if (type == typeof(Chord))
-      {
         return Env.Config.DefaultChordReader.CreateChord(this);
-      }
       if (type == typeof(Input) || type == typeof(Input?))
       {
         var chord = Env.Config.DefaultChordReader.CreateChord(this);
         if (chord.Length > 1 || chord.Length == 0 || chord.First().Modifiers != Modifiers.None)
-        {
           throw CreateException("Failed to parse as a single Input.");
-        }
         return chord.First().Input;
       }
       throw CreateException($"Argument type '{type.Name}' not supported.");

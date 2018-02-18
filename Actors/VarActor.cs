@@ -8,7 +8,7 @@ namespace InputMaster.Actors
   public class VarActor : Actor
   {
     private MyState _state;
-    private string CurrentGroup = "default";
+    private string _currentGroup = "default";
 
     private VarActor() { }
 
@@ -29,10 +29,10 @@ namespace InputMaster.Actors
     [Command]
     private void SetVarGroup(string name)
     {
-      CurrentGroup = name;
-      if (!_state.Dict.ContainsKey(CurrentGroup))
-        _state.Dict[CurrentGroup] = new Dictionary<string, string>();
-      Env.Notifier.Info($"CurrentGroup: {CurrentGroup}");
+      _currentGroup = name;
+      if (!_state.Dict.ContainsKey(_currentGroup))
+        _state.Dict[_currentGroup] = new Dictionary<string, string>();
+      Env.Notifier.Info($"CurrentGroup: {_currentGroup}");
     }
 
     [Command]
@@ -46,14 +46,14 @@ namespace InputMaster.Actors
     {
       if (value == null)
         value = await ForegroundInteractor.GetSelectedTextAsync();
-      _state.Dict[CurrentGroup][name] = string.Format(format, value);
-      Env.Notifier.Info($"{name}: {_state.Dict[CurrentGroup][name]}  [{CurrentGroup}]");
+      _state.Dict[_currentGroup][name] = string.Format(format, value);
+      Env.Notifier.Info($"{name}: {_state.Dict[_currentGroup][name]}  [{_currentGroup}]");
     }
 
     [Command]
     private void PrintVar(string name)
     {
-      if (_state.Dict[CurrentGroup].TryGetValue(name, out var value))
+      if (_state.Dict[_currentGroup].TryGetValue(name, out var value))
         Env.CreateInjector().Add(value, Env.Config.LiteralInputReader).Run();
       else
         Env.Notifier.Info($"Var {name} not found.");
@@ -62,7 +62,7 @@ namespace InputMaster.Actors
     [Command]
     private Task ExportVars()
     {
-      return ForegroundInteractor.PasteAsync(Helper.JsonSerialize(_state.Dict[CurrentGroup], Formatting.Indented));
+      return ForegroundInteractor.PasteAsync(Helper.JsonSerialize(_state.Dict[_currentGroup], Formatting.Indented));
     }
 
     [Command]
@@ -71,12 +71,10 @@ namespace InputMaster.Actors
       text = text ?? await ForegroundInteractor.GetSelectedTextAsync();
       var dict = JsonConvert.DeserializeObject<Dictionary<string, string>>(text);
       foreach (var pair in dict)
-      {
         await SetVarAsync(pair.Key, pair.Value);
-      }
     }
 
-    private class MyState : IState
+    public class MyState : IState
     {
       public Dictionary<string, Dictionary<string, string>> Dict { get; set; }
 

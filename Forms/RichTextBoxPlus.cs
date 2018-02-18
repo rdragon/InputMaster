@@ -39,12 +39,12 @@ namespace InputMaster.Forms
     /// <summary>
     /// Speed at which the control can be scrolled with the mouse wheel.
     /// </summary>
-    private readonly int ScrollDelta = 200;
-    private Regex FindRegex;
-    private Regex FindPrevRegex;
-    private string LastSearchString = "";
-    private NativePoint ScrollPointBackup;
-    private IntPtr EventMask;
+    private readonly int _scrollDelta = 200;
+    private Regex _findRegex;
+    private Regex _findPrevRegex;
+    private string _lastSearchString = "";
+    private NativePoint _scrollPointBackup;
+    private IntPtr _eventMask;
 
     public RichTextBoxPlus()
     {
@@ -85,9 +85,7 @@ namespace InputMaster.Forms
               var e1 = new PastingEventArgs();
               Pasting(e1);
               if (!e1.Handled)
-              {
                 Paste(DataFormats.GetFormat("Text"));
-              }
             }
             break;
           case Keys.Shift | Keys.Delete:
@@ -235,15 +233,15 @@ namespace InputMaster.Forms
     /// </summary>
     public void SuspendPainting()
     {
-      NativeMethods.SendMessage(Handle, EmGetScrollPos, IntPtr.Zero, ref ScrollPointBackup);
+      NativeMethods.SendMessage(Handle, EmGetScrollPos, IntPtr.Zero, ref _scrollPointBackup);
       NativeMethods.SendMessage(Handle, (int)WindowMessage.SetRedraw, 0, 0);
-      EventMask = NativeMethods.SendMessage(Handle, EmGetEventMask, 0, 0);
+      _eventMask = NativeMethods.SendMessage(Handle, EmGetEventMask, 0, 0);
     }
 
     public void ResumePainting()
     {
-      NativeMethods.SendMessage(Handle, EmSetScrollPos, IntPtr.Zero, ref ScrollPointBackup);
-      NativeMethods.SendMessage(Handle, EmSetEventMask, IntPtr.Zero, EventMask);
+      NativeMethods.SendMessage(Handle, EmSetScrollPos, IntPtr.Zero, ref _scrollPointBackup);
+      NativeMethods.SendMessage(Handle, EmSetEventMask, IntPtr.Zero, _eventMask);
       NativeMethods.SendMessage(Handle, (int)WindowMessage.SetRedraw, 1, 0);
       Invalidate();
     }
@@ -275,13 +273,13 @@ namespace InputMaster.Forms
 
     public async Task ShowFindDialog()
     {
-      var s = await Helper.TryGetStringAsync("Find", string.IsNullOrEmpty(SelectedText) ? LastSearchString : SelectedText,
+      var s = await Helper.TryGetStringAsync("Find", string.IsNullOrEmpty(SelectedText) ? _lastSearchString : SelectedText,
         forceForeground: false);
       if (s == null)
         return;
-      LastSearchString = s;
-      FindRegex = Helper.GetRegex(s, RegexOptions.IgnoreCase);
-      FindPrevRegex = Helper.GetRegex(s, RegexOptions.IgnoreCase | RegexOptions.RightToLeft);
+      _lastSearchString = s;
+      _findRegex = Helper.GetRegex(s, RegexOptions.IgnoreCase);
+      _findPrevRegex = Helper.GetRegex(s, RegexOptions.IgnoreCase | RegexOptions.RightToLeft);
       FindNext(SelectionStart);
     }
 
@@ -289,7 +287,7 @@ namespace InputMaster.Forms
     {
       // Remove the delay of the default scrolling behaviour.
       if (m.Msg == (int)WindowMessage.MouseWheel && (m.WParam.ToInt32() & MkControl) == 0)
-        SetScrollPosition(GetScrollPosition() + ScrollDelta * (Helper.GetMouseWheelDelta(m) < 0 ? 1 : -1));
+        SetScrollPosition(GetScrollPosition() + _scrollDelta * (Helper.GetMouseWheelDelta(m) < 0 ? 1 : -1));
       else if (m.Msg == (int)WindowMessage.LeftMouseButtonDoubleClick)
         SelectCurrentWord();
       else
@@ -389,9 +387,7 @@ namespace InputMaster.Forms
       if (dir == ArrowDirection.Up)
       {
         if (a == 0)
-        {
           return;
-        }
         i = Helper.GetLineStart(text, a - 1);
         j = a - 1;
         k = b;
@@ -400,9 +396,7 @@ namespace InputMaster.Forms
       else
       {
         if (b == text.Length)
-        {
           return;
-        }
         i = a;
         j = b;
         k = Helper.GetLineEnd(text, b + 1);
@@ -418,9 +412,9 @@ namespace InputMaster.Forms
 
     private bool FindNext(int startAt)
     {
-      if (FindRegex != null)
+      if (_findRegex != null)
       {
-        var m = FindRegex.Match(Text, startAt);
+        var m = _findRegex.Match(Text, startAt);
         if (m.Success)
         {
           SelectionStart = m.Index;
@@ -442,9 +436,9 @@ namespace InputMaster.Forms
     private bool FindPrev(int startAt)
     {
       Helper.RequireTrue(startAt >= -1);
-      if (FindPrevRegex != null)
+      if (_findPrevRegex != null)
       {
-        var m = FindPrevRegex.Match(Text, 0, startAt + 1);
+        var m = _findPrevRegex.Match(Text, 0, startAt + 1);
         if (m.Success)
         {
           SelectionStart = m.Index;
@@ -465,7 +459,7 @@ namespace InputMaster.Forms
 
     private void ShowNotFoundMessage()
     {
-      Env.Notifier.Info($"No match found for '{LastSearchString}'.");
+      Env.Notifier.Info($"No match found for '{_lastSearchString}'.");
     }
 
     private int GetScrollPosition()
@@ -489,65 +483,65 @@ namespace InputMaster.Forms
     /// </summary>
     private class MyMultiEditBrain : IDisposable
     {
-      private readonly RichTextBoxPlus Rtb;
-      private readonly Timer Timer = new Timer { Interval = 100 };
-      private bool WaitingForMouseUp;
-      private bool On;
-      private int A;
-      private int B;
-      private int Counter;
+      private readonly RichTextBoxPlus _rtb;
+      private readonly Timer _timer = new Timer { Interval = 100 };
+      private bool _waitingForMouseUp;
+      private bool _on;
+      private int _a;
+      private int _b;
+      private int _counter;
 
       public MyMultiEditBrain(RichTextBoxPlus rtb)
       {
-        Rtb = rtb;
+        _rtb = rtb;
 
-        Rtb.MouseDown += (s, e) =>
+        _rtb.MouseDown += (s, e) =>
         {
           if (e.Button == MouseButtons.Left && ModifierKeys.HasFlag(Keys.Alt))
-            WaitingForMouseUp = true;
+            _waitingForMouseUp = true;
         };
 
-        Rtb.TextChanged += (s, e) =>
+        _rtb.TextChanged += (s, e) =>
         {
-          if (On)
+          if (_on)
             TurnOff();
         };
 
-        Rtb.SelectionChanged += (s, e) =>
+        _rtb.SelectionChanged += (s, e) =>
         {
-          if (On)
+          if (_on)
             TurnOff();
         };
 
-        Rtb.MouseUp += (s, e) =>
+        _rtb.MouseUp += (s, e) =>
         {
-          if (e.Button == MouseButtons.Left && WaitingForMouseUp)
+          if (e.Button == MouseButtons.Left && _waitingForMouseUp)
           {
-            WaitingForMouseUp = false;
-            var text = Rtb.Text;
-            A = Rtb.SelectionStart;
-            var column = A - Helper.GetLineStart(text, A);
-            var i = Helper.GetLineStart(text, Rtb.SelectionStart + Math.Max(0, Rtb.SelectionLength - 1));
+            _waitingForMouseUp = false;
+            var text = _rtb.Text;
+            _a = _rtb.SelectionStart;
+            var column = _a - Helper.GetLineStart(text, _a);
+            var i = Helper.GetLineStart(text, _rtb.SelectionStart + Math.Max(0, _rtb.SelectionLength - 1));
             var j = Helper.GetLineEnd(text, i);
-            B = i + column;
-            if (B > A)
+            _b = i + column;
+            if (_b > _a)
             {
-              if (B > j)
+              if (_b > j)
               {
-                Rtb.Select(j, 0);
-                Rtb.SelectedText = new string(' ', B - j);
+                _rtb.Select(j, 0);
+                _rtb.SelectedText = new string(' ', _b - j);
               }
-              Rtb.Select(A, 0);
-              Counter = 0;
-              Timer.Start();
-              On = true;
+              _rtb.Select(_a, 0);
+              _counter = 0;
+              _timer.Start();
+              _on = true;
             }
           }
         };
 
-        Rtb.KeyDown += (s, e) =>
+        _rtb.KeyDown += (s, e) =>
         {
-          if (!On)
+          if (!_on)
             return;
           // Always handle these keys as they mess with the multi-edit.
           switch (e.KeyCode)
@@ -576,18 +570,18 @@ namespace InputMaster.Forms
           }
         };
 
-        Rtb.KeyPress += (s, e) =>
+        _rtb.KeyPress += (s, e) =>
         {
-          if (!On)
+          if (!_on)
             return;
           e.Handled = true;
           if (!char.IsControl(e.KeyChar))
             Modify(ModifyType.String, e.KeyChar.ToString());
         };
 
-        Rtb.Pasting += async e =>
+        _rtb.Pasting += async e =>
         {
-          if (!On)
+          if (!_on)
             return;
           e.Handled = true;
           var s = await Helper.GetClipboardTextAsync();
@@ -597,25 +591,25 @@ namespace InputMaster.Forms
             Env.Notifier.Error("Can't paste text containing multiple lines while multi-edit is active.");
         };
 
-        Timer.Tick += (s, e) =>
+        _timer.Tick += (s, e) =>
         {
-          Counter++;
-          On = false;
-          Rtb.Select(Counter % 2 == 0 ? A : B, 0);
-          On = true;
+          _counter++;
+          _on = false;
+          _rtb.Select(_counter % 2 == 0 ? _a : _b, 0);
+          _on = true;
         };
       }
 
       private void Modify(ModifyType type, string str = null)
       {
-        var text = Rtb.Text;
-        var column = A - Helper.GetLineStart(text, A);
+        var text = _rtb.Text;
+        var column = _a - Helper.GetLineStart(text, _a);
         if (!(type == ModifyType.Backspace && column == 0))
         {
-          On = false;
-          var i = Helper.GetLineStart(text, A);
-          Rtb.Select(i, Helper.GetLineEnd(text, B) - i);
-          var lines = Rtb.SelectedText.Split('\n');
+          _on = false;
+          var i = Helper.GetLineStart(text, _a);
+          _rtb.Select(i, Helper.GetLineEnd(text, _b) - i);
+          var lines = _rtb.SelectedText.Split('\n');
           for (var p = 0; p < lines.Length; p++)
           {
             if (type == ModifyType.Backspace)
@@ -637,35 +631,35 @@ namespace InputMaster.Forms
               lines[p] = lines[p].Substring(0, column) + str + lines[p].Substring(column);
             }
           }
-          Rtb.SelectedText = string.Join("\n", lines);
-          B = column + Helper.GetLineStart(Rtb.Text, Rtb.SelectionStart + Rtb.SelectionLength - 1);
+          _rtb.SelectedText = string.Join("\n", lines);
+          _b = column + Helper.GetLineStart(_rtb.Text, _rtb.SelectionStart + _rtb.SelectionLength - 1);
           if (type == ModifyType.Backspace)
           {
-            A--;
-            B--;
+            _a--;
+            _b--;
           }
           else if (type == ModifyType.String)
           {
-            A += str.Length;
-            B += str.Length;
+            _a += str.Length;
+            _b += str.Length;
           }
-          Rtb.Select(A, 0);
-          Counter = 0;
-          Timer.Stop();
-          Timer.Start();
-          On = true;
+          _rtb.Select(_a, 0);
+          _counter = 0;
+          _timer.Stop();
+          _timer.Start();
+          _on = true;
         }
       }
 
       private void TurnOff()
       {
-        On = false;
-        Timer.Stop();
+        _on = false;
+        _timer.Stop();
       }
 
       public void Dispose()
       {
-        Timer.Dispose();
+        _timer.Dispose();
       }
 
       private enum ModifyType

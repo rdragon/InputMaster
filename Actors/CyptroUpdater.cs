@@ -17,9 +17,7 @@ namespace InputMaster.Actors
     private CyptroUpdater(MyState state)
     {
       foreach (var pair in state.Passwords)
-      {
         _passwords.Add(pair.Key, pair.Value);
-      }
     }
 
     private async Task<ICipher> GetCipher(string name)
@@ -99,7 +97,7 @@ namespace InputMaster.Actors
       await Update(name, plain);
     }
 
-    private class MyState : IState
+    public class MyState : IState
     {
       public Dictionary<string, string> Passwords { get; set; }
 

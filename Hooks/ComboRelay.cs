@@ -9,45 +9,39 @@ namespace InputMaster.Hooks
     /// <summary>
     /// All possible target hooks. Each time an event needs to be handled the first active hook in this list is chosen to handle the event.
     /// </summary>
-    private readonly List<IComboHook> TargetHooks;
-    private IComboHook CurrentHook;
+    private readonly List<IComboHook> _targetHooks;
+    private IComboHook _currentHook;
 
     public bool Active => true;
 
     public ComboRelay(params IComboHook[] targetHooks)
     {
-      TargetHooks = targetHooks.ToList();
+      _targetHooks = targetHooks.ToList();
     }
 
     public void Handle(ComboArgs e)
     {
-      var newHook = TargetHooks.FirstOrDefault(z => z.Active);
-      if (newHook != CurrentHook)
+      var newHook = _targetHooks.FirstOrDefault(z => z.Active);
+      if (newHook != _currentHook)
       {
-        if (CurrentHook != null && CurrentHook.Active)
-        {
-          CurrentHook.Reset();
-        }
-        CurrentHook = newHook;
+        if (_currentHook != null && _currentHook.Active)
+          _currentHook.Reset();
+        _currentHook = newHook;
       }
-      CurrentHook?.Handle(e);
+      _currentHook?.Handle(e);
     }
 
     public void Reset()
     {
-      foreach (var hook in TargetHooks)
-      {
+      foreach (var hook in _targetHooks)
         hook.Reset();
-      }
     }
 
     public string GetTestStateInfo()
     {
       var sb = new StringBuilder();
-      foreach (var hook in TargetHooks)
-      {
+      foreach (var hook in _targetHooks)
         sb.Append(hook.GetTestStateInfo());
-      }
       return sb.ToString();
     }
   }
