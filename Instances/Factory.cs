@@ -1,122 +1,65 @@
-﻿using System;
-using System.IO;
-using System.Windows.Forms;
-using InputMaster.Actors;
+﻿using System.IO;
 using InputMaster.Hooks;
 using InputMaster.Parsers;
-using InputMaster.Properties;
 using InputMaster.TextEditor;
+using System.Threading.Tasks;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace InputMaster.Instances
 {
-  internal class Factory : IFactory
+  public class Factory
   {
-    private readonly NotifyForm NotifyForm;
-
-    public Factory(NotifyForm notifyForm)
-    {
-      NotifyForm = notifyForm;
-    }
-
     public TextEditorForm TextEditorForm { get; private set; }
-    public AccountManager AccountManager { get; private set; }
-    public SharedFileManager SharedFileManager { get; private set; }
-    public FileManager FileManager { get; private set; }
+    private readonly INotifier _notifier;
 
-    public T Create<T>() where T : class
+    public Factory(INotifier notifier)
     {
-      var obj = Create(typeof(T));
-      if (obj is T t)
-      {
-        return t;
-      }
-      throw new InvalidOperationException($"{nameof(Factory)} creates instances of type {obj.GetType()} when given the argument {typeof(T)}, but {obj.GetType()} doesn't implement or derive from {typeof(T)}.");
+      _notifier = notifier;
     }
 
-    private object Create(Type type)
+    public async Task Run()
     {
-      if (type == typeof(INotifier))
-      {
-        return NotifyForm;
-      }
-      if (type == typeof(IInjector))
-      {
-        return new Injector();
-      }
-      if (type == typeof(IForegroundListener))
-      {
-        return new ForegroundListener();
-      }
-      if (type == typeof(IFlagManager))
-      {
-        return new FlagManager();
-      }
-      if (type == typeof(IScheduler))
-      {
-        return new Scheduler();
-      }
-      if (type == typeof(IParser))
-      {
-        return new Parser();
-      }
-      if (type == typeof(IProcessManager))
-      {
-        return new ProcessManager();
-      }
-      if (type == typeof(ICommandCollection))
-      {
-        return new CommandCollection();
-      }
-      if (type == typeof(IApp))
-      {
-        return new App();
-      }
-      if (type == typeof(ICipher))
-      {
-        return new Cipher();
-      }
-      throw new InvalidOperationException($"{nameof(Factory)} cannot create instances of type {type}.");
-    }
-
-    public void Run()
-    {
-      Directory.CreateDirectory(Env.Config.DataDir);
-      Directory.CreateDirectory(Env.Config.CacheDir);
-      Directory.CreateDirectory(Env.Config.SharedDir);
-      if (!File.Exists(Env.Config.HotkeyFile))
-      {
-        File.WriteAllText(Env.Config.HotkeyFile, "");
-      }
       Env.Clear();
-      Env.Factory = this;
-      Env.Build();
-      var modeHook = new ModeHook();
+      Env.Notifier = _notifier;
+      Env.App = new App();
+      Env.RandomNumberGenerator = GetRandomNumberGenerator();
+      Env.CommandCollection = new CommandCollection();
+      Env.Cipher = new Cipher(await Env.Config.GetKeyAsync());
+      Env.StateHandlerFactory = new JsonStateHandlerFactory();
+      Env.Settings = await GetSettingsAsync();
+      Env.Parser = new Parser();
+      Env.ModeHook = new ModeHook();
+      Env.ForegroundListener = new ForegroundListener();
+      Env.FlagManager = await FlagManager.GetFlagManagerAsync();
+      Env.Scheduler = await Scheduler.GetSchedulerAsync();
+      Env.ProcessManager = new ProcessManager();
+      Env.Injector = new Injector();
+      Env.PasswordMatrix = await PasswordMatrix.GetPasswordMatrixAsync();
+      Env.AccountManager = await AccountManager.GetAccountManagerAsync();
       var comboHook = new ComboHook();
-      var comboRelay = new ComboRelay(modeHook, comboHook);
+      var comboRelay = new ComboRelay(Env.ModeHook, comboHook);
       var inputHook = new InputHook(comboRelay);
       var inputRelay = new InputRelay(inputHook);
       var primaryHook = new PrimaryHook(inputRelay);
-      FileManager = new FileManager(out var accountFileProvider, out var sharedPasswordProvider, out var sharedFileProvider);
-      AccountManager = new AccountManager(modeHook, accountFileProvider);
-      SharedFileManager = new SharedFileManager(sharedFileProvider, sharedPasswordProvider);
-      TextEditorForm = new TextEditorForm(modeHook, FileManager);
-      TextEditorForm.StartAsync();
-      CreateNotifyIcon();
-      Env.Config.Run();
-      Env.Parser.EnableOnce();
-      primaryHook.Register();
+      var fileManager = await FileManager.GetFileManagerAsync();
+      TextEditorForm = new TextEditorForm(fileManager);
+      await Env.Config.Run();
+      Env.App.TriggerRun();
     }
 
-    private static void CreateNotifyIcon()
+    private static async Task<Settings> GetSettingsAsync()
     {
-      var notifyIcon = new NotifyIcon
-      {
-        Icon = Resources.NotifyIcon,
-        Text = "InputMaster",
-        Visible = true
-      };
-      notifyIcon.MouseClick += (s, e) => Application.Exit();
-      Env.App.Exiting += notifyIcon.Dispose;
+      var stateHandler = Env.StateHandlerFactory.Create(new Settings(), nameof(Settings),
+        StateHandlerFlags.UseCipher | StateHandlerFlags.UserEditable | StateHandlerFlags.Exportable);
+      return await stateHandler.LoadAndSaveAsync();
+    }
+
+    private static RandomNumberGenerator GetRandomNumberGenerator()
+    {
+      var randomNumberGenerator = new RNGCryptoServiceProvider();
+      Env.App.Exiting += randomNumberGenerator.Dispose;
+      return randomNumberGenerator;
     }
   }
 }

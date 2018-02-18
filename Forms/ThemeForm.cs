@@ -2,7 +2,7 @@
 
 namespace InputMaster.Forms
 {
-  internal abstract class ThemeForm : Form
+  public abstract class ThemeForm : Form
   {
     protected ThemeForm()
     {

@@ -1,5 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -10,32 +9,31 @@ using System.Threading.Tasks;
 
 namespace InputMaster.Parsers
 {
-  internal class Parser : IParser
+  public class Parser : IParser
   {
+    public event Action<ParserOutput> NewParserOutput = delegate { };
     private static readonly Regex CommentRegex = new Regex($"{Regex.Escape(Constants.CommentIdentifier)}.*$", RegexOptions.Multiline);
     private static readonly Regex PreprocessorReplaceRegex = new Regex($@"{Constants.SpecialChar}\((?<ident>{Constants.InnerIdentifierTokenPattern})\)");
     private readonly Dictionary<string, HotkeyFile> HotkeyFiles = new Dictionary<string, HotkeyFile>();
     private readonly Dictionary<string, ParseAction> ParseActions = new Dictionary<string, ParseAction>();
     private DynamicHotkeyCollection DynamicHotkeyCollection = new DynamicHotkeyCollection();
-    private int DisableCounter = 1;
 
     public Parser()
     {
-      if (Env.TestRun)
-      {
+      if (Env.RunningUnitTests)
         return;
-      }
-      var hotkeyFileWatcher = new FileChangedWatcher(Env.Config.HotkeyFile);
-      hotkeyFileWatcher.TextChanged += text =>
+      Env.App.Run += async () =>
       {
-        UpdateHotkeyFile(new HotkeyFile("default", text));
-        Run();
+        var hotkeyFileWatcher = new FileChangedWatcher(Env.Config.HotkeyFile);
+        Env.App.Exiting += hotkeyFileWatcher.Dispose;
+        hotkeyFileWatcher.TextChanged += text =>
+        {
+          UpdateHotkeyFile(new HotkeyFile("default", text));
+          Run();
+        };
+        await hotkeyFileWatcher.RaiseChangedEventAsync();
       };
-      hotkeyFileWatcher.RaiseChangedEventAsync();
-      Env.App.Exiting += hotkeyFileWatcher.Dispose;
     }
-
-    public event Action<ParserOutput> NewParserOutput = delegate { };
 
     public static string RunPreprocessor(string text)
     {
@@ -51,7 +49,7 @@ namespace InputMaster.Parsers
           var name = match.Groups["ident"].Value;
           if (!Env.Config.TryGetPreprocessorReplace(name, out var s))
           {
-            Env.Notifier.WriteWarning($"Use of undefined preprocessor variable '{name}'.");
+            Env.Notifier.Warning($"Use of undefined preprocessor variable '{name}'.");
             s = "(undefined)";
           }
           sb.Append(s);
@@ -68,15 +66,14 @@ namespace InputMaster.Parsers
     private static Func<Combo, T> CreateFunc<T>(object actor, MethodInfo methodInfo, object[] arguments, bool insertTrigger)
     {
       if (insertTrigger)
-      {
         return combo => (T)methodInfo.Invoke(actor, new object[] { new HotkeyTrigger(combo) }.Concat(arguments).ToArray());
-      }
       return combo => (T)methodInfo.Invoke(actor, arguments);
     }
 
     private static Action<Combo> CreateAction(object actor, MethodInfo methodInfo, object[] arguments, bool insertTrigger)
     {
-      if (methodInfo.GetCustomAttribute(typeof(AsyncStateMachineAttribute)) != null)
+      if (methodInfo.GetCustomAttribute(typeof(AsyncStateMachineAttribute)) != null || methodInfo.ReturnType == typeof(Task) ||
+        methodInfo.ReturnType.IsGenericType && methodInfo.ReturnType.GetGenericTypeDefinition() == typeof(Task<>))
       {
         if (methodInfo.ReturnType == typeof(Task))
         {
@@ -86,7 +83,7 @@ namespace InputMaster.Parsers
             await func(combo);
           };
         }
-        Env.Notifier.WriteWarning($"Async function '{actor.GetType()}.{methodInfo.Name}' has a return type other than 'Task'. Any exceptions thrown by this function will cause the program to exit.");
+        Env.Notifier.Warning($"Async function '{actor.GetType()}.{methodInfo.Name}' has a return type other than 'Task'. Any exceptions thrown by this function will cause the program to exit.");
       }
       var func1 = CreateFunc<object>(actor, methodInfo, arguments, insertTrigger);
       return combo => func1(combo);
@@ -98,9 +95,7 @@ namespace InputMaster.Parsers
       return combo =>
       {
         foreach (var action in actionArray)
-        {
           action(combo);
-        }
       };
     }
 
@@ -114,27 +109,8 @@ namespace InputMaster.Parsers
       ParseActions[name] = action;
     }
 
-    public void DisableOnce()
-    {
-      DisableCounter++;
-    }
-
-    public void EnableOnce()
-    {
-      Assert.IsTrue(DisableCounter > 0);
-      DisableCounter--;
-      if (DisableCounter == 0)
-      {
-        Run();
-      }
-    }
-
     public void Run()
     {
-      if (DisableCounter > 0)
-      {
-        return;
-      }
       var parserOutput = new ParserOutput();
       try
       {
@@ -144,13 +120,9 @@ namespace InputMaster.Parsers
           new MyCharReader(new LocatedString(RunPreprocessor(text), new Location(1, 1)), parserOutput).Run();
         }
         foreach (var action in ParseActions)
-        {
           action.Value(parserOutput);
-        }
         foreach (var mode in parserOutput.Modes)
-        {
           mode.ResolveIncludes(parserOutput);
-        }
       }
       catch (Exception ex) when (!Helper.IsFatalException(ex))
       {
@@ -168,14 +140,10 @@ namespace InputMaster.Parsers
         foreach (var dynamicHotkey in sortedSet)
         {
           if (dynamicHotkey.Enabled)
-          {
             action = dynamicHotkey.Action;
-          }
         }
         if (action != null)
-        {
           return;
-        }
       }
       throw new ParseException($"No dynamic hotkey named '{name}' found" + Helper.GetBindingsSuffix(
         Env.ForegroundListener.ForegroundProcessName, nameof(Env.ForegroundListener.ForegroundProcessName),
@@ -219,17 +187,11 @@ namespace InputMaster.Parsers
           {
             HandleColumn(Location.Column);
             if (TryRead(Constants.SectionIdentifier))
-            {
               ReadSectionHeader();
-            }
             else if (TryRead(Constants.SpecialCommandIdentifier))
-            {
               ReadSpecialCommand();
-            }
             else
-            {
               ReadHotkey();
-            }
           }
         }
       }
@@ -246,13 +208,9 @@ namespace InputMaster.Parsers
           }
         }
         while (column < Sections.Peek().Column)
-        {
           Sections.Pop();
-        }
         if (column > Sections.Peek().Column)
-        {
           throw new ParseException(Location, "Unexpected indentation.");
-        }
       }
 
       private static Regex CreateRegex(LocatedString argument, RegexOptions regexOptions)
@@ -275,9 +233,7 @@ namespace InputMaster.Parsers
       private void ReadSectionHeader()
       {
         if (Sections.Peek() is Mode)
-        {
           throw new ParseException(Location, "Cannot start section inside mode.");
-        }
         ReadSome(' ');
         var sectionType = ReadIdentifier();
         ReadSome(' ');
@@ -287,9 +243,7 @@ namespace InputMaster.Parsers
         if (section is Mode mode)
         {
           if (Sections.Count > 1)
-          {
             throw new ParseException(sectionType.Location, "A mode is only valid at the top level.");
-          }
           section = ParserOutput.AddMode(mode);
         }
         Sections.Push(section);
@@ -304,17 +258,11 @@ namespace InputMaster.Parsers
           return new RegexSection((StandardSection)Sections.Peek(), CreateRegex(argument, regexOptions), sectionType);
         }
         if (type.Value == Constants.FlagSectionIdentifier)
-        {
           return new FlagSection((StandardSection)Sections.Peek(), argument.Value);
-        }
         if (type.Value == Constants.InputModeSectionIdentifier)
-        {
           return new Mode(argument.Value, false);
-        }
         if (type.Value == Constants.ComposeModeSectionIdentifier)
-        {
           return new Mode(argument.Value, true);
-        }
         throw new ParseException(type.Location, $"Unrecognized section type '{type.Value}'.");
       }
 
@@ -344,9 +292,7 @@ namespace InputMaster.Parsers
         {
           tokens.AddRange(ReadCommands());
           if (tokens.Count == 0)
-          {
             throw new ParseException(Location, "Expecting a command.");
-          }
         }
         else
         {
@@ -355,37 +301,21 @@ namespace InputMaster.Parsers
         foreach (var token in tokens)
         {
           if (token.HasFlag(CommandTypes.Chordless) && Chord != null)
-          {
             throw CreateException(token, "This command cannot be bound to a chord.");
-          }
           if (!token.HasFlag(CommandTypes.Chordless) && Chord == null)
-          {
             throw CreateException(token, "This command has to be bound to a chord.");
-          }
           if (token.HasFlag(CommandTypes.TopLevelOnly) && Sections.Count > 1)
-          {
             throw CreateException(token, "This command is only valid at the top level.");
-          }
           if (token.HasFlag(CommandTypes.ModeOnly) && !(Sections.Peek() is Mode))
-          {
             throw CreateException(token, $"This command is only valid in a {Constants.InputModeSectionIdentifier} or {Constants.ComposeModeSectionIdentifier} section.");
-          }
           if (token.HasFlag(CommandTypes.ComposeModeOnly) && (!(Sections.Peek() is Mode mode) || !mode.IsComposeMode))
-          {
             throw CreateException(token, $"This command is only valid in a {Constants.ComposeModeSectionIdentifier} section.");
-          }
           if (token.HasFlag(CommandTypes.InputModeOnly) && (!(Sections.Peek() is Mode mode1) || !mode1.IsInputMode))
-          {
             throw CreateException(token, $"This command is only valid in a {Constants.InputModeSectionIdentifier} section.");
-          }
           if (token.HasFlag(CommandTypes.StandardSectionOnly) && !(Sections.Peek() is StandardSection))
-          {
             throw CreateException(token, "This command is only valid in a standard section.");
-          }
           if (token.HasFlag(CommandTypes.ExecuteAtParseTime) && tokens.Count > 1)
-          {
             throw CreateException(token, "This command cannot be combined with other commands.");
-          }
         }
         if (tokens[0].HasFlag(CommandTypes.ExecuteAtParseTime))
         {
@@ -403,9 +333,7 @@ namespace InputMaster.Parsers
       {
         var locatedName = ReadIdentifier();
         if (!EndOfLine)
-        {
           Require(' ');
-        }
         ReadMany(' ');
         var locatedArguments = ReadArguments();
         Read('\n');
@@ -422,17 +350,13 @@ namespace InputMaster.Parsers
         {
           ReadMany(' ');
           if (EndOfLine)
-          {
             Read();
-          }
           else
           {
             if (column == -1)
             {
               if (Location.Column <= Sections.Peek().Column)
-              {
                 throw new ParseException(Location, "Incorrect indentation.");
-              }
               column = Location.Column;
             }
             else if (Location.Column > column)
@@ -478,5 +402,5 @@ namespace InputMaster.Parsers
     }
   }
 
-  internal delegate void ParseAction(ParserOutput parserOutput);
+  public delegate void ParseAction(ParserOutput parserOutput);
 }

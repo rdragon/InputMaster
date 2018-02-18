@@ -4,7 +4,7 @@ using InputMaster;
 
 namespace UnitTests
 {
-  internal class TestInjector : IInjector
+  public class TestInjector : IInjector
   {
     private readonly List<Action> Actions = new List<Action>();
     private readonly IInputHook TargetHook;

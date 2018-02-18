@@ -12,7 +12,7 @@ InputMaster also makes all modifier keys [sticky](https://en.wikipedia.org/wiki/
 - Open `InputMaster.sln` in Visual Studio.
 - Build.
 
-To be able to use InputMaster it must be running in the background. Only one instance of InputMaster can be active at a time. Creating the `Release` build automatically closes the running InputMaster instance and starts the new one.
+To be able to use InputMaster it must be running in the background. Only one instance of InputMaster can be active at a time, this is enforced by the application itself.
 
 ## Hotkey examples
 In the following examples InputMaster is configured such that the Caps Lock key has become a modifier key (like Ctrl). The custom modifier is named `{Caps}`.
@@ -26,7 +26,7 @@ First we create a hotkey to simulate the original Caps Lock key (to toggle ALL C
 Next we create a hotkey to quickly open our hotkeys file (where we define these hotkeys). We choose to trigger it by pressing the H key while our custom modifier is active:
 
 ```
-{Caps}h  Run C:\Users\<UserName>\AppData\Roaming\InputMaster\Data\Hotkeys.txt
+{Caps}h  Run C:\Users\<UserName>\AppData\Roaming\InputMaster\Data\Hotkeys.im
 ```
 
 Finally we create hotkeys to open a webpage, insert a special character, and insert multiple characters:

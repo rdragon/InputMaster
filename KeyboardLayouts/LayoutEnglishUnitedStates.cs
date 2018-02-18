@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace InputMaster.KeyboardLayouts
 {
-  internal class LayoutEnglishUnitedStates : KeyboardLayout
+  public class LayoutEnglishUnitedStates : KeyboardLayout
   {
     public LayoutEnglishUnitedStates()
     {

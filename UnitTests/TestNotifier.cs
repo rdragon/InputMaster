@@ -5,22 +5,27 @@ using InputMaster;
 
 namespace UnitTests
 {
-  internal class TestNotifier : INotifier
+  public class TestNotifier : INotifier
   {
     private readonly StringBuilder Log = new StringBuilder();
 
     public ISynchronizeInvoke SynchronizingObject => throw new NotImplementedException();
 
-    public void Write(string text) { }
+    public void Info(string message) { }
 
-    public void WriteWarning(string text)
+    public void Warning(string message)
     {
-      Log.Append($"Warning: {text}\n");
+      Log.Append($"Warning: {message}\n");
     }
 
-    public void WriteError(string text)
+    public void Error(string message)
     {
-      Log.Append($"Error: {text}\n");
+      Log.Append($"Error: {message}\n");
+    }
+
+    public void LogError(string message)
+    {
+      Error(message);
     }
 
     public void SetPersistentText(string text) { }

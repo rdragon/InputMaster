@@ -2,7 +2,7 @@
 
 namespace UnitTests
 {
-  internal class TestPrimaryHook : IInputHook
+  public class TestPrimaryHook : IInputHook
   {
     private readonly IInputHook TargetHook;
 

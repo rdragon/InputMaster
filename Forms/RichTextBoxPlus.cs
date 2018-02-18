@@ -8,16 +8,15 @@ namespace InputMaster.Forms
 {
   /// <summary>
   /// Fixes the following <see cref="RichTextBox"/> bugs:
-  /// 1) "Chinese Character Bug": After pressing Alt, the next key is sometimes replaced by a seemingly random Unicode
-  /// character (most of the times a Chinese character). For example: inside a <see cref="RichTextBox"/> hold left Alt,
-  /// press three times the left arrow key, and release left Alt. Whatever character you type next, it will be replaced
-  /// by the character '5' (on my machine at least).
+  /// 1) "Chinese Character Bug": After pressing Alt, the next key is sometimes replaced by a seemingly random Unicode character (most of 
+  /// the times a Chinese character). For example: inside a <see cref="RichTextBox"/> hold left Alt, press three times the left arrow key, 
+  /// and release left Alt. Whatever character you type next, it will be replaced by the character '5' (on my machine at least).
   /// 
   /// Other features:
-  /// 1) A properly disabled <see cref="RichTextBox.AutoWordSelection"/>. By default this functionality is enabled for
-  /// a RichTextBox, contradicting the default value of <see cref="RichTextBox.AutoWordSelection"/>.
+  /// 1) A properly disabled <see cref="RichTextBox.AutoWordSelection"/>. By default this functionality is enabled for a RichTextBox, 
+  /// contradicting the default value of <see cref="RichTextBox.AutoWordSelection"/>.
   /// 2) Pressing Tab inserts two spaces.
-  /// 3) Uses <see cref="Helper.StartProcess"/> when a link is clicked.
+  /// 3) Uses <see cref="Helper.StartProcessAsync"/> when a link is clicked.
   /// 4) A number of standard hotkeys are supported, like Ctrl + F and Alt + Up.
   /// 5) Easy saving and loading of cursor and scrollbar position.
   /// 6) No delay while scrolling.
@@ -25,8 +24,10 @@ namespace InputMaster.Forms
   /// 8) Does not select a trailing space on double click.
   /// 9) Does not stop at the character '_' on double click.
   /// </summary>
-  internal class RichTextBoxPlus : RichTextBox
+  public class RichTextBoxPlus : RichTextBox
   {
+    public bool ContainsJson { get; set; }
+
     private const int EmGetEventMask = (int)WindowMessage.User + 59;
     private const int EmSetEventMask = (int)WindowMessage.User + 69;
     private const int EmGetScrollPos = (int)WindowMessage.User + 221;
@@ -50,20 +51,19 @@ namespace InputMaster.Forms
       var multiEditBrain = new MyMultiEditBrain(this);
       AcceptsTab = true;
 
-      // A hack to properly disable AutoWordSelection. It is first set to true in the constructor, and sometime after the constructor it is set back to false.
+      // A hack to properly disable AutoWordSelection. It is first set to true in the constructor, and sometime after the constructor it is 
+      // set back to false.
       AutoWordSelection = true;
 
-      KeyDown += (s, e) =>
+      KeyDown += async (s, e) =>
       {
         if (e.Handled)
-        {
           return;
-        }
         switch (e.KeyData)
         {
           case Keys.F | Keys.Control:
             e.Handled = true;
-            ShowFindDialog();
+            await ShowFindDialog();
             break;
           case Keys.F3:
             e.Handled = true;
@@ -106,6 +106,27 @@ namespace InputMaster.Forms
             e.Handled = true;
             MoveSelectedLines(ArrowDirection.Down);
             break;
+          case Keys.Control | Keys.Alt | Keys.Shift | Keys.C:
+            CropText();
+            break;
+          case Keys.Control | Keys.X:
+            if (!ContainsJson || 0 < SelectionLength)
+              break;
+            e.Handled = true;
+            CutOutJsonString();
+            break;
+          case Keys.Control | Keys.C:
+            if (!ContainsJson || 0 < SelectionLength)
+              break;
+            e.Handled = true;
+            CopyJsonString();
+            break;
+          case Keys.Shift | Keys.Back:
+            if (!ContainsJson || 0 < SelectionLength)
+              break;
+            e.Handled = true;
+            DeleteJsonString();
+            break;
         }
       };
 
@@ -122,9 +143,7 @@ namespace InputMaster.Forms
       {
         // A hack to fix the "Chinese Character Bug".
         if (!e.KeyData.HasFlag(Keys.Alt) || Parent == null)
-        {
           return;
-        }
         await Task.Yield();
         Parent.Focus();
         Focus();
@@ -135,25 +154,80 @@ namespace InputMaster.Forms
         multiEditBrain.Dispose();
       };
 
-      LinkClicked += (s, e) =>
+      LinkClicked += async (s, e) =>
       {
-        Helper.StartProcess(e.LinkText);
+        await Helper.StartProcessAsync(e.LinkText);
       };
 
       MouseDown += (s, e) =>
       {
         if (AutoWordSelection)
-        {
           AutoWordSelection = false;
-        }
       };
+    }
+
+    private void CutOutJsonString()
+    {
+      if (!SelectJsonString())
+        return;
+      Cut();
+    }
+
+    private void DeleteJsonString()
+    {
+      if (!SelectJsonString())
+        return;
+      SelectedText = "";
+    }
+
+    private void CopyJsonString()
+    {
+      if (!SelectJsonString())
+        return;
+      Copy();
+    }
+
+    private bool SelectJsonString()
+    {
+      var text = Text;
+      var i = SelectionStart;
+      var match = Regex.Match(text.Substring(0, i), "[^\\\\]\"", RegexOptions.RightToLeft);
+      if (!match.Success)
+      {
+        Env.Notifier.Info("Cannot find starting \".");
+        return false;
+      }
+      var start = match.Index + 2;
+      var j = start;
+      while (j < text.Length)
+      {
+        var c = text[j];
+        if (c == '"')
+          break;
+        if (c == '\\')
+          j++;
+        j++;
+      }
+      if (text.Length <= j)
+      {
+        Env.Notifier.Info("Cannot find closing \".");
+        return false;
+      }
+      var end = j;
+      if (end == start)
+      {
+        Env.Notifier.Info("Property is empty.");
+        return false;
+      }
+      Select(start, end - start);
+      return true;
     }
 
     private event Action<PastingEventArgs> Pasting = delegate { };
 
     private static void ShowWrappedMessage()
     {
-      Env.Notifier.Write("Wrapped");
+      Env.Notifier.Info("Wrapped");
     }
 
     /// <summary>
@@ -199,12 +273,12 @@ namespace InputMaster.Forms
       base.WndProc(ref msg);
     }
 
-    private void ShowFindDialog()
+    public async Task ShowFindDialog()
     {
-      if (!Helper.TryGetString("Find", out var s, string.IsNullOrEmpty(SelectedText) ? LastSearchString : SelectedText))
-      {
+      var s = await Helper.TryGetStringAsync("Find", string.IsNullOrEmpty(SelectedText) ? LastSearchString : SelectedText,
+        forceForeground: false);
+      if (s == null)
         return;
-      }
       LastSearchString = s;
       FindRegex = Helper.GetRegex(s, RegexOptions.IgnoreCase);
       FindPrevRegex = Helper.GetRegex(s, RegexOptions.IgnoreCase | RegexOptions.RightToLeft);
@@ -215,17 +289,16 @@ namespace InputMaster.Forms
     {
       // Remove the delay of the default scrolling behaviour.
       if (m.Msg == (int)WindowMessage.MouseWheel && (m.WParam.ToInt32() & MkControl) == 0)
-      {
         SetScrollPosition(GetScrollPosition() + ScrollDelta * (Helper.GetMouseWheelDelta(m) < 0 ? 1 : -1));
-      }
       else if (m.Msg == (int)WindowMessage.LeftMouseButtonDoubleClick)
-      {
         SelectCurrentWord();
-      }
       else
-      {
         base.WndProc(ref m);
-      }
+    }
+
+    private void CropText()
+    {
+      Text = SelectedText;
     }
 
     private void SelectCurrentWord()
@@ -234,18 +307,15 @@ namespace InputMaster.Forms
       var text = Text;
       var j = i;
       while (j < text.Length && Constants.IsIdentifierCharacter(text[j]))
-      {
         j++;
-      }
       while (i >= 0 && Constants.IsIdentifierCharacter(text[i]))
-      {
         i--;
-      }
       Select(i + 1, j - (i + 1));
     }
 
     /// <summary>
-    /// Replace tabs by spaces, remove trailing whitespace, limit the number of adjacent empty lines to two and append 50 empty lines at the end.
+    /// Replace tabs by spaces, remove trailing whitespace, limit the number of adjacent empty lines to two and append 50 empty lines at the
+    /// end.
     /// </summary>
     private void Tidy()
     {
@@ -257,9 +327,7 @@ namespace InputMaster.Forms
       SelectAll();
       SelectedText = text;
       if (i < Lines.Length)
-      {
         Select(Helper.GetLineEnd(text, GetFirstCharIndexFromLine(i)), 0);
-      }
       ResumePainting();
     }
 
@@ -275,13 +343,9 @@ namespace InputMaster.Forms
     private void DuplicateSelectionOrLine()
     {
       if (SelectionLength == 0)
-      {
         DuplicateLine();
-      }
       else
-      {
         DuplicateSelection();
-      }
     }
 
     private void DuplicateSelection()
@@ -367,9 +431,7 @@ namespace InputMaster.Forms
         {
           var found = FindNext(0);
           if (found)
-          {
             ShowWrappedMessage();
-          }
           return found;
         }
         ShowNotFoundMessage();
@@ -393,9 +455,7 @@ namespace InputMaster.Forms
         {
           var found = FindPrev(TextLength - 1);
           if (found)
-          {
             ShowWrappedMessage();
-          }
           return found;
         }
         ShowNotFoundMessage();
@@ -405,7 +465,7 @@ namespace InputMaster.Forms
 
     private void ShowNotFoundMessage()
     {
-      Env.Notifier.Write($"No match found for '{LastSearchString}'.");
+      Env.Notifier.Info($"No match found for '{LastSearchString}'.");
     }
 
     private int GetScrollPosition()
@@ -423,7 +483,9 @@ namespace InputMaster.Forms
     }
 
     /// <summary>
-    /// Should be used with a fixed-width font. Also, each character inside the <see cref="RichTextBox"/> should occupy exactly one cell (except for the newline character), and therefore tab characters or characters outside of the Basic Multilingual Plane are not allowed (no checking is done).
+    /// Should be used with a fixed-width font. Also, each character inside the <see cref="RichTextBox"/> should occupy exactly one cell 
+    /// (except for the newline character), and therefore tab characters or characters outside of the Basic Multilingual Plane are not 
+    /// allowed (no checking is done).
     /// </summary>
     private class MyMultiEditBrain : IDisposable
     {
@@ -442,25 +504,19 @@ namespace InputMaster.Forms
         Rtb.MouseDown += (s, e) =>
         {
           if (e.Button == MouseButtons.Left && ModifierKeys.HasFlag(Keys.Alt))
-          {
             WaitingForMouseUp = true;
-          }
         };
 
         Rtb.TextChanged += (s, e) =>
         {
           if (On)
-          {
             TurnOff();
-          }
         };
 
         Rtb.SelectionChanged += (s, e) =>
         {
           if (On)
-          {
             TurnOff();
-          }
         };
 
         Rtb.MouseUp += (s, e) =>
@@ -492,9 +548,7 @@ namespace InputMaster.Forms
         Rtb.KeyDown += (s, e) =>
         {
           if (!On)
-          {
             return;
-          }
           // Always handle these keys as they mess with the multi-edit.
           switch (e.KeyCode)
           {
@@ -525,32 +579,22 @@ namespace InputMaster.Forms
         Rtb.KeyPress += (s, e) =>
         {
           if (!On)
-          {
             return;
-          }
           e.Handled = true;
           if (!char.IsControl(e.KeyChar))
-          {
             Modify(ModifyType.String, e.KeyChar.ToString());
-          }
         };
 
         Rtb.Pasting += async e =>
         {
           if (!On)
-          {
             return;
-          }
           e.Handled = true;
           var s = await Helper.GetClipboardTextAsync();
           if (s.IndexOf('\n') == -1)
-          {
             Modify(ModifyType.String, s);
-          }
           else
-          {
-            Env.Notifier.WriteError("Can't paste text containing multiple lines while multi-edit is active.");
-          }
+            Env.Notifier.Error("Can't paste text containing multiple lines while multi-edit is active.");
         };
 
         Timer.Tick += (s, e) =>
@@ -577,24 +621,18 @@ namespace InputMaster.Forms
             if (type == ModifyType.Backspace)
             {
               if (column <= lines[p].Length)
-              {
                 lines[p] = lines[p].Substring(0, column - 1) + lines[p].Substring(column);
-              }
             }
             else if (type == ModifyType.Delete)
             {
               if (column < lines[p].Length)
-              {
                 lines[p] = lines[p].Substring(0, column) + lines[p].Substring(column + 1);
-              }
             }
             else
             {
               var n = column - lines[p].Length;
               if (n > 0)
-              {
                 lines[p] += new string(' ', n);
-              }
               Helper.RequireTrue(str != null);
               lines[p] = lines[p].Substring(0, column) + str + lines[p].Substring(column);
             }

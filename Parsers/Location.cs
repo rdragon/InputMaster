@@ -2,7 +2,7 @@
 
 namespace InputMaster.Parsers
 {
-  internal struct Location : IEquatable<Location>
+  public struct Location : IEquatable<Location>
   {
     public static readonly Location Unknown = new Location();
 

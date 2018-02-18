@@ -1,6 +1,6 @@
 ﻿namespace InputMaster.Parsers
 {
-  internal class ExecuteAtParseTimeData
+  public class ExecuteAtParseTimeData
   {
     public ParserOutput ParserOutput { get; }
     public Section Section { get; }

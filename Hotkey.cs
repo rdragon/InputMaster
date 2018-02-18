@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace InputMaster
 {
-  internal class Hotkey
+  public class Hotkey
   {
     public static readonly IComparer<Hotkey> SectionComparer = new MySectionComparer();
 

@@ -2,7 +2,7 @@
 
 namespace UnitTests
 {
-  internal class TestForegroundListener : IForegroundListener
+  public class TestForegroundListener : IForegroundListener
   {
     public string NewWindowTitle { private get; set; }
     public string NewProcessName { private get; set; }

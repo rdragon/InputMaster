@@ -2,7 +2,7 @@
 
 namespace InputMaster.Parsers
 {
-  internal class DynamicHotkey : IComparable<DynamicHotkey>
+  public class DynamicHotkey : IComparable<DynamicHotkey>
   {
     private readonly StandardSection Section;
     public bool Enabled => Section.IsEnabled;

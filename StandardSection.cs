@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace InputMaster
 {
-  internal class StandardSection : Section
+  public class StandardSection : Section
   {
     private static int IdCounter;
 
@@ -65,7 +65,7 @@ namespace InputMaster
     }
   }
 
-  internal class FlagSection : StandardSection
+  public class FlagSection : StandardSection
   {
     private readonly string Flag;
 
@@ -76,11 +76,11 @@ namespace InputMaster
 
     protected override bool ComputeEnabled()
     {
-      return Env.FlagManager.IsSet(Flag);
+      return Env.FlagManager.HasFlag(Flag);
     }
   }
 
-  internal class RegexSection : StandardSection
+  public class RegexSection : StandardSection
   {
     private readonly Regex Regex;
     private readonly RegexSectionType Type;
@@ -107,5 +107,5 @@ namespace InputMaster
     }
   }
 
-  internal enum RegexSectionType { Window, Process }
+  public enum RegexSectionType { Window, Process }
 }

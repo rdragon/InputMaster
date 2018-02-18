@@ -3,74 +3,40 @@ using InputMaster;
 using InputMaster.Parsers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using InputMaster.Instances;
+using Moq;
+using InputMaster.Hooks;
+using System.Security.Cryptography;
 
 namespace UnitTests
 {
-  internal class TestFactory : IFactory
+  public class TestFactory
   {
     private readonly TestOutputHandler OutputHandler = new TestOutputHandler();
-
-    public T Create<T>() where T : class
-    {
-      var obj = Create(typeof(T));
-      if (obj is T t)
-      {
-        return t;
-      }
-      throw new InvalidOperationException($"{nameof(TestBrain)} creates instances of type {obj.GetType()} when given the argument {typeof(T)}, but {obj.GetType()} doesn't implement or derive from {typeof(T)}.");
-    }
-
-    private object Create(Type type)
-    {
-      if (type == typeof(INotifier))
-      {
-        return new TestNotifier();
-      }
-      if (type == typeof(IInjector))
-      {
-        return new TestInjector(OutputHandler);
-      }
-      if (type == typeof(IForegroundListener))
-      {
-        return new TestForegroundListener();
-      }
-      if (type == typeof(IFlagManager))
-      {
-        return new FlagManager();
-      }
-      if (type == typeof(IScheduler))
-      {
-        return new Scheduler();
-      }
-      if (type == typeof(IParser))
-      {
-        return new Parser();
-      }
-      if (type == typeof(IProcessManager))
-      {
-        return new ProcessManager();
-      }
-      if (type == typeof(ICommandCollection))
-      {
-        return new CommandCollection();
-      }
-      if (type == typeof(IApp))
-      {
-        return new App();
-      }
-      throw new InvalidOperationException($"{nameof(TestBrain)} cannot create instances of type {type}.");
-    }
 
     public void Run()
     {
       var assertFailed = false;
       try
       {
-        Env.Clear();
-        Env.TestRun = true;
-        Env.Factory = this;
         Env.Config = new Config();
-        Env.Build();
+        Env.Clear();
+        Env.RunningUnitTests = true;
+        Env.Notifier = new TestNotifier();
+        Env.App = new App();
+        Env.RandomNumberGenerator = new Mock<RandomNumberGenerator>().Object;
+        Env.CommandCollection = new CommandCollection();
+        Env.Cipher = new Mock<ICipher>().Object;
+        Env.StateHandlerFactory = new TestStateHandlerFactory();
+        Env.Settings = new Settings();
+        Env.Parser = new Parser();
+        Env.ModeHook = new ModeHook();
+        Env.ForegroundListener = new TestForegroundListener();
+        Env.FlagManager = FlagManager.GetFlagManagerAsync().Result;
+        Env.Scheduler = Scheduler.GetSchedulerAsync().Result;
+        Env.ProcessManager = new ProcessManager();
+        Env.Injector = new TestInjector(OutputHandler);
+        Env.PasswordMatrix = new PasswordMatrix(InputMaster.Properties.Resources.PasswordMatrix6x5);
+        Env.AccountManager = new Mock<AccountManager>().Object;
         new TestBrain(OutputHandler).Run();
       }
       catch (Exception ex) when (Helper.HasAssertFailed(ex))
@@ -86,10 +52,7 @@ namespace UnitTests
       {
         var errorLog = ((TestNotifier)Env.Notifier).GetLog();
         if (!assertFailed && errorLog.Length > 0)
-        {
           Assert.Fail("Unexpected error(s): " + errorLog);
-        }
-        Try.ThrowFatalExceptionIfExists();
       }
     }
   }

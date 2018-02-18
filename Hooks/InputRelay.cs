@@ -5,7 +5,7 @@ namespace InputMaster.Hooks
   /// <summary>
   /// Very simple hook that can be switched on and off by pressing a key. It also has the capability to capture all events until a dedicated key is pressed.
   /// </summary>
-  internal class InputRelay : Actor, IInputHook
+  public class InputRelay : Actor, IInputHook
   {
     private bool Enabled;
     private readonly IInputHook TargetHook;
@@ -81,7 +81,7 @@ namespace InputMaster.Hooks
     }
 
     /// <summary>
-    /// Like <see cref="MiscActor.Send(Action)"/>, but only accepts a single <see cref="Input"/> as argument, and will release the given input when the hotkey key that triggered the event is released.
+    /// Like <see cref="Actors.MiscActor.Send(Action)"/>, but only accepts a single <see cref="Input"/> as argument, and will release the given input when the hotkey key that triggered the event is released.
     /// Also, when the hotkey key is being held down, no additional injections are made (if this is not desired, an additional parameter should be added to the function which controls this behaviour).
     /// </summary>
     [Command]
@@ -91,12 +91,12 @@ namespace InputMaster.Hooks
       {
         if (SimulatedInput.Item2 != input)
         {
-          Env.Notifier.WriteError("Already simulating a key.");
+          Env.Notifier.Error("Already simulating a key.");
         }
       }
       else if (input.IsStandardModifierKey())
       {
-        Env.Notifier.WriteError("Simulating a standard modifier key is not supported.");
+        Env.Notifier.Error("Simulating a standard modifier key is not supported.");
       }
       else
       {

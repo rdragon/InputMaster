@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace InputMaster
 {
-  internal class HotkeyCollection
+  public class HotkeyCollection
   {
     private readonly Dictionary<Chord, SortedSet<Hotkey>> Dictionary = new Dictionary<Chord, SortedSet<Hotkey>>();
 
@@ -25,7 +25,7 @@ namespace InputMaster
       Helper.RequireTrue(added);
       if (chord.Length > Math.Max(Env.Config.MaxChordLength, MaxChordLength))
       {
-        Env.Notifier.WriteError($"Chord with length '{chord.Length}' found, while maximum allowed length is '{Env.Config.MaxChordLength}'. To change the maximum allowed length, update the config variable '{nameof(Env.Config.MaxChordLength)}'.");
+        Env.Notifier.Error($"Chord with length '{chord.Length}' found, while maximum allowed length is '{Env.Config.MaxChordLength}'. To change the maximum allowed length, update the config variable '{nameof(Env.Config.MaxChordLength)}'.");
       }
       MaxChordLength = Math.Max(MaxChordLength, chord.Length);
     }

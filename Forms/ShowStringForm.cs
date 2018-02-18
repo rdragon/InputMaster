@@ -8,15 +8,14 @@ namespace InputMaster.Forms
   /// </summary>
   partial class ShowStringForm : ThemeForm
   {
-    public ShowStringForm(string text, bool scrollToBottom)
+    public ShowStringForm(string title, string text, bool scrollToBottom)
     {
       InitializeComponent();
+      Text = title + " - InputMaster";
       StartPosition = FormStartPosition.CenterScreen;
       Rtb.Text = text;
       if (scrollToBottom)
-      {
         Rtb.ScrollToBottom();
-      }
     }
 
     protected override void OnShown(EventArgs e)

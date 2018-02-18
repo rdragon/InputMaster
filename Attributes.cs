@@ -5,7 +5,7 @@ namespace InputMaster
 {
   [MeansImplicitUse]
   [AttributeUsage(AttributeTargets.Method)]
-  internal sealed class CommandAttribute : Attribute
+  public sealed class CommandAttribute : Attribute
   {
     public CommandTypes CommandTypes { get; }
 
@@ -18,7 +18,7 @@ namespace InputMaster
   }
 
   [AttributeUsage(AttributeTargets.Parameter)]
-  internal sealed class ValidRangeAttribute : Attribute
+  public sealed class ValidRangeAttribute : Attribute
   {
     public int Minimum { get; }
     public int Maximum { get; }
@@ -31,7 +31,7 @@ namespace InputMaster
   }
 
   [AttributeUsage(AttributeTargets.Parameter)]
-  internal sealed class ValidFlagsAttribute : Attribute
+  public sealed class ValidFlagsAttribute : Attribute
   {
     public string FlagsString { get; }
 
@@ -42,5 +42,5 @@ namespace InputMaster
   }
 
   [AttributeUsage(AttributeTargets.Parameter)]
-  internal sealed class AllowSpacesAttribute : Attribute { }
+  public sealed class AllowSpacesAttribute : Attribute { }
 }

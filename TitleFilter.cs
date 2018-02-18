@@ -5,8 +5,9 @@ using Newtonsoft.Json;
 namespace InputMaster
 {
   [JsonConverter(typeof(TitleFilterJsonConverter))]
-  internal class TitleFilter
+  public class TitleFilter
   {
+    public string Value { get; }
     private readonly Regex Regex;
 
     public TitleFilter(string value)
@@ -15,15 +16,13 @@ namespace InputMaster
       Regex = Helper.GetRegex(Value, RegexOptions.IgnoreCase);
     }
 
-    public string Value { get; }
-
     public bool IsEnabled()
     {
       return Regex.IsMatch(Env.ForegroundListener.ForegroundWindowTitle);
     }
   }
 
-  internal class TitleFilterJsonConverter : JsonConverter
+  public class TitleFilterJsonConverter : JsonConverter
   {
     public override bool CanConvert(Type objectType)
     {

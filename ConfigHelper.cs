@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace InputMaster
 {
   [Flags]
-  internal enum Modifiers
+  public enum Modifiers
   {
     None = 0,
     Shift = 1,
@@ -13,9 +13,9 @@ namespace InputMaster
     Win = 8
   }
 
-  internal enum DynamicHotkeyEnum { Copy, Paste }
+  public enum DynamicHotkeyEnum { Copy, Paste }
 
-  internal static class ConfigHelper
+  public static class ConfigHelper
   {
     public static Modifiers StandardModifiers { get; } = Modifiers.Shift | Modifiers.Ctrl | Modifiers.Alt | Modifiers.Win;
 
@@ -34,6 +34,7 @@ namespace InputMaster
     public static void SetConfig()
     {
       Env.Config = new Config();
+      Env.Config.Initialize();
     }
   }
 }

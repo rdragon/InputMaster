@@ -8,7 +8,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace UnitTests
 {
-  internal class TestBrain : Actor
+  public class TestBrain : Actor
   {
     private readonly TestOutputHandler OutputHandler;
     private readonly InputReader InputReader = new InputReader(InputReaderFlags.AllowHoldRelease | InputReaderFlags.AllowCustomModifier | InputReaderFlags.AllowMultiplier);
@@ -18,7 +18,6 @@ namespace UnitTests
     private InputHook InputHook;
     private ComboRelay ComboRelay;
     private ComboHook ComboHook;
-    private ModeHook ModeHook;
     private TestForegroundListener ForegroundListener;
 
     public TestBrain(TestOutputHandler outputHandler)
@@ -29,16 +28,14 @@ namespace UnitTests
     public void Run()
     {
       ForegroundListener = (TestForegroundListener)Env.ForegroundListener;
-      ModeHook = new ModeHook();
       ComboHook = new ComboHook();
-      ComboRelay = new ComboRelay(ModeHook, ComboHook);
+      ComboRelay = new ComboRelay(Env.ModeHook, ComboHook);
       InputHook = new InputHook(ComboRelay);
       InputRelay = new InputRelay(InputHook);
       PrimaryHook = new TestPrimaryHook(InputRelay);
       PrimaryHookInjector = new TestInjector(PrimaryHook);
       Env.AddActor(new MiscActor());
       Env.Parser.UpdateHotkeyFile(new HotkeyFile(nameof(TestBrain), Helper.RemoveCarriageReturns(Resources.Tests)));
-      Env.Parser.EnableOnce();
     }
 
     [Command(CommandTypes.ExecuteAtParseTime | CommandTypes.Chordless | CommandTypes.TopLevelOnly)]
@@ -56,17 +53,11 @@ namespace UnitTests
       ForegroundListener.Reset();
       Env.FlagManager.ClearFlags();
       if (!string.IsNullOrEmpty(processName))
-      {
         ForegroundListener.NewProcessName = processName;
-      }
       if (!string.IsNullOrEmpty(windowTitle))
-      {
         ForegroundListener.NewWindowTitle = windowTitle;
-      }
       if (!string.IsNullOrEmpty(flag))
-      {
         Env.FlagManager.ToggleFlag(flag);
-      }
       PrimaryHookInjector.CreateInjector().Add(toSimulate, InputReader).Run();
       var output = OutputHandler.GetStateInfo();
       var state = PrimaryHook.GetStateInfo();
@@ -82,13 +73,9 @@ namespace UnitTests
           sb.Append($"Actual output: {actual}\n\n");
         }
         if (errorLog.Length > 0)
-        {
           sb.Append($"Unexpected error(s):\n{errorLog}\n\n");
-        }
         if (state.Length > 0)
-        {
           sb.Append($"Invalid state after simulation:\n{state}\n\n");
-        }
         Assert.Fail(sb.ToString());
       }
     }

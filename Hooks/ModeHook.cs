@@ -4,13 +4,13 @@ using System.Linq;
 
 namespace InputMaster.Hooks
 {
-  internal class ModeHook : Actor, IComboHook
+  public class ModeHook : Actor, IComboHook
   {
     /// <summary>
     /// Collection of all available modes.
     /// </summary>
     private readonly Dictionary<string, Mode> Modes = new Dictionary<string, Mode>();
-    private readonly ModeViewer ModeViewer;
+    private readonly ModeViewer ModeViewer = new ModeViewer();
     /// <summary>
     /// Currently active mode, or null when no mode is active.
     /// </summary>
@@ -25,23 +25,20 @@ namespace InputMaster.Hooks
     private int InputCount;
     private bool Hidden;
 
-    public ModeHook()
-    {
-      ModeViewer = new ModeViewer();
-      Env.Parser.NewParserOutput += parserOutput =>
-      {
-        Modes.Clear();
-        foreach (var mode in parserOutput.Modes)
-        {
-          Modes[mode.Name] = mode;
-        }
-      };
-    }
-
     /// <summary>
     /// Returns whether a mode is active.
     /// </summary>
     public bool Active => ActiveMode != null;
+
+    public ModeHook()
+    {
+      Env.Parser.NewParserOutput += parserOutput =>
+      {
+        Modes.Clear();
+        foreach (var mode in parserOutput.Modes)
+          Modes[mode.Name] = mode;
+      };
+    }
 
     [Command]
     public void EnterMode(string name, [ValidFlags("h")]string flags = "")
@@ -71,7 +68,7 @@ namespace InputMaster.Hooks
       }
       else
       {
-        Env.Notifier.WriteError($"Mode '{name}' not found.");
+        Env.Notifier.Error($"Mode '{name}' not found.");
       }
     }
 
@@ -88,7 +85,7 @@ namespace InputMaster.Hooks
         }
         else
         {
-          Env.Notifier.WriteError($"Cannot use '{nameof(EnterModeHot)}' on a {Constants.ComposeModeSectionIdentifier} '{mode.Name}'.");
+          Env.Notifier.Error($"Cannot use '{nameof(EnterModeHot)}' on a {Constants.ComposeModeSectionIdentifier} '{mode.Name}'.");
         }
       }
     }
@@ -216,6 +213,13 @@ namespace InputMaster.Hooks
           InputCount = oldCount;
           ToggleViewerVisibility();
         }
+        else if (e.Combo == Env.Config.PrintModeCombo)
+        {
+          ModeHotkeys = oldModeHotkeys;
+          InputCount = oldCount;
+          Helper.ShowSelectableText(GetDisplayText());
+          LeaveMode();
+        }
         else if (Env.Config.ClearModeCombos.Contains(e.Combo))
         {
           LeaveMode();
@@ -246,7 +250,7 @@ namespace InputMaster.Hooks
 
     private string GetDisplayText()
     {
-      var modeHotkeys = new List<ModeHotkey>(ModeHotkeys).Where(z => z.Description != null && !z.Description.Contains(Constants.HiddenTag)).ToList();
+      var modeHotkeys = new List<ModeHotkey>(ModeHotkeys).Where(z => z.Description != null && !z.Description.Contains(Env.Config.HiddenTag)).ToList();
       modeHotkeys.Sort((a, b) => string.CompareOrdinal(a.Description, b.Description));
       return string.Join("\n", modeHotkeys.Select(z => z.Description));
     }

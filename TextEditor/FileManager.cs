@@ -6,265 +6,243 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using InputMaster.Parsers;
 using System.Linq;
+using System.Windows.Forms;
 
 namespace InputMaster.TextEditor
 {
-  internal class FileManager
+  /// <summary>
+  /// Keeps track of the index, a dictionary from file names to file titles.
+  /// Updates text file titles.
+  /// Creates new text files.
+  /// Compiles the two text editor modes.
+  /// </summary>
+  public class FileManager
   {
-    private readonly string DataDirName = "data";
-    private readonly string NamesDirName = "names";
-    private readonly ValueProvider<string> AccountFileProvider = new ValueProvider<string>();
-    private readonly ValueProvider<string> SharedPasswordProvider = new ValueProvider<string>();
-    private readonly ValueProvider<IEnumerable<SharedFile>> SharedFileProvider = new ValueProvider<IEnumerable<SharedFile>>();
-    private bool Initialized;
+    private MyState _state;
 
-    public FileManager(out IValueProvider<string> accountFileProvider, out IValueProvider<string> sharedPasswordProvider,
-      out IValueProvider<IEnumerable<SharedFile>> sharedFileProvider)
+    private FileManager()
     {
-      accountFileProvider = AccountFileProvider;
-      sharedPasswordProvider = SharedPasswordProvider;
-      sharedFileProvider = SharedFileProvider;
-      Directory.CreateDirectory(DataDir);
-      Directory.CreateDirectory(NamesDir);
-      InitializeAsync();
+      Directory.CreateDirectory(Env.Config.TextEditorDir);
+      Env.Parser.UpdateParseAction(nameof(TextEditorForm), parserOutput =>
+      {
+        var mode = parserOutput.AddMode(new Mode(Env.Config.TextEditorModeName, true));
+        var sharedMode = parserOutput.AddMode(new Mode(Env.Config.TextEditorSharedModeName, true));
+        foreach (var pair in _state.Index)
+        {
+          var name = pair.Key;
+          var title = pair.Value;
+          if (!Helper.TryGetChordText(title, out var chordText))
+            continue;
+          var chord = Env.Config.DefaultChordReader.CreateChord(new LocatedString(chordText));
+
+          void Action(Combo combo)
+          {
+            OpenFile(name);
+            if (Env.Config.TextEditorDesktopHotkey != Combo.None)
+              Env.CreateInjector().Add(Env.Config.TextEditorDesktopHotkey).Run();
+          }
+
+          mode.AddHotkey(new ModeHotkey(chord, Action, title));
+          if (title.IndexOf(Env.Config.SharedTag, StringComparison.OrdinalIgnoreCase) >= 0)
+            sharedMode.AddHotkey(new ModeHotkey(chord, Action, Helper.StripTags(title)));
+        }
+      });
     }
 
-    private async void InitializeAsync()
+    private async Task<FileManager> Initialize()
     {
-      Env.Parser.DisableOnce();
-      await CompileTextEditorModeAsync();
-      Initialized = true;
-      Env.Parser.EnableOnce();
+      var stateHandler = Env.StateHandlerFactory.Create(new MyState(), Path.Combine(Env.Config.TextEditorDir, Env.Config.IndexFileName),
+         StateHandlerFlags.UseCipher | StateHandlerFlags.SavePeriodically);
+      _state = await stateHandler.LoadAsync();
+      if (_state.Index.Count == 0)
+        await CreateIndex();
+      if (File.Exists(Env.Config.TextEditorHotkeyFile))
+        await LoadTextEditorHotkeyFile();
+      return this;
     }
 
+    public static Task<FileManager> GetFileManagerAsync()
+    {
+      return new FileManager().Initialize();
+    }
+
+    public string GetTitle(string name)
+    {
+      return _state.Index[name];
+    }
+
+    public void SetTitle(string name, string title)
+    {
+      _state.Index[name] = title;
+    }
+
+    private async Task LoadTextEditorHotkeyFile()
+    {
+      var text = new TitleTextPair(await Env.Cipher.DecryptFileAsync(Env.Config.TextEditorHotkeyFile)).Text;
+      Env.Parser.UpdateHotkeyFile(new HotkeyFile(nameof(TextEditorForm), text));
+    }
+
+    private async Task CreateIndex()
+    {
+      _state.Index.Clear();
+      foreach (var file in Directory.GetFiles(Env.Config.TextEditorDir).Where(z => Path.GetFileName(z) != Env.Config.IndexFileName))
+      {
+        var name = Path.GetFileName(file);
+        var pair = new TitleTextPair(await Env.Cipher.DecryptFileAsync(file));
+        _state.Index[name] = pair.Title;
+      }
+    }
+
+    public static string GetFile(string name)
+    {
+      return Path.Combine(Env.Config.TextEditorDir, name);
+    }
+
+    /// <summary>
+    /// This event is fired by the compiled text editor mode.
+    /// </summary>
     public Action<string> OpenFile { private get; set; }
-    private string DataDir => GetDataDir(Env.Config.TextEditorDir);
-    private string NamesDir => GetNamesDir(Env.Config.TextEditorDir);
 
-    public string GetDataFile(string nameOrDataFile)
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
+    public static Task<int> ExportToDirectoryAsync(string sourceDir, string targetDir)
     {
-      return Path.Combine(GetDataDir(Path.GetDirectoryName(Path.GetDirectoryName(nameOrDataFile))), Path.GetFileName(nameOrDataFile));
+      return Task.Run(() => ExportToDirectoryInternalAsync(sourceDir, targetDir));
     }
 
-    private string GetNameFile(string nameOrDataFile)
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
+    private static async Task<int> ExportToDirectoryInternalAsync(string sourceDir, string targetDir)
     {
-      return Path.Combine(GetNamesDir(Path.GetDirectoryName(Path.GetDirectoryName(nameOrDataFile))), Path.GetFileName(nameOrDataFile));
-    }
-
-    private string GetDataDir(string parentDir)
-    {
-      return Path.Combine(parentDir, DataDirName);
-    }
-
-    private string GetNamesDir(string parentDir)
-    {
-      return Path.Combine(parentDir, NamesDirName);
-    }
-
-    public async Task<int> ExportToDirectoryAsync(string sourceDir, string targetDir)
-    {
-      var fromNamesDir = GetNamesDir(sourceDir);
       var count = 0;
       Directory.CreateDirectory(targetDir);
-      foreach (var file in Directory.EnumerateFiles(fromNamesDir))
+      foreach (var file in Directory.EnumerateFiles(sourceDir))
       {
-        var title = await Env.Cipher.DecryptAsync(file);
-        var text = await Env.Cipher.DecryptAsync(GetDataFile(file));
-        var name = Helper.GetValidFileName(title, '_');
+        var name = Path.GetFileName(file);
+        if (name == Env.Config.IndexFileName)
+          continue;
+        var contents = await Env.Cipher.DecryptFileAsync(file);
         var targetFile = new FileInfo(Path.Combine(targetDir, name + ".txt"));
-        File.WriteAllText(targetFile.FullName, title + "\n" + text);
+        Helper.WriteAllText(targetFile.FullName, contents);
         count++;
       }
       return count;
     }
 
-    private void HandleAccountFile(List<FileLink> links)
+    public void CompileTextEditorMode()
     {
-      var accountFiles = links.Where(z => z.Title.Contains(Constants.AccountFileTag)).Take(2).ToList();
-      if (accountFiles.Count > 1)
-      {
-        Env.Notifier.WriteError("Multiple account files found.");
-      }
-      else if (accountFiles.Count == 0 && Env.Config.Warnings.HasFlag(Warnings.MissingAccountFile))
-      {
-        Env.Notifier.WriteWarning($"No accounts file found (required tag: {Constants.AccountFileTag}).");
-      }
-      AccountFileProvider.SetValue(accountFiles.Count == 0 ? null : GetDataFile(accountFiles[0].File));
-    }
-
-    private async Task HandleSharedPasswordFileAsync(List<FileLink> links)
-    {
-      var sharedPasswordFiles = links.Where(z => z.Title.Contains(Constants.SharedPasswordFileTag)).Take(2).ToList();
-      if (sharedPasswordFiles.Count > 1)
-      {
-        Env.Notifier.WriteError("Multiple shared password files found.");
-      }
-      else if (sharedPasswordFiles.Count == 0 && Env.Config.Warnings.HasFlag(Warnings.MissingSharedPasswordFile))
-      {
-        Env.Notifier.WriteWarning($"No shared password file found (required tag: {Constants.SharedPasswordFileTag}).");
-      }
-      SharedPasswordProvider.SetValue(sharedPasswordFiles.Count == 0 ? null : await Env.Cipher.DecryptAsync(GetDataFile(sharedPasswordFiles[0].File)));
-    }
-
-    private async Task HandleHotkeyFileAsync(List<FileLink> links)
-    {
-      var hotkeyFiles = links.Where(z => z.Title.Contains(Constants.HotkeyFileTag)).Take(2).ToList();
-      if (hotkeyFiles.Count == 0)
-      {
+      if (!Env.Config.EnableTextEditor)
         return;
-      }
-      if (hotkeyFiles.Count > 1)
-      {
-        Env.Notifier.WriteError("Multiple hotkey files found.");
-      }
-      var text = await Env.Cipher.DecryptAsync(GetDataFile(hotkeyFiles[0].File));
-      Env.Parser.UpdateHotkeyFile(new HotkeyFile(nameof(TextEditorForm), text));
-    }
-
-    public async Task CompileTextEditorModeAsync()
-    {
-      var links = new List<FileLink>();
-      var sharedFiles = new List<SharedFile>();
-      foreach (var file in Directory.EnumerateFiles(NamesDir))
-      {
-        var title = await Env.Cipher.DecryptAsync(file);
-        links.Add(new FileLink { Title = title, File = file });
-        if (Constants.SharedFileRegex.IsMatch(title))
-        {
-          sharedFiles.Add(new SharedFile(title, file, GetDataFile(file)));
-        }
-      }
-      SharedFileProvider.SetValue(sharedFiles);
-      await HandleHotkeyFileAsync(links);
-      if (!Initialized)
-      {
-        HandleAccountFile(links);
-        await HandleSharedPasswordFileAsync(links);
-      }
-      Env.Parser.UpdateParseAction(nameof(TextEditorForm), parserOutput =>
-      {
-        var mode = parserOutput.AddMode(new Mode(Env.Config.TextEditorModeName, true));
-        foreach (var link in links)
-        {
-          var file = link.File;
-          var title = link.Title;
-          if (!Env.Config.TryGetChordText(title, out var chordText))
-          {
-            continue;
-          }
-          var chord = Env.Config.DefaultChordReader.CreateChord(new LocatedString(chordText));
-
-          void Action(Combo combo)
-          {
-            OpenFile(file);
-            if (Env.Config.TextEditorDesktopHotkey != Combo.None)
-            {
-              Env.CreateInjector().Add(Env.Config.TextEditorDesktopHotkey).Run();
-            }
-          }
-
-          var hotkey = new ModeHotkey(chord, Action, title);
-          mode.AddHotkey(hotkey);
-        }
-      });
       Env.Parser.Run();
     }
 
     public async Task ImportFromDirectoryAsync()
     {
-      if (!Helper.TryGetString("Please give a directory from which to import all text files.", out var dir))
-      {
+      var dir = await Helper.TryGetStringAsync("Please give a directory from which to import all text files.");
+      if (dir == null)
         return;
-      }
-      Helper.ForbidWhitespace(dir, nameof(dir));
+      var generateNames = MessageBox.Show("Generate random file names?", "Generate random file names?", MessageBoxButtons.YesNo) == DialogResult.Yes;
       var count = 0;
-      foreach (var file in new DirectoryInfo(dir).GetFiles("*.txt"))
+      foreach (var file in Directory.GetFiles(dir, "*.txt"))
       {
-        var s = Helper.ReadAllText(file.FullName);
+        var s = await Helper.ReadAllTextAsync(file);
         var i = s.IndexOf('\n');
-        var failed = false;
+        bool failed;
         if (i == -1)
-        {
           failed = true;
-        }
         else
         {
           var title = s.Substring(0, i).Trim();
           if (title.Length == 0)
-          {
             failed = true;
-          }
           else
           {
             var text = s.Substring(i + 1);
-            await CreateNewFileAsync(title, text);
+            await CreateNewFileAsync(title, text, generateNames ? null : Path.GetFileNameWithoutExtension(file));
             count++;
+            failed = false;
           }
         }
         if (failed)
-        {
-          Env.Notifier.WriteError($"Cannot import '{file.FullName}', file is in incorrect format.");
-        }
+          Env.Notifier.Error($"Cannot import '{file}', file is in incorrect format.");
       }
-      Env.Notifier.Write($"Imported {count} files from '{dir}'.");
-      await CompileTextEditorModeAsync();
+      Env.Notifier.Info($"Imported {count} file(s) from '{dir}'.");
     }
 
-    public async Task ExportToDirectoryAsync()
+    public static async Task ExportToDirectoryAsync()
     {
-      if (!Helper.TryGetString("Please give a directory to which to export all text files.", out var dir))
-      {
+      var dir = await Helper.TryGetStringAsync("Please give a directory to which to export all text files.");
+      if (dir == null)
         return;
-      }
       Helper.ForbidWhitespace(dir, nameof(dir));
-      var count = await Task.Run(() => ExportToDirectoryAsync(Env.Config.TextEditorDir, dir));
-      Env.Notifier.Write($"Exported {count} files to '{dir}'.");
+      var count = await ExportToDirectoryAsync(Env.Config.TextEditorDir, dir);
+      Env.Notifier.Info($"Exported {count} files to '{dir}'.");
     }
 
     public async Task FindAllAsync()
     {
-      if (!Helper.TryGetString("Find All", out var s))
-      {
+      var s = await Helper.TryGetStringAsync("Find All");
+      if (s == null)
         return;
-      }
       var r = Helper.GetRegex(s, RegexOptions.IgnoreCase);
-      var log = await Task.Run(async () =>
+      // Thread-safe.
+      var (log, errorLog) = await Task.Run(async () =>
       {
-        var sb = new StringBuilder();
-        foreach (var dataFile in Directory.GetFiles(DataDir))
+        var sbLog = new StringBuilder();
+        var sbErrorLog = new StringBuilder();
+        foreach (var file in Directory.GetFiles(Env.Config.TextEditorDir))
         {
-          var text = await Env.Cipher.DecryptAsync(dataFile);
-          var count = r.Matches(text).Count;
-          if (count > 0)
+          if (Path.GetFileName(file).Equals(Env.Config.IndexFileName, StringComparison.OrdinalIgnoreCase))
+            continue;
+          var text = await Env.Cipher.TryDecryptFileAsync(file);
+          if (text == null)
           {
-            sb.Append($"{await Env.Cipher.DecryptAsync(GetNameFile(dataFile))}  ({count} match{(count != 1 ? "es" : "")})\n");
+            sbErrorLog.Append($"File '{file}' could not be decrypted.\n");
+            continue;
           }
+          var pair = new TitleTextPair(text);
+          if (pair.Text == null)
+          {
+            sbErrorLog.Append($"File '{file}' is not in correct format.\n");
+            continue;
+          }
+          var count = r.Matches(pair.Text).Count;
+          if (count > 0)
+            sbLog.Append($"{pair.Title}  ({count} match{(count != 1 ? "es" : "")})\n");
         }
-        return sb;
+        return (sbLog, sbErrorLog);
       });
+      if (0 < errorLog.Length)
+        Env.Notifier.Error(errorLog.ToString());
       Helper.ShowSelectableText(log.Length == 0 ? "No matches found!" : log.ToString());
     }
 
-    public async Task<string> CreateNewFileAsync(string title, string text)
+    public async Task<string> CreateNewFileAsync(string title, string text, string name = null)
     {
-      var i = 0;
-      while (true)
-      {
-        var file = Path.Combine(NamesDir, i.ToString());
-        if (!File.Exists(file))
-        {
-          await Env.Cipher.EncryptAsync(file, title);
-          await Env.Cipher.EncryptAsync(GetDataFile(file), text);
-          return file;
-        }
-        i++;
-      }
+      name = name ?? Helper.GetRandomName(Env.Config.TextEditorFileNameLength);
+      var file = GetFile(name);
+      await Env.Cipher.EncryptToFileAsync(file, title + "\n" + text);
+      _state.Index[name] = title;
+      return name;
     }
 
-    private class FileLink
+    public void DeleteFile(string name)
     {
-      public string File { get; set; }
-      public string Title { get; set; }
+      _state.Index.Remove(name);
+      File.Delete(GetFile(name));
+    }
+
+    private class MyState : IState
+    {
+      public Dictionary<string, string> Index { get; set; }
+
+      public (bool, string message) Fix()
+      {
+        Index = Index ?? new Dictionary<string, string>();
+        return (true, "");
+      }
     }
   }
 }

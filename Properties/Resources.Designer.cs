@@ -19,7 +19,7 @@ namespace InputMaster.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "4.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "15.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
@@ -63,10 +63,111 @@ namespace InputMaster.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
         /// </summary>
+        internal static System.Drawing.Icon AlertIcon {
+            get {
+                object obj = ResourceManager.GetObject("AlertIcon", resourceCulture);
+                return ((System.Drawing.Icon)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
+        /// </summary>
         internal static System.Drawing.Icon NotifyIcon {
             get {
                 object obj = ResourceManager.GetObject("NotifyIcon", resourceCulture);
                 return ((System.Drawing.Icon)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to    0     5   
+        /// 0 abcde f  0
+        /// 1 ghijk l  1
+        /// 2 mnopq r  2
+        /// 3 stuvw x  3
+        /// 4 yzabc d  4
+        ///  0      5   
+        ///.
+        /// </summary>
+        internal static string PasswordMatrix6x5 {
+            get {
+                return ResourceManager.GetString("PasswordMatrix6x5", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to abcde
+        ///(none)
+        ///(none)
+        ///(none)
+        ///abhio
+        ///(none)
+        ///abhnt
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///agmsy
+        ///aghno
+        ///(none)
+        ///aghij
+        ///(none)
+        ///(none)
+        ///(none)
+        ///ghijk
+        ///(none)
+        ///(none)
+        ///(none)
+        ///ghnou
+        ///(none)
+        ///ghntz
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///gabhn
+        ///gabcd
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///gmntu
+        ///gmnhb
+        ///gmnop
+        ///(none)
+        ///(none)
+        ///(none)
+        ///mnopq
+        ///mnhic
+        ///(none)
+        ///(none)
+        ///mntua
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///(none)
+        ///( [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string PasswordMatrixOutput {
+            get {
+                return ResourceManager.GetString("PasswordMatrixOutput", resourceCulture);
             }
         }
         

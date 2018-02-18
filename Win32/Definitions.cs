@@ -1,24 +1,22 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-// ReSharper disable MemberCanBePrivate.Global
-// ReSharper disable FieldCanBeMadeReadOnly.Global
 
 namespace InputMaster.Win32
 {
   [StructLayout(LayoutKind.Sequential)]
-  internal struct NativePoint
+  public struct NativePoint
   {
     public int X;
     public int Y;
   }
 
-  internal enum ShowWindowArgument
+  public enum ShowWindowArgument
   {
     Minimize = 6,
     Restore = 9
   }
 
-  internal enum WindowMessage
+  public enum WindowMessage
   {
     Close = 0x0010,
     KeyDown = 0x0100,
@@ -40,44 +38,44 @@ namespace InputMaster.Win32
   }
 
   #region Hook
-  internal delegate IntPtr HookProcedureFunction(int code, IntPtr lParam, IntPtr wParam);
+  public delegate IntPtr HookProcedureFunction(int code, IntPtr lParam, IntPtr wParam);
 
   // KBDLLHOOKSTRUCT
   [StructLayout(LayoutKind.Sequential)]
-  internal struct KeyProcedureData
+  public struct KeyProcedureData
   {
     public Input VirtualKey;
     public int ScanCode;
     public KeyProcedureDataFlags Flags;
-    public int _time;
-    public IntPtr _extraInfo;
+    public int TimeDummy;
+    public IntPtr ExtraInfoDummy;
   }
 
   // MSLLHOOKSTRUCT
   [StructLayout(LayoutKind.Sequential)]
-  internal struct MouseProcedureData
+  public struct MouseProcedureData
   {
-    public NativePoint _mousePosition;
+    public NativePoint MousePositionDummy;
     public int MouseData;
     public MouseProcedureDataFlags Flags;
-    public int _time;
-    public IntPtr _extraInfo;
+    public int TimeDummy;
+    public IntPtr ExtraInfoDummy;
   }
 
   [Flags]
-  internal enum KeyProcedureDataFlags
+  public enum KeyProcedureDataFlags
   {
     Extended = 0x01,
     Injected = 0x10
   }
 
   [Flags]
-  internal enum MouseProcedureDataFlags
+  public enum MouseProcedureDataFlags
   {
     Injected = 0x01
   }
 
-  internal enum HookType
+  public enum HookType
   {
     LowLevelKeyboardHook = 13,
     LowLevelMouseHook = 14
@@ -86,16 +84,16 @@ namespace InputMaster.Win32
 
   #region SendInput
   [StructLayout(LayoutKind.Sequential)]
-  internal struct NativeInput
+  public struct NativeInput
   {
     public InputType Type;
     public InputData Data;
   }
 
-  internal enum InputType { Mouse, Key }
+  public enum InputType { Mouse, Key }
 
   [StructLayout(LayoutKind.Explicit)]
-  internal struct InputData
+  public struct InputData
   {
     [FieldOffset(0)]
     public KeyInput KeyInput;
@@ -105,17 +103,17 @@ namespace InputMaster.Win32
   }
 
   [StructLayout(LayoutKind.Sequential)]
-  internal struct KeyInput
+  public struct KeyInput
   {
     public short VirtualKeyCode;
     public short ScanCode;
     public KeyFlags Flags;
-    public int _time;
-    public IntPtr _extraInfo;
+    public int TimeDummy;
+    public IntPtr ExtraInfoDummy;
   }
 
   [Flags]
-  internal enum KeyFlags
+  public enum KeyFlags
   {
     ExtendedKey = 0x0001,
     KeyUp = 0x0002,
@@ -123,18 +121,18 @@ namespace InputMaster.Win32
   }
 
   [StructLayout(LayoutKind.Sequential)]
-  internal struct MouseInput
+  public struct MouseInput
   {
-    public int _x;
-    public int _y;
+    public int XDummy;
+    public int YDummy;
     public int MouseData;
     public MouseFlags Flags;
-    public int _time;
-    public IntPtr _extraInfo;
+    public int TimeDummy;
+    public IntPtr ExtraInfoDummy;
   }
 
   [Flags]
-  internal enum MouseFlags
+  public enum MouseFlags
   {
     LeftDown = 0x0002,
     LeftUp = 0x0004,

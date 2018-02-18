@@ -1,6 +1,6 @@
 ﻿namespace InputMaster.Hooks
 {
-  internal class ModeViewer
+  public class ModeViewer
   {
     private string Text;
 

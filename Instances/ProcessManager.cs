@@ -6,10 +6,10 @@ using System.Windows.Forms;
 
 namespace InputMaster.Instances
 {
-  internal class ProcessManager : IProcessManager
+  public class ProcessManager : IProcessManager
   {
     private readonly HashSet<MyProcess> Processes = new HashSet<MyProcess>();
-    private readonly Timer Timer = new Timer { Interval = (int)Env.Config.ProcessManagerInterval.TotalMilliseconds, Enabled = true };
+    private readonly Timer Timer = new Timer { Interval = (int)Env.Config.ProcessManagerInterval.TotalMilliseconds };
 
     public ProcessManager()
     {
@@ -25,12 +25,13 @@ namespace InputMaster.Instances
           }
         }
       };
-      Env.App.Exiting += () =>
+      Env.App.Run += () => Timer.Enabled = true;
+      Env.App.Exiting += async () =>
       {
         Timer.Dispose();
         foreach (var process in Processes)
         {
-          Try.Execute(process.KillIfRunning);
+          await Try.Execute(process.KillIfRunning);
           process.Process.Dispose();
         }
         Processes.Clear();
@@ -66,24 +67,19 @@ namespace InputMaster.Instances
       public void KillIfTimedOut()
       {
         if (TimeoutDate < DateTime.Now)
-        {
           KillIfRunning();
-        }
       }
 
       public void KillIfRunning()
       {
         if (Process.HasExited)
-        {
           return;
-        }
         Process.Kill();
-        var s = "Killed process" + Helper.GetBindingsSuffix(Process.StartInfo.FileName, nameof(Process.StartInfo.FileName), Process.StartInfo.Arguments, nameof(Process.StartInfo.Arguments));
+        var s = "Killed process" + Helper.GetBindingsSuffix(Process.StartInfo.FileName, nameof(Process.StartInfo.FileName),
+          Process.StartInfo.Arguments, nameof(Process.StartInfo.Arguments));
         if (TimeoutDate < DateTime.Now)
-        {
           s += " Reason: timed out after " + TimeoutLength + ".";
-        }
-        Env.Notifier.WriteError(s);
+        Env.Notifier.Error(s);
       }
     }
   }

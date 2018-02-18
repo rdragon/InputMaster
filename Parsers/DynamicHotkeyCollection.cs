@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace InputMaster.Parsers
 {
-  internal class DynamicHotkeyCollection : Dictionary<string, SortedSet<DynamicHotkey>>
+  public class DynamicHotkeyCollection : Dictionary<string, SortedSet<DynamicHotkey>>
   {
     public void AddDynamicHotkey(string name, Action<IInjectorStream<object>> action, StandardSection section)
     {

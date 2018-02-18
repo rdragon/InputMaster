@@ -4,7 +4,7 @@ using InputMaster.Win32;
 
 namespace InputMaster.KeyboardLayouts
 {
-  internal abstract class KeyboardLayout : IKeyboardLayout
+  public abstract class KeyboardLayout : IKeyboardLayout
   {
     private readonly Dictionary<char, Combo> Combos = new Dictionary<char, Combo>();
     private readonly Dictionary<Input, (char, char)> CharacterKeys = new Dictionary<Input, (char, char)>();

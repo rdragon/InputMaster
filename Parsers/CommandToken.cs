@@ -2,7 +2,7 @@
 
 namespace InputMaster.Parsers
 {
-  internal class CommandToken
+  public class CommandToken
   {
     private readonly Command Command;
 

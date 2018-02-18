@@ -2,7 +2,7 @@
 
 namespace InputMaster.Parsers
 {
-  internal class ParseException : Exception
+  public class ParseException : Exception
   {
     public bool HasLocation { get; }
 

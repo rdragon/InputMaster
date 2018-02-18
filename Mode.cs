@@ -4,7 +4,7 @@ using InputMaster.Parsers;
 
 namespace InputMaster
 {
-  internal class Mode : Section
+  public class Mode : Section
   {
     private readonly List<ModeHotkey> Hotkeys = new List<ModeHotkey>();
     private readonly List<string> Includes = new List<string>();
@@ -29,14 +29,12 @@ namespace InputMaster
         var small = modeHotkey.Chord;
         var big = chord;
         if (small.Length > big.Length)
-        {
           (small, big) = (big, small);
-        }
         if (big.HasPrefix(small))
         {
           if (!hideWarningMessage)
           {
-            Env.Notifier.WriteWarning($"Mode '{Name}' has ambiguous chord '{small}'.");
+            Env.Notifier.Warning($"Mode '{Name}' has ambiguous chord '{small}'.");
             HasAmbiguousChord = true;
           }
           break;
@@ -65,18 +63,12 @@ namespace InputMaster
           {
             var mode = parserOutput.Modes.Find(z => z.Name == name);
             if (mode == null)
-            {
               throw new ParseException($"Cannot find mode '{name}' (an include of mode '{Name}').");
-            }
             if (mode.IsComposeMode != IsComposeMode)
-            {
               throw new ParseException($"Cannot include mode '{name}' in mode '{Name}' as they are not of the same kind.");
-            }
             mode.ResolveIncludes(parserOutput);
             foreach (var hotkey in mode.Hotkeys)
-            {
               AddHotkey(hotkey, mode.HasAmbiguousChord);
-            }
           }
           IncludeState = MyIncludeState.Done;
           break;
@@ -85,6 +77,6 @@ namespace InputMaster
       }
     }
 
-    enum MyIncludeState { Idle, Running, Done }
+    private enum MyIncludeState { Idle, Running, Done }
   }
 }

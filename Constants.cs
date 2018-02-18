@@ -2,7 +2,7 @@
 
 namespace InputMaster
 {
-  internal static class Constants
+  public static class Constants
   {
     #region Parser
     public static char TokenStart { get; } = '{';
@@ -24,12 +24,7 @@ namespace InputMaster
     private static string CreateTokenPattern(string text) => Regex.Escape(TokenStart.ToString()) + text + Regex.Escape(TokenEnd.ToString());
     #endregion
 
-    #region TextEditor
-    public static string HiddenTag { get; } = "[hidden]";
-    public static string SharedPasswordFileTag { get; } = "[sharedPassword]";
-    public static string HotkeyFileTag { get; } = "[hotkeys]";
-    public static string AccountFileTag { get; } = "[accounts]";
-    public static Regex SharedFileRegex { get; } = new Regex(@"\[shared_(?<id>[0-9a-z]+)\]");
-    #endregion
+    public static string ReadOnlyCommandLineArgument { get; } = "readonly";
+    public static string StartReadOnlyCommandLineArgument { get; } = "startreadonly";
   }
 }

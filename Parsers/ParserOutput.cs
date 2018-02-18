@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace InputMaster.Parsers
 {
-  internal class ParserOutput
+  public class ParserOutput
   {
     public HotkeyCollection HotkeyCollection { get; } = new HotkeyCollection();
     public List<Mode> Modes { get; } = new List<Mode>();

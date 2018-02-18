@@ -2,7 +2,7 @@
 
 namespace InputMaster
 {
-  internal struct Combo : IEquatable<Combo>
+  public struct Combo : IEquatable<Combo>
   {
     public static readonly Combo None = new Combo();
     public static readonly Combo Backspace = new Combo(Input.Bs);

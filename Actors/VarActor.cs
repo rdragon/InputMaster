@@ -1,20 +1,38 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
 namespace InputMaster.Actors
 {
-  internal class VarActor : Actor
+  public class VarActor : Actor
   {
-    private readonly Dictionary<string, string> Dict = new Dictionary<string, string>();
-    private readonly MyState State;
+    private MyState _state;
+    private string CurrentGroup = "default";
 
-    public VarActor()
+    private VarActor() { }
+
+    private async Task<VarActor> InitializeAsync()
     {
-      State = new MyState(this);
-      State.Load();
+      var stateHandler = Env.StateHandlerFactory.Create(new MyState(), nameof(VarActor),
+          StateHandlerFlags.Exportable | StateHandlerFlags.UserEditable | StateHandlerFlags.SavePeriodically);
+      _state = await stateHandler.LoadAsync();
+      Env.App.AddSaveAction(stateHandler.SaveAsync);
+      return this;
+    }
+
+    public static Task<VarActor> GetVarActorAsync()
+    {
+      return new VarActor().InitializeAsync();
+    }
+
+    [Command]
+    private void SetVarGroup(string name)
+    {
+      CurrentGroup = name;
+      if (!_state.Dict.ContainsKey(CurrentGroup))
+        _state.Dict[CurrentGroup] = new Dictionary<string, string>();
+      Env.Notifier.Info($"CurrentGroup: {CurrentGroup}");
     }
 
     [Command]
@@ -27,40 +45,30 @@ namespace InputMaster.Actors
     private async Task SetVarFormattedAsync(string name, [AllowSpaces]string format, string value = null)
     {
       if (value == null)
-      {
         value = await ForegroundInteractor.GetSelectedTextAsync();
-      }
-      Dict[name] = string.Format(format, value);
-      State.Changed = true;
-      Env.Notifier.Write($"{name}: {Dict[name]}");
+      _state.Dict[CurrentGroup][name] = string.Format(format, value);
+      Env.Notifier.Info($"{name}: {_state.Dict[CurrentGroup][name]}  [{CurrentGroup}]");
     }
 
     [Command]
     private void PrintVar(string name)
     {
-      if (Dict.TryGetValue(name, out var value))
-      {
+      if (_state.Dict[CurrentGroup].TryGetValue(name, out var value))
         Env.CreateInjector().Add(value, Env.Config.LiteralInputReader).Run();
-      }
       else
-      {
-        Env.Notifier.Write($"Var {name} not found.");
-      }
+        Env.Notifier.Info($"Var {name} not found.");
     }
 
     [Command]
     private Task ExportVars()
     {
-      return ForegroundInteractor.PasteAsync(Helper.JsonSerialize(Dict, Formatting.Indented));
+      return ForegroundInteractor.PasteAsync(Helper.JsonSerialize(_state.Dict[CurrentGroup], Formatting.Indented));
     }
 
     [Command]
     private async Task ImportVarsAsync(string text = null)
     {
-      if (text == null)
-      {
-        text = await ForegroundInteractor.GetSelectedTextAsync();
-      }
+      text = text ?? await ForegroundInteractor.GetSelectedTextAsync();
       var dict = JsonConvert.DeserializeObject<Dictionary<string, string>>(text);
       foreach (var pair in dict)
       {
@@ -68,27 +76,14 @@ namespace InputMaster.Actors
       }
     }
 
-    private class MyState : State<VarActor>
+    private class MyState : IState
     {
-      public MyState(VarActor varActor) : base(nameof(VarActor), varActor, Env.Config.DataDir) { }
+      public Dictionary<string, Dictionary<string, string>> Dict { get; set; }
 
-      protected override void Load(BinaryReader reader)
+      public (bool, string message) Fix()
       {
-        while (reader.BaseStream.Position < reader.BaseStream.Length)
-        {
-          var key = reader.ReadString();
-          var value = reader.ReadString();
-          Parent.Dict.Add(key, value);
-        }
-      }
-
-      protected override void Save(BinaryWriter writer)
-      {
-        foreach (var pair in Parent.Dict)
-        {
-          writer.Write(pair.Key);
-          writer.Write(pair.Value);
-        }
+        Dict = Dict ?? new Dictionary<string, Dictionary<string, string>>();
+        return (true, "");
       }
     }
   }

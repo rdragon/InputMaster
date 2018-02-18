@@ -2,7 +2,7 @@
 
 namespace InputMaster.Hooks
 {
-  internal class ComboHook : IComboHook
+  public class ComboHook : IComboHook
   {
     private readonly Combo[] Buffer = new Combo[Env.Config.MaxChordLength];
     private readonly Chord Chord = new Chord(Env.Config.MaxChordLength);
@@ -45,9 +45,7 @@ namespace InputMaster.Hooks
         {
           Chord.InsertAtStart(Buffer[--i % Buffer.Length]);
           if (HotkeyCollection.TryGetAction(Chord, out var action1))
-          {
             action = action1;
-          }
         }
       }
       else

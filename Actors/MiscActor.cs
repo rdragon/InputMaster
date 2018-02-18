@@ -5,10 +5,11 @@ using InputMaster.Parsers;
 using System.Drawing;
 using System.IO;
 using System.Drawing.Imaging;
+using System.Threading.Tasks;
 
 namespace InputMaster.Actors
 {
-  internal class MiscActor : Actor
+  public class MiscActor : Actor
   {
     [Command]
     private static void ExitInputMaster()
@@ -17,16 +18,17 @@ namespace InputMaster.Actors
     }
 
     [Command]
-    private static void RestartInputMaster()
+    private static void RestartInputMaster([AllowSpaces]string arguments = "")
     {
       Env.ShouldRestart = true;
+      Env.RestartArguments = arguments;
       Application.Exit();
     }
 
     [Command]
-    private static void RunElevated([AllowSpaces] string filePath, [AllowSpaces]string arguments = "")
+    private static Task RunElevated([AllowSpaces] string filePath, [AllowSpaces]string arguments = "")
     {
-      Helper.StartProcess(filePath, arguments);
+      return Helper.StartProcessAsync(filePath, arguments);
     }
 
     [Command]
@@ -38,7 +40,7 @@ namespace InputMaster.Actors
     [Command]
     private static void WriteLine([AllowSpaces] string text)
     {
-      Env.Notifier.Write(text);
+      Env.Notifier.Info(text);
     }
 
     [Command]
@@ -99,7 +101,7 @@ namespace InputMaster.Actors
     [Command]
     private static void WriteMousePosition()
     {
-      Env.Notifier.Write(Cursor.Position.X + ", " + Cursor.Position.Y);
+      Env.Notifier.Info(Cursor.Position.X + ", " + Cursor.Position.Y);
     }
 
     [Command]
@@ -120,14 +122,10 @@ namespace InputMaster.Actors
     [Command]
     private static void PutComputerToSleep()
     {
-      if (Env.FlagManager.IsSet("NoStandby"))
-      {
-        Env.Notifier.Write("Standby suppressed.");
-      }
+      if (Env.FlagManager.HasFlag("NoStandby"))
+        Env.Notifier.Info("Standby suppressed.");
       else
-      {
         Application.SetSuspendState(PowerState.Suspend, false, true);
-      }
     }
 
     [Command(CommandTypes.Chordless | CommandTypes.ExecuteAtParseTime)]
@@ -136,9 +134,7 @@ namespace InputMaster.Actors
       foreach (var s in locatedArgument.Split(" "))
       {
         if (s.Length == 1)
-        {
           throw new ParseException(s, "Expecting more than one character.");
-        }
         if (s.Length > 0)
         {
           var chord = Env.Config.DefaultChordReader.CreateChord(s.Substring(0, s.Value.Length - 1));
@@ -151,26 +147,21 @@ namespace InputMaster.Actors
     [Command]
     private static void Standby()
     {
-      if (Env.FlagManager.IsSet("NoStandby"))
-      {
-        Env.Notifier.Write("Standby suppressed.");
-      }
+      if (Env.FlagManager.HasFlag("NoStandby"))
+        Env.Notifier.Info("Standby suppressed.");
       else
-      {
         Application.SetSuspendState(PowerState.Suspend, false, true);
-      }
     }
 
     [Command]
-    public static void SaveScreen()
+    public static async Task SaveScreen()
     {
       var bitmap = new Bitmap(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height);
       var graphics = Graphics.FromImage(bitmap);
       graphics.CopyFromScreen(0, 0, 0, 0, bitmap.Size);
-      if (!Helper.TryGetString("Name", out var name, Helper.GetValidFileName(DateTime.Now.ToString(), '-')))
-      {
+      var name = await Helper.TryGetStringAsync("Name", Helper.GetValidFileName(DateTime.Now.ToString(), '-'));
+      if (name == null)
         return;
-      }
       Directory.CreateDirectory(Env.Config.ScreenshotsDir);
       bitmap.Save(Path.Combine(Env.Config.ScreenshotsDir, name + ".jpg"), ImageFormat.Jpeg);
     }

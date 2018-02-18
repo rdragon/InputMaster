@@ -5,7 +5,7 @@ using InputMaster.Win32;
 
 namespace InputMaster.Actors
 {
-  internal class ColorTracker : Actor
+  public class ColorTracker : Actor
   {
     private readonly Timer Timer = new Timer { Interval = 100 };
 
@@ -18,7 +18,7 @@ namespace InputMaster.Actors
 
       Env.FlagManager.FlagsChanged += () =>
       {
-        if (Env.FlagManager.IsSet(nameof(ColorTracker)))
+        if (Env.FlagManager.HasFlag(nameof(ColorTracker)))
         {
           Timer.Start();
         }
@@ -35,7 +35,13 @@ namespace InputMaster.Actors
     [Command]
     public static void WriteColor()
     {
-      Env.Notifier.Write(GetColor(Cursor.Position).ToString());
+      var color = GetColor(Cursor.Position);
+      Env.Notifier.Info(color.ToString() + " " + GetHex(color));
+    }
+
+    private static string GetHex(Color color)
+    {
+      return "#" + color.R.ToString("x2") + color.G.ToString("x2") + color.B.ToString("x2");
     }
 
     private static Color GetColor(Point p)

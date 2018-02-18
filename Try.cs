@@ -4,15 +4,15 @@ using System.Windows.Forms;
 
 namespace InputMaster
 {
-  internal static class Try
+  public static class Try
   {
-    private static Exception FatalException;
+    private static bool _fatalExceptionHandled;
 
     /// <summary>
     /// Execute the action and capture any exception thrown during the execution.
     /// </summary>
     /// <param name="action"></param>
-    public static void Execute(Action action)
+    public static async Task Execute(Action action)
     {
       try
       {
@@ -20,7 +20,7 @@ namespace InputMaster
       }
       catch (Exception ex)
       {
-        HandleFatalException(ex);
+        await HandleFatalException(ex);
       }
     }
 
@@ -32,46 +32,42 @@ namespace InputMaster
       }
       catch (Exception ex)
       {
-        HandleFatalException(ex);
+        await HandleFatalException(ex);
       }
     }
 
-    public static void HandleFatalException(Exception exception)
+    public static async Task HandleFatalException(Exception exception)
     {
-      FatalException = FatalException ?? exception;
-      // Try to log the exception.
+      if (_fatalExceptionHandled)
+        return;
+      _fatalExceptionHandled = true;
       try
       {
-        Env.Notifier.WriteError(exception.ToString());
+        Env.Notifier?.LogError(exception.ToString());
       }
-      // ReSharper disable once EmptyGeneralCatchClause
       catch (Exception)
       {
         // Nothing can be done here as there has already been thrown a fatal exception, and logging does not seem to work.
       }
+      try
+      {
+        await Helper.ShowSelectableTextAsync("Fatal error", exception.ToString());
+      }
+      catch (Exception)
+      {
+        // We are not interested in this exception.
+      }
+      Application.Exit();
     }
 
     public static Action Wrap(Action action)
     {
-      return () => { Execute(action); };
+      return async () => { await Execute(action); };
     }
 
-    public static void ShowFatalExceptionIfExists()
+    public static Func<Task> Wrap(Func<Task> action)
     {
-      if (FatalException == null)
-      {
-        return;
-      }
-      MessageBox.Show(FatalException.ToString(), "Fatal Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-    }
-
-    public static void ThrowFatalExceptionIfExists()
-    {
-      if (FatalException == null)
-      {
-        return;
-      }
-      throw FatalException;
+      return () => { return ExecuteAsync(action); };
     }
   }
 }

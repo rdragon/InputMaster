@@ -88,10 +88,23 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Actors\Account.cs" />
-    <Compile Include="Actors\AccountManager.cs" />
+    <Compile Include="Account.cs" />
+    <Compile Include="AccountManager.cs" />
+    <Compile Include="Actors\AccountUploader.cs" />
+    <Compile Include="Actors\CustomNotifyIcon.cs" />
+    <Compile Include="Actors\GitExecutor.cs" />
+    <Compile Include="Actors\SimpleGitExecutor.cs" />
+    <Compile Include="Actors\PasswordMatrixGenerator.cs" />
+    <Compile Include="Actors\CyptroUpdater.cs" />
+    <Compile Include="Enums.cs" />
+    <Compile Include="JsonStateHandler.cs" />
+    <Compile Include="JsonStateHandlerFactory.cs" />
+    <Compile Include="PasswordMatrix.cs" />
     <Compile Include="Instances\App.cs" />
     <Compile Include="Constants.cs" />
+    <Compile Include="Settings.cs" />
+    <Compile Include="StateExporter.cs" />
+    <Compile Include="TextEditor\TitleNamePair.cs" />
     <Compile Include="ValueProvider.cs" />
     <Compile Include="Attributes.cs" />
     <Compile Include="Parsers\DynamicHotkeyCollection.cs" />
@@ -122,8 +135,7 @@
     <Compile Include="Instances\CommandCollection.cs" />
     <Compile Include="Parsers\Location.cs" />
     <Compile Include="HotkeyCollection.cs" />
-    <Compile Include="TextEditor\SharedFile.cs" />
-    <Compile Include="TextEditor\SharedFileManager.cs" />
+    <Compile Include="TextEditor\TitleTextPair.cs" />
     <Compile Include="TextEditor\FileTab.cs" />
     <Compile Include="TextEditor\FileManager.cs" />
     <Compile Include="TitleFilter.cs" />
@@ -134,7 +146,7 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Forms\RtbPosition.cs" />
-    <Compile Include="TextEditor\Cipher.cs" />
+    <Compile Include="Instances\Cipher.cs" />
     <Compile Include="Win32\NativeMethods.cs" />
     <Compile Include="Instances\NotifyForm.cs">
       <SubType>Form</SubType>
@@ -154,7 +166,6 @@
     <Compile Include="Hooks\ModeHook.cs" />
     <Compile Include="StandardSection.cs" />
     <Compile Include="Instances\Scheduler.cs" />
-    <Compile Include="State.cs" />
     <Compile Include="Try.cs" />
     <Compile Include="Hooks\InputHook.cs" />
     <Compile Include="Instances\ForegroundListener.cs" />
@@ -239,14 +250,23 @@
   <ItemGroup>
     <None Include="Resources\Tests.im" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <None Include="Resources\PasswordMatrix6x5.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\PasswordMatrixOutput.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\AlertIcon.ico" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>IF "$(ConfigurationName)"=="Release" IF EXIST "$(TargetPath)" powershell start-process $(TargetPath)
-</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PreBuildEvent>IF "$(ConfigurationName)"=="Release" IF EXIST "$(TargetPath)" "$(TargetPath)" exit</PreBuildEvent>
+    <PreBuildEvent>
+    </PreBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

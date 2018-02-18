@@ -6,59 +6,67 @@ using System.Threading.Tasks;
 
 namespace InputMaster.Instances
 {
-  internal class FlagManager : Actor, IFlagManager
+  public class FlagManager : Actor, IFlagManager
   {
-    private readonly HashSet<string> Flags = new HashSet<string>();
-    private readonly MyState State;
-    private List<HashSet<string>> FlagSets;
+    private MyState _state;
+    private List<HashSet<string>> _flagSets; // Sets of mutual exclusive flags.
 
-    public FlagManager()
+    private FlagManager()
     {
-      Env.Parser.NewParserOutput += parserOutput => FlagSets = parserOutput.FlagSets;
-      State = new MyState(this);
-      State.Load();
+      Env.Parser.NewParserOutput += parserOutput => _flagSets = parserOutput.FlagSets;
+    }
+
+    public static Task<FlagManager> GetFlagManagerAsync()
+    {
+      return new FlagManager().InitializeAsync();
+    }
+
+    private async Task<FlagManager> InitializeAsync()
+    {
+      var stateHandler = Env.StateHandlerFactory.Create(new MyState(), Path.Combine(Env.Config.CacheDir, nameof(FlagManager)),
+        StateHandlerFlags.SavePeriodically);
+      _state = await stateHandler.LoadAsync();
+      return this;
     }
 
     public event Action FlagsChanged = delegate { };
 
-    public bool IsSet(string flag)
+    public bool HasFlag(string flag)
     {
-      return Flags.Contains(flag);
+      return _state.Flags.Contains(flag);
     }
 
     public IEnumerable<string> GetFlags()
     {
-      return Flags.ToList();
+      return _state.Flags.ToList();
     }
 
     public void ClearFlags()
     {
-      Flags.Clear();
-      State.Changed = true;
+      if (!_state.Flags.Any())
+        return;
+      _state.Flags.Clear();
+      Env.StateCounter++;
       FlagsChanged();
     }
 
     public override string ToString()
     {
-      return string.Join(", ", Flags);
+      return string.Join(", ", _state.Flags);
     }
 
     [Command]
     public void SetFlag(string flag)
     {
-      if (!IsSet(flag))
-      {
+      if (!HasFlag(flag))
         ToggleFlag(flag);
-      }
     }
 
     [Command]
     public void ClearFlag(string flag)
     {
-      if (IsSet(flag))
-      {
+      if (HasFlag(flag))
         ToggleFlag(flag);
-      }
     }
 
     [Command]
@@ -68,67 +76,39 @@ namespace InputMaster.Instances
     }
 
     [Command]
-    public async Task SetCustomFlagAsync()
+    public async Task ToggleCustomFlagAsync()
     {
-      await Task.Yield();
-      if (!Helper.TryGetString("Flag", out var s))
-      {
-        return;
-      }
-      SetFlag(s);
-    }
-
-    [Command]
-    public async Task ClearCustomFlagAsync()
-    {
-      await Task.Yield();
-      if (!Helper.TryGetString("Flag", out var s))
-      {
-        return;
-      }
-      ClearFlag(s);
+      var flag = await Helper.TryGetStringAsync("Flag");
+      if (flag != null)
+        ToggleFlag(flag);
     }
 
     private void ToggleFlag(string flag, bool raiseEvent)
     {
-      if (FlagSets != null && !Flags.Contains(flag))
+      if (_flagSets != null && !_state.Flags.Contains(flag))
       {
-        foreach (var otherFlag in FlagSets.Where(z => z.Contains(flag)).SelectMany(z => z).Where(z => z != flag))
-        {
-          if (Flags.Contains(otherFlag))
-          {
+        foreach (var otherFlag in _flagSets.Where(z => z.Contains(flag)).SelectMany(z => z).Where(z => z != flag))
+          if (_state.Flags.Contains(otherFlag))
             ToggleFlag(otherFlag, false);
-          }
-        }
       }
-      Flags.SymmetricExceptWith(new[] { flag });
-      State.Changed = true;
+      _state.Flags.SymmetricExceptWith(new[] { flag });
+      Env.StateCounter++;
       if (raiseEvent)
       {
-        var text = Flags.Contains(flag) ? "Enabled" : "Disabled";
-        Env.Notifier.Write($"{text} flag '{flag}'.");
+        var text = _state.Flags.Contains(flag) ? "Enabled" : "Disabled";
+        Env.Notifier.Info($"{text} flag '{flag}'.");
         FlagsChanged();
       }
     }
 
-    private class MyState : State<FlagManager>
+    public class MyState : IState
     {
-      public MyState(FlagManager flagManager) : base(nameof(FlagManager), flagManager) { }
+      public HashSet<string> Flags { get; set; }
 
-      protected override void Load(BinaryReader reader)
+      public (bool, string message) Fix()
       {
-        while (reader.BaseStream.Position < reader.BaseStream.Length)
-        {
-          Parent.Flags.Add(reader.ReadString());
-        }
-      }
-
-      protected override void Save(BinaryWriter writer)
-      {
-        foreach (var flag in Parent.Flags)
-        {
-          writer.Write(flag);
-        }
+        Flags = Flags ?? new HashSet<string>();
+        return (true, "");
       }
     }
   }

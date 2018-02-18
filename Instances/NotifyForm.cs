@@ -11,13 +11,13 @@ using InputMaster.Forms;
 
 namespace InputMaster.Instances
 {
-  internal sealed class NotifyForm : ThemeForm, INotifier
+  public sealed class NotifyForm : ThemeForm, INotifier
   {
     private readonly Label Label = new Label { AutoSize = true, Location = new Point(9, 9) };
     private readonly Queue<string> Messages = new Queue<string>();
     private readonly StringBuilder Log = new StringBuilder();
     private string PersistentText;
-    private bool Alive = true;
+    private State _state = State.Running;
 
     public NotifyForm()
     {
@@ -31,14 +31,28 @@ namespace InputMaster.Instances
       TopMost = true;
       StartPosition = FormStartPosition.Manual;
       Left = 99999;
+      if (Program.ReadOnly)
+        BackColor = Color.FromArgb(255, 204, 0);
       ResumeLayout(false);
 
-      Shown += (s, e) =>
+      Shown += async (s, e) =>
       {
-        // This method is used instead of setting `this.Enabled` to false, so that the visuals are not affected.
-        NativeMethods.EnableWindow(Handle, false);
-        File.WriteAllText(Env.Config.WindowHandleFile, Handle.ToString());
-        new Factory(this).Run();
+        try
+        {
+          // This method is used instead of setting `this.Enabled` to false, so that the visuals are not affected.
+          NativeMethods.EnableWindow(Handle, false);
+          Directory.CreateDirectory(Env.Config.DataDir);
+          Directory.CreateDirectory(Env.Config.CacheDir);
+          if (!File.Exists(Env.Config.HotkeyFile) && !Program.ReadOnly)
+            File.WriteAllText(Env.Config.HotkeyFile, "");
+          if (!Program.ReadOnly)
+            File.WriteAllText(Env.Config.WindowHandleFile, Handle.ToString());
+          await new Factory(this).Run();
+        }
+        catch (Exception ex)
+        {
+          await Helper.HandleExceptionAsync(new FatalException("Error during startup.", ex));
+        }
       };
 
       SizeChanged += (s, e) =>
@@ -46,16 +60,27 @@ namespace InputMaster.Instances
         UpdateFormPosition();
       };
 
-      FormClosing += (s, e) =>
+      FormClosing += async (s, e) =>
       {
-        if (!Alive)
-        {
+        if (_state == State.CanBeClosed)
           return;
-        }
-        Alive = false;
-        Application.Exit();
-        File.Delete(Env.Config.WindowHandleFile);
+        e.Cancel = true;
+        if (_state == State.WaitingToClose)
+          return;
+        _state = State.WaitingToClose;
+        await Task.Yield();
+        await ExitAsync();
       };
+    }
+
+    private async Task ExitAsync()
+    {
+      await Env.App.TriggerSaveAsync();
+      await Env.App.TriggerExitAsync();
+      if (!Program.ReadOnly)
+        File.Delete(Env.Config.WindowHandleFile);
+      _state = State.CanBeClosed;
+      Application.Exit();
     }
 
     public ISynchronizeInvoke SynchronizingObject => this;
@@ -66,7 +91,7 @@ namespace InputMaster.Instances
       return $"{date} {text}";
     }
 
-    public void Write(string message)
+    public void Info(string message)
     {
       message = message ?? "";
       WriteToLog(message);
@@ -76,18 +101,29 @@ namespace InputMaster.Instances
         .ContinueWith(t => DequeueMessage(), TaskScheduler.FromCurrentSynchronizationContext());
     }
 
-    public void WriteWarning(string message)
+    public void Warning(string message)
     {
       message = $"Warning: {message}";
       WriteToFile(message);
-      Write(message);
+      Info(message);
     }
 
-    public void WriteError(string message)
+    public void Error(string message)
+    {
+      Error(message, true);
+    }
+
+    public void LogError(string message)
+    {
+      Error(message, false);
+    }
+
+    private void Error(string message, bool showToUser)
     {
       message = $"Error: {message}";
       WriteToFile(message);
-      Write(message);
+      if (showToUser)
+        Info(message);
     }
 
     public void SetPersistentText(string text)
@@ -103,10 +139,8 @@ namespace InputMaster.Instances
 
     public void CaptureForeground()
     {
-      if (!Alive)
-      {
+      if (_state != State.Running)
         return;
-      }
       Helper.SetForegroundWindowForce(Handle);
     }
 
@@ -118,48 +152,43 @@ namespace InputMaster.Instances
 
     private static void WriteToFile(string message)
     {
+      if (Program.ReadOnly)
+        return;
       message = AppendTimestamp(message);
       File.AppendAllLines(Env.Config.ErrorLogFile, new[] { message });
     }
 
     private void UpdateLabel()
     {
-      if (!Alive)
-      {
+      if (_state != State.Running)
         return;
-      }
       var sb = new StringBuilder();
       if (!string.IsNullOrEmpty(PersistentText))
-      {
         sb.Append($"{PersistentText}\n");
-      }
       foreach (var text in Messages)
-      {
         sb.Append($"{text}\n");
-      }
       Label.Text = sb.ToString();
     }
 
     private void UpdateFormPosition()
     {
       if (Label.Text.Length == 0)
-      {
         Left = 99999;
-      }
       else if (!string.IsNullOrEmpty(PersistentText))
-      {
         Location = new Point(Screen.PrimaryScreen.WorkingArea.Left, Screen.PrimaryScreen.WorkingArea.Top);
-      }
       else
-      {
         Location = new Point(Screen.PrimaryScreen.WorkingArea.Left, Screen.PrimaryScreen.WorkingArea.Bottom - Height);
-      }
     }
 
     private void DequeueMessage()
     {
       Messages.Dequeue();
       UpdateLabel();
+    }
+
+    private enum State
+    {
+      Running, WaitingToClose, CanBeClosed
     }
   }
 }

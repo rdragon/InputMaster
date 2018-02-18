@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace InputMaster.Actors
 {
-  internal class ForegroundInteractor : Actor
+  public class ForegroundInteractor : Actor
   {
     [Command]
     public static Task SumSelection()
@@ -33,6 +33,16 @@ namespace InputMaster.Actors
     }
 
     [Command]
+    public static Task SortSelectedWords()
+    {
+      return ModifySelectedLinesAsync(words =>
+      {
+        words.Sort();
+        return words;
+      });
+    }
+
+    [Command]
     public static Task ReverseSelectedLines()
     {
       return ModifySelectedLinesAsync(lines =>
@@ -43,31 +53,50 @@ namespace InputMaster.Actors
     }
 
     [Command]
+    public static Task ReverseSelectedWords()
+    {
+      return ModifySelectedWordsAsync(words =>
+      {
+        words.Reverse();
+        return words;
+      });
+    }
+
+    [Command]
     public static Task RandomlyPermuteSelectedLines()
     {
-      return ModifySelectedLinesAsync(lines =>
+      return RandomlyPermuteSelected(ModifySelectedLinesAsync);
+    }
+
+    [Command]
+    public static Task RandomlyPermuteSelectedWords()
+    {
+      return RandomlyPermuteSelected(ModifySelectedWordsAsync);
+    }
+
+    private static Task RandomlyPermuteSelected(ListMapper mapper)
+    {
+      return mapper(xs =>
       {
         var r = new Random();
-        var n = lines.Count;
-        var newLines = new List<string>();
+        var n = xs.Count;
+        var ys = new List<string>();
         for (var i = 0; i < n; i++)
         {
-          var j = r.Next(lines.Count);
-          newLines.Add(lines[j]);
-          lines.RemoveAt(j);
+          var j = r.Next(xs.Count);
+          ys.Add(xs[j]);
+          xs.RemoveAt(j);
         }
-        return newLines;
+        return ys;
       });
     }
 
     [Command]
     public static async Task ReplicateSelectedTextAsync()
     {
-      await Task.Yield();
-      if (!Helper.TryGetString("Count", out var s))
-      {
+      var s = await Helper.TryGetStringAsync("Count");
+      if (s == null)
         return;
-      }
       var i = int.Parse(s);
       await ModifySelectedTextAsync(t => string.Concat(Enumerable.Repeat(t, i)));
     }
@@ -80,19 +109,33 @@ namespace InputMaster.Actors
       Helper.ShowSelectableText(Helper.AlignColumns(
         string.Join("\n",
         Directory.EnumerateDirectories(dir)
-        .Select(z => new { Dir = z, Size = Directory.EnumerateFiles(z, "*", SearchOption.AllDirectories).Aggregate(0L, (x, y) => x + y.Length) })
+        .Select(z => new
+        {
+          Dir = z,
+          Size = TryGetDirSize(z)
+        })
         .OrderBy(z => -z.Size)
         .Select(z => Path.GetFileName(z.Dir) + "  " + Helper.ByteCountToString(z.Size)))));
+    }
+
+    private static long TryGetDirSize(string dir)
+    {
+      try
+      {
+        return Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories).Aggregate(0L, (x, y) => x + new FileInfo(y).Length);
+      }
+      catch (Exception)
+      {
+        return -1;
+      }
     }
 
     [Command]
     public static async Task PartitionSelectedLinesAsync()
     {
-      await Task.Yield();
-      if (!Helper.TryGetString("pattern", out var pattern))
-      {
+      var pattern = await Helper.TryGetStringAsync("pattern");
+      if (pattern == null)
         return;
-      }
       await ModifySelectedLinesAsync(lines =>
       {
         var r = new Regex(pattern);
@@ -120,7 +163,7 @@ namespace InputMaster.Actors
       return Helper.ClearClipboardAsync();
     }
 
-    private static async Task ModifySelectedTextAsync(Func<string, string> func)
+    public static async Task ModifySelectedTextAsync(Func<string, string> func)
     {
       var s = await GetSelectedTextAsync();
       var t = func(s);
@@ -130,6 +173,11 @@ namespace InputMaster.Actors
     private static Task ModifySelectedLinesAsync(Func<List<string>, IEnumerable<string>> func)
     {
       return ModifySelectedTextAsync(s => string.Join("\n", func(s.Split('\n').ToList())));
+    }
+
+    private static Task ModifySelectedWordsAsync(Func<List<string>, IEnumerable<string>> func)
+    {
+      return ModifySelectedTextAsync(s => string.Join(" ", func(Regex.Split(s, " +").ToList())));
     }
 
     public static async Task ModifyClipboardTextAsync(Func<string, string> func)
@@ -146,5 +194,7 @@ namespace InputMaster.Actors
       Env.CreateInjector().Add(action).Run();
       return await Helper.GetClipboardTextAsync();
     }
+
+    private delegate Task ListMapper(Func<List<string>, IEnumerable<string>> func);
   }
 }

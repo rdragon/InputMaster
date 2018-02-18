@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace InputMaster
 {
-  internal class FileChangedWatcher : IDisposable
+  public class FileChangedWatcher : IDisposable
   {
     private readonly FileSystemWatcher FileSystemWatcher;
     private readonly string File;
@@ -28,9 +28,9 @@ namespace InputMaster
       FileSystemWatcher.Dispose();
     }
 
-    public async void RaiseChangedEventAsync()
+    public Task RaiseChangedEventAsync()
     {
-      await ChangedAsync();
+      return ChangedAsync();
     }
 
     private async Task ChangedAsync()

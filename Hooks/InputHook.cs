@@ -5,7 +5,7 @@ using InputMaster.Parsers;
 
 namespace InputMaster.Hooks
 {
-  internal class InputHook : Actor, IInputHook
+  public class InputHook : Actor, IInputHook
   {
     /// <summary>
     /// All virtually active modifiers. Some can have a key that is up (the stuck modifiers).
@@ -20,7 +20,7 @@ namespace InputMaster.Hooks
     /// </summary>
     private Modifiers AlmostStuckModifiers;
     /// <summary>
-    /// Modifiers that the system sees as active and which will be released according to <see cref="TimeOfRelease"/>. There is no connection with the virtually active modifiers.
+    /// Modifiers that the system sees as active and which will be released according to <see cref="TimeOfRelease"/>.
     /// </summary>
     private Modifiers ModifiersToRelease;
     /// <summary>
@@ -39,53 +39,32 @@ namespace InputMaster.Hooks
       TargetHook = targetHook;
     }
 
-
     public void Handle(InputArgs e)
     {
+      var eventInjected = false; // There is one case in which we inject the given event ourselves.
+      var isModifier = e.Input.IsModifierKey();
+      var standardModifiers = Modifiers.ToStandardModifiers();
+
+      // Try to release the modifiers to release.
       if (ModifiersToRelease != Modifiers.None && TimeOfRelease == ReleaseTime.AtNextEvent)
       {
         Env.CreateInjector().Add(ModifiersToRelease, false).Run();
         ModifiersToRelease = Modifiers.None;
       }
 
+      // When there are still modifiers to release, all down events are captured (ignored). This makes things easier, as we can now assume that there are no modifiers to release for down events that are not yet captured.
       if (ModifiersToRelease != Modifiers.None && e.Down)
       {
         e.Capture = true;
       }
 
-      // Handle a key down event.
+      // Handle a down event.
       if (e.Down && !e.Capture)
       {
-        var combo = new Combo(e.Input, Modifiers);
-        var b = BackspaceAction;
-        BackspaceAction = null;
-        // If there is an action pending for backspace, execute it.
-        if (b != null && combo == Combo.Backspace)
-        {
-          b();
-          e.Capture = true;
-        }
-        // Clear the stuck modifiers with the close key.
-        else if (StuckModifiers != Modifiers.None && e.Input == Env.Config.CloseKey)
-        {
-          e.Capture = true;
-        }
-        // Otherwise, if there are no modifiers needed to release, let the next hook decide what to do.
-        else if (ModifiersToRelease == Modifiers.None)
-        {
-          var comboArgs = new ComboArgs(combo);
-          TargetHook.Handle(comboArgs);
-          e.Capture = comboArgs.Capture;
-          // Capture a key down event that does not trigger an action when custom modifiers are active.
-          e.Capture = e.Capture || Modifiers.HasCustomModifiers() && !e.Input.IsModifierKey();
-        }
+        HandleDownEvent(e);
       }
 
-      var doNotAddToCaptured = false;
-      var isModifier = e.Input.IsModifierKey();
-
       // If there are standard modifiers virtually active and a non-modifier key down event is not captured, these modifiers need to be injected.
-      var standardModifiers = Modifiers.ToStandardModifiers();
       if (e.Down && !isModifier && !e.Capture && standardModifiers != Modifiers.None)
       {
         // A mouse event is handled separately.
@@ -93,7 +72,6 @@ namespace InputMaster.Hooks
         {
           // Inject the key down events of the modifiers. These injections occur during the hook procedure of the mouse event, and will therefore arrive in time.
           Env.CreateInjector().Add(standardModifiers, true).Run();
-
 
           ModifiersToRelease |= standardModifiers;
 
@@ -103,7 +81,7 @@ namespace InputMaster.Hooks
         else
         {
           e.Capture = true;
-          doNotAddToCaptured = true;
+          eventInjected = true;
           // Inject the modifier down events, the key down event, and the modifier up events.
           Env.CreateInjector().Add(standardModifiers, true).Add(e.Input, true).Add(standardModifiers, false).Run();
         }
@@ -125,36 +103,7 @@ namespace InputMaster.Hooks
       // A modifier key that is not captured affects the virtual modifier state.
       if (isModifier && !e.Capture)
       {
-        var modifier = e.Input.ToModifier();
-        if (e.Down)
-        {
-          // A modifier key down event has two cases:
-          //   1) If this key was in the stuck state, it is no longer stuck, but instead it is again almost stuck.
-          //   2) If this modifier was not yet active, then make it active and set it in the almost stuck state.
-          if (StuckModifiers.HasFlag(modifier))
-          {
-            StuckModifiers &= ~modifier;
-            AlmostStuckModifiers |= modifier;
-          }
-          else if (!Modifiers.HasFlag(modifier))
-          {
-            Modifiers |= modifier;
-            AlmostStuckModifiers |= modifier;
-          }
-        }
-        else
-        {
-          // For a modifier key up event, add the modifier to the stuck keys when it was almost stuck, but make it inactive otherwise.
-          if (AlmostStuckModifiers.HasFlag(modifier))
-          {
-            StuckModifiers |= modifier;
-            AlmostStuckModifiers &= ~modifier;
-          }
-          else
-          {
-            Modifiers &= ~modifier;
-          }
-        }
+        UpdateVirtualModifiers(e);
       }
 
       // Capture all modifiers and some non-modifier key up events.
@@ -166,7 +115,7 @@ namespace InputMaster.Hooks
       else
       {
         // For a non-modifier key down event, add the key to the captured keys.
-        if (e.Capture && e.Down && !doNotAddToCaptured)
+        if (e.Capture && e.Down && !eventInjected)
         {
           Captured.Add(e.Input);
         }
@@ -175,6 +124,67 @@ namespace InputMaster.Hooks
         {
           e.Capture = true;
           Captured.Remove(e.Input);
+        }
+      }
+    }
+
+    private void HandleDownEvent(InputArgs e)
+    {
+      var combo = new Combo(e.Input, Modifiers);
+      var b = BackspaceAction;
+      BackspaceAction = null;
+      // If there is an action pending for backspace, execute it.
+      if (b != null && combo == Combo.Backspace)
+      {
+        b();
+        e.Capture = true;
+      }
+      // Clear the stuck modifiers with the close key.
+      else if (StuckModifiers != Modifiers.None && e.Input == Env.Config.CloseKey)
+      {
+        e.Capture = true;
+      }
+      // Otherwise, if there are no modifiers needed to release, let the next hook decide what to do.
+      else if (ModifiersToRelease == Modifiers.None)
+      {
+        var comboArgs = new ComboArgs(combo);
+        TargetHook.Handle(comboArgs);
+        e.Capture = comboArgs.Capture;
+        // Capture a key down event that does not trigger an action when custom modifiers are active.
+        e.Capture = e.Capture || Modifiers.HasCustomModifiers() && !e.Input.IsModifierKey();
+      }
+    }
+
+    private void UpdateVirtualModifiers(InputArgs e)
+    {
+      var modifier = e.Input.ToModifier();
+      if (e.Down)
+      {
+        // A modifier key down event has two cases:
+        //   1) If this key was in the stuck state, it is no longer stuck, but instead it is again almost stuck.
+        //   2) If this modifier was not yet active, then make it active and set it in the almost stuck state.
+        if (StuckModifiers.HasFlag(modifier))
+        {
+          StuckModifiers &= ~modifier;
+          AlmostStuckModifiers |= modifier;
+        }
+        else if (!Modifiers.HasFlag(modifier))
+        {
+          Modifiers |= modifier;
+          AlmostStuckModifiers |= modifier;
+        }
+      }
+      else
+      {
+        // For a modifier key up event, add the modifier to the stuck keys when it was almost stuck, but make it inactive otherwise.
+        if (AlmostStuckModifiers.HasFlag(modifier))
+        {
+          StuckModifiers |= modifier;
+          AlmostStuckModifiers &= ~modifier;
+        }
+        else
+        {
+          Modifiers &= ~modifier;
         }
       }
     }
@@ -227,7 +237,7 @@ namespace InputMaster.Hooks
         .Run();
     }
 
-    private void Replace(ExecuteAtParseTimeData data, [AllowSpaces] LocatedString argument, bool surroundWithSpaces)
+    private void Replace(ExecuteAtParseTimeData data, LocatedString argument, bool surroundWithSpaces)
     {
       var chord = data.Chord;
       int backspaceCount, deleteCount;
@@ -263,7 +273,7 @@ namespace InputMaster.Hooks
       data.ParserOutput.AddHotkey(data.Section, chord, Action, description);
     }
 
-    enum ReleaseTime
+    private enum ReleaseTime
     {
       AfterMouseUpEvent, AtNextEvent
     }

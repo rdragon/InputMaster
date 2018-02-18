@@ -7,7 +7,7 @@ namespace InputMaster.Parsers
   /// <summary>
   /// Functionality for reading a string one character at a time. Keeps track of position in the string.
   /// </summary>
-  internal abstract class CharReader
+  public abstract class CharReader
   {
     private readonly string Text;
     private int Index;

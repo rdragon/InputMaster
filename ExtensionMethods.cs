@@ -4,10 +4,12 @@ using System.Text;
 using InputMaster.Parsers;
 using InputMaster.Win32;
 using System.Linq;
+using System.Threading.Tasks;
+using System.IO;
 
 namespace InputMaster
 {
-  internal static class ExtensionMethods
+  public static class ExtensionMethods
   {
     public static bool IsMouseMessage(this WindowMessage message)
     {
@@ -92,12 +94,12 @@ namespace InputMaster
 
     public static void WriteError(this INotifier notifier, Exception ex, string text)
     {
-      notifier.WriteError(text + " " + ex);
+      notifier.Error(text + " " + ex);
     }
 
     public static void WriteError(this INotifier notifier, Exception ex)
     {
-      notifier.WriteError(ex.ToString());
+      notifier.Error(ex.ToString());
     }
 
     public static T Add<T>(this IInjectorStream<T> stream, Input input, int count = 1)
@@ -180,6 +182,74 @@ namespace InputMaster
     public static void GetAction(this IParser parser, DynamicHotkeyEnum key, out Action<IInjectorStream<object>> action)
     {
       parser.GetAction(key.ToString(), out action);
+    }
+
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
+    public static byte[] Encrypt(this ICipher cipher, string text)
+    {
+      return cipher.Encrypt(Encoding.UTF8.GetBytes(text));
+    }
+
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
+    public static string EncryptToBase64(this ICipher cipher, string text)
+    {
+      return Convert.ToBase64String(cipher.Encrypt(text));
+    }
+
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
+    public static Task<string> EncryptToBase64Async(this ICipher cipher, string text)
+    {
+      return Task.Run(() => cipher.EncryptToBase64(text));
+    }
+
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
+    public static string DecryptToString(this ICipher cipher, byte[] data)
+    {
+      return Encoding.UTF8.GetString(cipher.Decrypt(data));
+    }
+
+    public static Task EncryptToFileAsync(this ICipher cipher, string file, string text, bool writeBase64 = false)
+    {
+      if (writeBase64)
+        return Task.Run(() => File.WriteAllText(file, cipher.EncryptToBase64(text)));
+      else
+        return Task.Run(() => File.WriteAllBytes(file, cipher.Encrypt(text)));
+    }
+
+    public static Task<string> DecryptFileAsync(this ICipher cipher, string file)
+    {
+      return Task.Run(() => cipher.DecryptToString(File.ReadAllBytes(file)));
+    }
+
+    public static async Task<string> TryDecryptFileAsync(this ICipher cipher, string file)
+    {
+      try
+      {
+        return await cipher.DecryptFileAsync(file);
+      }
+      catch (DecryptionFailedException)
+      {
+        return null;
+      }
+    }
+
+    public static IEnumerable<T> WhereNotNull<T>(this IEnumerable<T> it) => it?.Where(x => x != null);
+    public static IEnumerable<TResult> SelectNotNull<T, TResult>(this IEnumerable<T> it, Func<T, TResult> selector) =>
+        it?.Select(selector).WhereNotNull();
+
+    public static async Task<T> LoadAndSaveAsync<T>(this IStateHandler<T> stateHandler)
+    {
+      var state = await stateHandler.LoadAsync();
+      await stateHandler.SaveAsync();
+      return state;
     }
   }
 }

@@ -15,10 +15,12 @@ using InputMaster.Parsers;
 using InputMaster.Win32;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
+using System.Security.Cryptography;
+using Newtonsoft.Json.Serialization;
 
 namespace InputMaster
 {
-  internal static class Helper
+  public static class Helper
   {
     public static string CreateTokenString(string text)
     {
@@ -46,28 +48,28 @@ namespace InputMaster
       return m.WParam.ToInt32() >> 16;
     }
 
-    public static void StartProcess(string fileName, string arguments = "", bool captureForeground = false)
+    public static async Task StartProcessAsync(string fileName, string arguments = "", bool captureForeground = false)
     {
+      await Task.Yield(); // See TryGetStringAsync.
       if (captureForeground)
-      {
         Env.Notifier.CaptureForeground();
-      }
       try
       {
         Process.Start(fileName, arguments)?.Dispose();
       }
       catch (Exception ex)
       {
-        throw new WrappedException("Failed to start process" + GetBindingsSuffix(fileName, nameof(fileName), arguments, nameof(arguments)), ex);
+        throw new WrappedException("Failed to start process" +
+          GetBindingsSuffix(fileName, nameof(fileName), arguments, nameof(arguments)), ex);
       }
     }
 
-    public static void StartProcess(string fileName, string userName, SecureString password, string domain, string arguments = "", bool captureForeground = false)
+    public static async Task StartProcessAsync(string fileName, string userName, SecureString password, string domain, string arguments = "",
+      bool captureForeground = false)
     {
+      await Task.Yield(); // See TryGetStringAsync.
       if (captureForeground)
-      {
         Env.Notifier.CaptureForeground();
-      }
       try
       {
         ForbidNull(password);
@@ -85,15 +87,21 @@ namespace InputMaster
       }
     }
 
+    public static Task ShowError(string message)
+    {
+      Env.Notifier.LogError(message);
+      return ShowSelectableTextAsync("Error", message);
+    }
+
     /// <summary>
     /// Log the exception, and exit the application if it is a fatal exception.
     /// </summary>
     /// <param name="exception"></param>
-    public static void HandleException(Exception exception)
+    public static async Task HandleExceptionAsync(Exception exception)
     {
       if (IsFatalException(exception))
       {
-        HandleFatalException(exception);
+        await Try.HandleFatalException(exception);
         return;
       }
       try
@@ -102,41 +110,63 @@ namespace InputMaster
       }
       catch (Exception ex)
       {
-        HandleFatalException(ex);
+        await Try.HandleFatalException(ex);
       }
-    }
-
-    private static void HandleFatalException(Exception exception)
-    {
-      Try.HandleFatalException(exception);
-      Application.Exit();
     }
 
     public static void ShowSelectableText(object value, bool scrollToBottom = false)
     {
       var str = value.ToString();
-      if (str.Length > 0)
-      {
-        new ShowStringForm(str, scrollToBottom).Show();
-      }
+      new ShowStringForm("Message", str, scrollToBottom).Show();
     }
 
-    public static bool TryGetString(string title, out string value, string defaultValue = "", bool selectAll = true)
+    public static async Task ShowSelectableTextAsync(string title, object value)
     {
-      using (var form = new GetStringForm(title, defaultValue, selectAll))
+      var str = value.ToString();
+      await Task.Yield(); // See TryGetStringAsync.
+      new ShowStringForm(title, str, false).ShowDialog();
+    }
+
+    public static async Task<string> TryGetStringAsync(string title, string defaultValue = "", bool selectAll = true,
+      bool startWithFindDialog = false, bool forceForeground = true, bool containsJson = false, bool throwOnCancel = false)
+    {
+      await Task.Yield(); // This makes sure we are not blocking the hook procedure. 
+      using (var form = new GetStringForm(title, defaultValue, selectAll, startWithFindDialog, forceForeground, containsJson))
       {
         form.ShowDialog();
-        return form.TryGetValue(out value);
+        if (!form.TryGetValue(out var value) && throwOnCancel)
+          throw new ArgumentException("Aborted.");
+        return value;
       }
     }
 
-    public static bool TryGetLine(string title, out string value, string defaultValue = "", bool isPassword = false)
+    public static async Task<string> TryGetLineAsync(string title, string defaultValue = "", bool isPassword = false,
+      bool throwOnCancel = false)
     {
+      await Task.Yield(); // See TryGetStringAsync.
       using (var form = new GetStringLineForm(title, defaultValue, isPassword))
       {
         form.ShowDialog();
-        return form.TryGetValue(out value);
+        if (!form.TryGetValue(out var value) && throwOnCancel)
+          throw new ArgumentException("Aborted.");
+        return value;
       }
+    }
+
+    public static async Task<int> GetIntAsync(string title, string defaultValue, int minValue)
+    {
+      var text = await TryGetLineAsync(title, defaultValue, throwOnCancel: true);
+      if (!int.TryParse(text, out var value))
+      {
+        Env.Notifier.Warning("Cannot parse as int.");
+        return await GetIntAsync(title, text, minValue);
+      }
+      if (value < minValue)
+      {
+        Env.Notifier.Warning($"Value '{value}' is too low (minimum = {minValue}).");
+        return await GetIntAsync(title, text, minValue);
+      }
+      return value;
     }
 
     public static async Task<string> GetClipboardTextAsync()
@@ -148,7 +178,7 @@ namespace InputMaster
           var s = Clipboard.GetText();
           if (!string.IsNullOrEmpty(s))
           {
-            return s;
+            return RemoveCarriageReturns(s);
           }
         }
         catch (ExternalException) { }
@@ -166,7 +196,7 @@ namespace InputMaster
       {
         try
         {
-          Clipboard.SetText(text);
+          Clipboard.SetText(InsertCarriageReturns(text));
           return;
         }
         catch (ExternalException) { }
@@ -240,6 +270,9 @@ namespace InputMaster
       return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
     }
 
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
     public static void ForbidNull(params object[] values)
     {
       for (int i = 0; i < values.Length; i++)
@@ -275,7 +308,9 @@ namespace InputMaster
     /// </summary>
     public static bool IsFatalException(Exception ex)
     {
-      return ex is FatalException || ex is StackOverflowException || ex is OutOfMemoryException || ex is ThreadAbortException || ex is AssertFailedException && Env.TestRun || ex is AccessViolationException || ex.InnerException != null && IsFatalException(ex.InnerException);
+      return ex is FatalException || ex is StackOverflowException || ex is OutOfMemoryException || ex is ThreadAbortException ||
+        ex is AssertFailedException && Env.RunningUnitTests || ex is AccessViolationException ||
+        ex.InnerException != null && IsFatalException(ex.InnerException);
     }
 
     public static bool HasAssertFailed(Exception ex)
@@ -285,6 +320,8 @@ namespace InputMaster
 
     public static string ByteCountToString(long byteCount)
     {
+      if (byteCount < 0)
+        return byteCount.ToString();
       string[] labels = { "B", "KB", "MB", "GB", "TB" };
       double length = byteCount;
       var i = 0;
@@ -299,16 +336,16 @@ namespace InputMaster
     public static void RequireExistsDir(string dir)
     {
       if (!Directory.Exists(dir))
-      {
         throw new DirectoryNotFoundException($"Directory '{dir}' not found.");
-      }
     }
 
-    public static void RequireExistsFile(string file)
+    public static void RequireExistsFile(params string[] files)
     {
-      if (!File.Exists(file))
+      foreach (var file in files)
       {
-        throw new FileNotFoundException($"File '{file}' not found.");
+        ForbidWhitespace(file);
+        if (!File.Exists(file))
+          throw new FileNotFoundException($"File '{file}' not found.");
       }
     }
 
@@ -326,6 +363,9 @@ namespace InputMaster
       return new string(name.Select(c => invalidChars.Contains(c) ? replacement : c).ToArray());
     }
 
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
     public static void ForceDeleteDir(string dir)
     {
       var info = new DirectoryInfo(dir);
@@ -339,6 +379,9 @@ namespace InputMaster
       }
     }
 
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
     public static void ForceDeleteFile(string file)
     {
       var info = new FileInfo(file);
@@ -618,13 +661,238 @@ namespace InputMaster
       {
         return;
       }
-      Env.Notifier.WriteError("String contains carriage return(s)." + GetBindingsSuffix(Truncate(text, 50), nameof(text)));
+      Env.Notifier.Error("String contains carriage return(s)." + GetBindingsSuffix(Truncate(text, 50), nameof(text)));
       text = RemoveCarriageReturns(text);
     }
 
     public static string JsonSerialize(object value, Formatting formatting)
     {
       return RemoveCarriageReturns(JsonConvert.SerializeObject(value, formatting));
+    }
+
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
+    public static string InsertCarriageReturns(string text)
+    {
+      return RemoveCarriageReturns(text).Replace("\n", "\r\n");
+    }
+
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
+    public static void WriteAllText(string file, string text)
+    {
+      File.WriteAllText(file, InsertCarriageReturns(text));
+    }
+
+    public static string StripTags(string title)
+    {
+      return title
+        .Replace(Env.Config.SharedTag + " ", "")
+        .Replace(Env.Config.SharedTag, "")
+        .Replace(Env.Config.HiddenTag + " ", "")
+        .Replace(Env.Config.HiddenTag, "");
+    }
+
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
+    private static ulong GetRandomLong()
+    {
+      var buffer = new byte[8];
+      Env.RandomNumberGenerator.GetBytes(buffer);
+      return BitConverter.ToUInt64(buffer, 0);
+    }
+
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
+    public static int GetRandomInt(int max)
+    {
+      if (max == 0)
+        return 0;
+      Debug.Assert(0 < max);
+      return (int)(GetRandomLong() % (ulong)max);
+    }
+
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
+    public static byte[] GetRandomBytes(int count)
+    {
+      var bytes = new byte[count];
+      Env.RandomNumberGenerator.GetBytes(bytes);
+      return bytes;
+    }
+
+    public static char GetRandomNameChar()
+    {
+      return (char)('a' + GetRandomInt(26));
+    }
+
+    public static char GetRandomNumberChar()
+    {
+      return (char)('1' + GetRandomInt(9));
+    }
+
+    public static string GetRandomName(int length)
+    {
+      var sb = new StringBuilder();
+      for (var i = 0; i < length; i++)
+      {
+        sb.Append(GetRandomNameChar());
+      }
+      return sb.ToString();
+    }
+
+    public static string GetRandomNumber(int length)
+    {
+      var sb = new StringBuilder();
+      for (var i = 0; i < length; i++)
+      {
+        sb.Append(GetRandomNumberChar());
+      }
+      return sb.ToString();
+    }
+
+    public static string GetRandomPassword(string prefix, int midSize, int suffixSize)
+    {
+      return prefix + GetRandomName(midSize) + Env.PasswordMatrix.CreateRandomMatrixPassword(suffixSize).Value;
+    }
+
+    public static string GetRandomPassword()
+    {
+      return GetRandomPassword(Env.Settings.PasswordPrefix, 3, 5);
+    }
+
+    public static string GetRandomEmail()
+    {
+      var sb = new StringBuilder();
+      foreach (var c in Env.Config.DefaultEmail)
+      {
+        sb.Append(c == 'X' ? GetRandomNameChar() : c);
+      }
+      return sb.ToString();
+    }
+
+    public static (string, string) SplitAt(string str, int i)
+    {
+      if (i < 0)
+        throw new ArgumentOutOfRangeException(nameof(i));
+      if (str == null)
+        return (null, null);
+      var j = Math.Min(i, str.Length);
+      return (str.Substring(0, j), str.Substring(j));
+    }
+
+    public static string GetTextOrNull(string str)
+    {
+      return string.IsNullOrWhiteSpace(str) ? null : str;
+    }
+
+    public static async Task<PasswordDecomposition> GetPasswordDecompositionAsync(string password, List<int> matrixDecompositionIn)
+    {
+      if (matrixDecompositionIn?.Any(z => z <= 0) == true)
+        throw new ArgumentOutOfRangeException(nameof(matrixDecompositionIn));
+      var matrixDecomposition = 0 < matrixDecompositionIn?.Count ? new List<int>(matrixDecompositionIn) :
+        new List<int> { Env.Config.MatrixPasswordLength };
+      var matrixLength = matrixDecomposition.Sum();
+      var prefixLength = password.Length - matrixLength;
+      if (prefixLength < 0)
+        return new PasswordDecomposition(password);
+      var blueprints = new List<PasswordBlueprint>();
+      var (prefix, rest) = SplitAt(password, prefixLength);
+      foreach (var n in matrixDecomposition)
+      {
+        string part;
+        (part, rest) = SplitAt(rest, n);
+        var blueprint = await Env.PasswordMatrix.GetBlueprintAsync(part);
+        if (blueprint == null)
+          return new PasswordDecomposition(password);
+        blueprints.Add(blueprint);
+      }
+      return new PasswordDecomposition(prefix, blueprints);
+    }
+
+    public static T[] SubArray<T>(T[] data, int index, int length)
+    {
+      var result = new T[length];
+      Array.Copy(data, index, result, 0, length);
+      return result;
+    }
+
+    public static byte[] GetSha256(string text)
+    {
+      using (var sha256 = new SHA256Managed())
+        return sha256.ComputeHash(Encoding.UTF8.GetBytes(text));
+    }
+
+    public static string GetSha1(string text)
+    {
+      using (var sha1 = new SHA1Managed())
+      {
+        var bytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(text));
+        var sb = new StringBuilder(bytes.Length * 2);
+        foreach (var b in bytes)
+          sb.Append(b.ToString("x2"));
+        return sb.ToString();
+      }
+    }
+
+    public static async void AwaitTask(Task task)
+    {
+      await task;
+    }
+
+    public static JsonSerializerSettings JsonSerializerSettings { get; } = new JsonSerializerSettings
+    {
+      ContractResolver = new DefaultContractResolver { NamingStrategy = new CamelCaseNamingStrategy() },
+      NullValueHandling = NullValueHandling.Ignore
+    };
+
+    public static Task<byte[]> GetKeyAsync(string password, byte[] salt, int derivationCount)
+    {
+      return Task.Run(() => GetKey(password, salt, derivationCount));
+    }
+
+    /// <summary>
+    /// Thread-safe.
+    /// </summary>
+    public static byte[] GetKey(string password, byte[] salt, int derivationCount)
+    {
+      using (var deriveBytes = new Rfc2898DeriveBytes(password, salt, derivationCount))
+        return deriveBytes.GetBytes(Env.Config.KeySize);
+    }
+
+    public static byte[] GetCyptroSalt(string name)
+    {
+      return Encoding.UTF8.GetBytes(name + Env.Config.CyptroSaltSuffix);
+    }
+
+    public static async Task StartReadOnlyAsync()
+    {
+      // Thread-safe.
+      await Task.Run(() =>
+      {
+        var info = new ProcessStartInfo("olrsl",
+          $"clone \"{Env.Config.InputMasterPublishDir}\" \"{Env.Config.InputMasterReadOnlyPublishDir}\"")
+        {
+          WindowStyle = ProcessWindowStyle.Hidden
+        };
+        using (var process = Process.Start(info))
+        {
+          if (process == null)
+            throw new Exception("Could not start process.");
+          process.WaitForExit();
+          if (process.ExitCode != 0)
+            throw new Exception("Clone failed.");
+        }
+      });
+      var file = Path.Combine(Env.Config.InputMasterReadOnlyPublishDir, Env.Config.InputMasterFileName);
+      if (!File.Exists(file))
+        throw new Exception("Could not find executable.");
+      Process.Start(file, "readonly")?.Dispose();
     }
   }
 }

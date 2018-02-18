@@ -7,7 +7,7 @@ using System.Windows.Forms;
 namespace InputMaster.Win32
 {
   [SuppressUnmanagedCodeSecurity]
-  internal static class NativeMethods
+  public static class NativeMethods
   {
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

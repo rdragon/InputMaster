@@ -6,7 +6,7 @@ using InputMaster.Win32;
 
 namespace InputMaster.Instances
 {
-  internal class ForegroundListener : IForegroundListener
+  public class ForegroundListener : IForegroundListener
   {
     private readonly int MaxNameCacheCount = 500;
     private readonly int MaxCaptionLength = 1000;

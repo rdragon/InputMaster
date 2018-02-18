@@ -3,7 +3,7 @@ using System.Windows.Forms;
 
 namespace InputMaster.Forms
 {
-  internal sealed partial class GetStringLineForm : ThemeForm
+  public sealed partial class GetStringLineForm : ThemeForm
   {
     public GetStringLineForm(string title, string defaultValue, bool passwordForm)
     {
@@ -12,22 +12,14 @@ namespace InputMaster.Forms
       TextBox.Text = defaultValue;
       TextBox.SelectAll();
       Button.Height = TextBox.Height;
-
       if (passwordForm)
-      {
         TextBox.PasswordChar = '*';
-      }
     }
 
     public bool TryGetValue(out string value)
     {
-      if (DialogResult == DialogResult.OK)
-      {
-        value = TextBox.Text;
-        return true;
-      }
-      value = null;
-      return false;
+      value = DialogResult == DialogResult.OK ? TextBox.Text.Trim() : null;
+      return value != null;
     }
 
     private void Button_Click(object sender, EventArgs e)

@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace InputMaster.Actors
 {
-  internal class SecondClipboard : Actor
+  public class SecondClipboard : Actor
   {
     private readonly List<string> Values = new List<string>();
 
@@ -13,7 +13,7 @@ namespace InputMaster.Actors
     {
       var text = await ForegroundInteractor.GetSelectedTextAsync();
       Values.Add(text);
-      Env.Notifier.Write($"'{Helper.Truncate(text, 20)}' copied");
+      Env.Notifier.Info($"'{Helper.Truncate(text, 20)}' copied");
     }
 
     [Command]
@@ -21,9 +21,7 @@ namespace InputMaster.Actors
     {
       var text = string.Join("  ", Values);
       if (text.Length > 0)
-      {
         return ForegroundInteractor.PasteAsync(text);
-      }
       return Task.CompletedTask;
     }
 

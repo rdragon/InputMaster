@@ -6,7 +6,7 @@ using InputMaster.Actors;
 
 namespace InputMaster.Parsers
 {
-  internal class InputReader
+  public class InputReader
   {
     private readonly List<Combo> Combos = new List<Combo>();
     private IInjectorStream<object> InjectorStream;
@@ -278,7 +278,7 @@ namespace InputMaster.Parsers
   }
 
   [Flags]
-  internal enum InputReaderFlags
+  public enum InputReaderFlags
   {
     None = 0,
     AllowKeywordAny = 1,

@@ -3,7 +3,7 @@ using InputMaster;
 
 namespace UnitTests
 {
-  internal class TestOutputHandler : IInputHook
+  public class TestOutputHandler : IInputHook
   {
     private Modifiers Modifiers;
 

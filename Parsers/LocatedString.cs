@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace InputMaster.Parsers
 {
-  internal struct LocatedString : IEquatable<LocatedString>
+  public struct LocatedString : IEquatable<LocatedString>
   {
     private static readonly LocatedString Empty = new LocatedString("");
     private static readonly string DelimiterPattern = $" *{Regex.Escape(Constants.ArgumentDelimiter)} *";

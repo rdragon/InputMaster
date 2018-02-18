@@ -1,169 +1,72 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-// ReSharper disable InconsistentNaming
+﻿using InputMaster.Hooks;
+using System.Security.Cryptography;
 
 namespace InputMaster
 {
-  internal static class Env
+  public static class Env
   {
-    private static readonly HashSet<Type> Active = new HashSet<Type>();
-
     public static bool ShouldRestart { get; set; }
+    public static string RestartArguments { get; set; }
     public static int StateCounter { get; set; }
-    public static bool TestRun { get; set; }
+    public static bool RunningUnitTests { get; set; }
+    /// <summary>
+    /// Thread-safety is required for the type of this property.
+    /// </summary>
     public static Config Config { get; set; }
-    public static IFactory Factory { get; set; }
-
-    private static INotifier _notifier;
-    public static INotifier Notifier
-    {
-      get
-      {
-        _notifier = _notifier ?? Create<INotifier>();
-        return _notifier;
-      }
-    }
-
-    private static IForegroundListener _foregroundListener;
-    public static IForegroundListener ForegroundListener
-    {
-      get
-      {
-        _foregroundListener = _foregroundListener ?? Create<IForegroundListener>();
-        return _foregroundListener;
-      }
-    }
-
-    private static IFlagManager _flagManager;
-    public static IFlagManager FlagManager
-    {
-      get
-      {
-        _flagManager = _flagManager ?? Create<IFlagManager>();
-        return _flagManager;
-      }
-    }
-
-    private static IScheduler _scheduler;
-    public static IScheduler Scheduler
-    {
-      get
-      {
-        _scheduler = _scheduler ?? Create<IScheduler>();
-        return _scheduler;
-      }
-    }
-
-    private static IParser _parser;
-    public static IParser Parser
-    {
-      get
-      {
-        _parser = _parser ?? Create<IParser>();
-        return _parser;
-      }
-    }
-
-    private static IProcessManager _processManager;
-    public static IProcessManager ProcessManager
-    {
-      get
-      {
-        _processManager = _processManager ?? Create<IProcessManager>();
-        return _processManager;
-      }
-    }
-
-    private static ICommandCollection _commandCollection;
-    public static ICommandCollection CommandCollection
-    {
-      get
-      {
-        _commandCollection = _commandCollection ?? Create<ICommandCollection>();
-        return _commandCollection;
-      }
-    }
-
-    private static IApp _app;
-    public static IApp App
-    {
-      get
-      {
-        _app = _app ?? Create<IApp>();
-        return _app;
-      }
-    }
-
-    private static ICipher _cipher;
-    public static ICipher Cipher
-    {
-      get
-      {
-        _cipher = _cipher ?? Create<ICipher>();
-        return _cipher;
-      }
-    }
-
-    private static IInjector _injector;
-    private static IInjector Injector
-    {
-      get
-      {
-        _injector = _injector ?? Create<IInjector>();
-        return _injector;
-      }
-    }
+    public static INotifier Notifier { get; set; }
+    /// <summary>
+    /// Thread-safety is required for the type of this property.
+    /// </summary>
+    public static ICipher Cipher { get; set; }
+    public static Settings Settings { get; set; }
+    public static IApp App { get; set; }
+    public static ModeHook ModeHook { get; set; }
+    public static IForegroundListener ForegroundListener { get; set; }
+    public static IStateHandlerFactory StateHandlerFactory { get; set; }
+    public static IFlagManager FlagManager { get; set; }
+    public static IScheduler Scheduler { get; set; }
+    public static IParser Parser { get; set; }
+    public static IProcessManager ProcessManager { get; set; }
+    public static ICommandCollection CommandCollection { get; set; }
+    public static IInjector Injector { get; set; }
+    /// <summary>
+    /// Thread-safety is required for the type of this property.
+    /// </summary>
+    public static RandomNumberGenerator RandomNumberGenerator { get; set; }
+    public static PasswordMatrix PasswordMatrix { get; set; }
+    public static AccountManager AccountManager { get; set; }
 
     public static IInjector CreateInjector()
     {
       return Injector.CreateInjector();
     }
 
-    // ReSharper disable once UnusedParameter.Global
     public static void AddActor(Actor actor) { } // A no-op by design.
 
+    /// <summary>
+    /// Resets everyting except Config.
+    /// </summary>
     public static void Clear()
     {
-      Active.Clear();
-      Factory = null;
       ShouldRestart = false;
       StateCounter = 0;
-      TestRun = false;
-
-      _notifier = null;
-      _foregroundListener = null;
-      _flagManager = null;
-      _scheduler = null;
-      _parser = null;
-      _processManager = null;
-      _commandCollection = null;
-      _app = null;
-      _cipher = null;
-      _injector = null;
-    }
-
-    public static void Build()
-    {
-      if (new object[] { Notifier, FlagManager, Scheduler, Parser, ProcessManager, CommandCollection, App, Cipher, Injector }.Sum(z => z.GetHashCode()) == 319531817)
-      {
-        throw new FatalException("You won the jackpot.");
-      }
-    }
-
-    private static T Create<T>() where T : class
-    {
-      if (Factory == null)
-      {
-        throw new ArgumentNullException($"{nameof(Factory)} is null. Cannot use {nameof(Env)} instances before {nameof(Factory)} has been set.");
-      }
-      if (!Active.Add(typeof(T)))
-      {
-        throw new FatalException($"Cyclic dependency found at type {typeof(T)}.");
-      }
-      var obj = Factory.Create<T>();
-      Active.Remove(typeof(T));
-      return obj;
+      RunningUnitTests = false;
+      Notifier = null;
+      ForegroundListener = null;
+      StateHandlerFactory = null;
+      FlagManager = null;
+      Scheduler = null;
+      Parser = null;
+      ProcessManager = null;
+      CommandCollection = null;
+      App = null;
+      Cipher = null;
+      Injector = null;
+      RandomNumberGenerator = null;
+      PasswordMatrix = null;
+      Settings = null;
+      AccountManager = null;
+      ModeHook = null;
     }
   }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace InputMaster.Forms
@@ -6,28 +7,28 @@ namespace InputMaster.Forms
   /// <summary>
   /// Simple form for getting string data from the user.
   /// </summary>
-  internal sealed partial class GetStringForm : ThemeForm
+  public sealed partial class GetStringForm : ThemeForm
   {
-    public GetStringForm(string title, string defaultValue, bool selectAll)
+    private bool StartWithFindDialog;
+    private bool ForceForeground;
+
+    public GetStringForm(string title, string defaultValue, bool selectAll, bool startWithFindDialog, bool forceForeground,
+      bool containsJson)
     {
       InitializeComponent();
-      Text = title;
+      Text = title + " - InputMaster";
+      RichTextBox.ContainsJson = containsJson;
       RichTextBox.Text = defaultValue;
       if (selectAll)
-      {
         RichTextBox.SelectAll();
-      }
+      StartWithFindDialog = startWithFindDialog;
+      ForceForeground = forceForeground;
     }
 
     public bool TryGetValue(out string value)
     {
-      if (DialogResult == DialogResult.OK)
-      {
-        value = RichTextBox.Text;
-        return true;
-      }
-      value = null;
-      return false;
+      value = DialogResult == DialogResult.OK ? RichTextBox.Text : null;
+      return !string.IsNullOrWhiteSpace(value);
     }
 
     private void Button_Click(object sender, EventArgs e)
@@ -50,10 +51,18 @@ namespace InputMaster.Forms
       }
     }
 
-    private void GetStringForm_Shown(object sender, EventArgs e)
+    private async void GetStringForm_Shown(object sender, EventArgs e)
     {
-      ForceToForeground();
-      TopMost = true;
+      if (ForceForeground)
+      {
+        ForceToForeground();
+        TopMost = true;
+      }
+      if (StartWithFindDialog)
+      {
+        await Task.Delay(50);
+        await RichTextBox.ShowFindDialog();
+      }
     }
   }
 }

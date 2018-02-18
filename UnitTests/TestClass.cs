@@ -1,5 +1,10 @@
-﻿using InputMaster.Parsers;
+﻿using InputMaster;
+using InputMaster.Instances;
+using InputMaster.Parsers;
+using InputMaster.Properties;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
+using System.Text;
 
 namespace UnitTests
 {
@@ -63,6 +68,42 @@ namespace UnitTests
       x = x.Substring(1, 2);
       Assert.AreEqual("de", x.Value);
       Assert.AreEqual(new Location(1, 4), x.Location);
+    }
+
+    [TestMethod]
+    public void PasswordMatrix()
+    {
+      var matrix = new PasswordMatrix(Resources.PasswordMatrix6x5);
+      Assert.AreEqual(6, matrix.Width);
+      Assert.AreEqual(5, matrix.Height);
+      var pretty = new StringBuilder();
+      var actualText = new StringBuilder();
+      var expectedQueue = new Queue<string>(Resources.PasswordMatrixOutput.Replace("\r", "").Split('\n'));
+      foreach (var blueprint in matrix.GetAllBlueprints(5))
+      {
+        var value = matrix.GetPasswordValue(blueprint);
+        var actual = value ?? "(none)";
+        var expected = expectedQueue.Dequeue();
+        Assert.AreEqual(expected, actual);
+        actualText.AppendLine(actual);
+        if (value != null)
+          pretty.AppendLine($"{blueprint} - {value}");
+      }
+      // Comment the assert and uncomment the next line to store the actual output.
+      // System.IO.File.WriteAllText(@"C:\io\m2qwdu", actualText.ToString());
+      // Comment the assert and uncomment the next line to store the pretty output.
+      // System.IO.File.WriteAllText(@"C:\io\m2qwdu", pretty.ToString());
+    }
+
+    [TestMethod]
+    public void Cipher()
+    {
+      var key = Helper.GetKey("xwel", Helper.GetRandomBytes(16), 1);
+      var cipher = new Cipher(key);
+      var expected = "xtpi";
+      var bytes = cipher.Encrypt(expected);
+      var actual = cipher.DecryptToString(bytes);
+      Assert.AreEqual(expected, actual);
     }
   }
 }

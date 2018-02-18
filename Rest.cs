@@ -1,33 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using InputMaster.Win32;
 using JetBrains.Annotations;
 using Microsoft.Win32.SafeHandles;
 
 namespace InputMaster
 {
-  [Flags]
-  internal enum CommandTypes
-  {
-    None = 0,
-    ModeOnly = 1,
-    InputModeOnly = 2,
-    ComposeModeOnly = 4,
-    StandardSectionOnly = 8,
-    TopLevelOnly = 16,
-    Chordless = 32,
-    ExecuteAtParseTime = 128
-  }
-
-  [Flags]
-  internal enum Warnings
-  {
-    None = 0,
-    MissingAccountFile = 1,
-    MissingSharedPasswordFile = 2
-  }
-
   [UsedImplicitly]
-  internal class HookHandle : SafeHandleZeroOrMinusOneIsInvalid
+  public class HookHandle : SafeHandleZeroOrMinusOneIsInvalid
   {
     public HookHandle() : base(true) { }
 
@@ -37,7 +18,7 @@ namespace InputMaster
     }
   }
 
-  internal class HotkeyTrigger
+  public class HotkeyTrigger
   {
     public HotkeyTrigger(Combo combo)
     {
@@ -47,7 +28,7 @@ namespace InputMaster
     public Combo Combo { get; }
   }
 
-  internal class HotkeyFile
+  public class HotkeyFile
   {
     public HotkeyFile(string name, string text)
     {
@@ -59,7 +40,7 @@ namespace InputMaster
     public string Text { get; }
   }
 
-  internal abstract class Section
+  public abstract class Section
   {
     protected Section()
     {
@@ -69,7 +50,7 @@ namespace InputMaster
     public int Column { get; set; }
   }
 
-  internal class ModeHotkey
+  public class ModeHotkey
   {
     public ModeHotkey(Chord chord, Action<Combo> action, string description)
     {
@@ -83,7 +64,7 @@ namespace InputMaster
     public string Description { get; }
   }
 
-  internal class ComboArgs
+  public class ComboArgs
   {
     public ComboArgs(Combo combo)
     {
@@ -99,7 +80,7 @@ namespace InputMaster
     }
   }
 
-  internal abstract class Actor
+  public abstract class Actor
   {
     protected Actor()
     {
@@ -107,23 +88,92 @@ namespace InputMaster
     }
   }
 
-  internal class AmbiguousHotkeyException : Exception
+  public class AmbiguousHotkeyException : Exception
   {
     public AmbiguousHotkeyException(string message, Exception innerException = null) : base(message, innerException) { }
   }
 
-  internal class WrappedException : Exception
+  public class WrappedException : Exception
   {
     public WrappedException(string message, Exception innerException = null) : base(message, innerException) { }
   }
 
-  internal class FatalException : Exception
+  public class FatalException : Exception
   {
     public FatalException(string message, Exception innerException = null) : base(message, innerException) { }
   }
 
-  internal class DecryptionFailedException : Exception
+  public class DecryptionFailedException : Exception
   {
     public DecryptionFailedException(string message, Exception innerException = null) : base(message, innerException) { }
+  }
+
+  public class GitException : Exception
+  {
+    public GitException(string message, Exception innerException = null) : base(message, innerException) { }
+  }
+
+  public class MatrixPassword
+  {
+    public string Value { get; set; }
+    public PasswordBlueprint Blueprint { get; set; }
+
+    public MatrixPassword(string value, PasswordBlueprint blueprint)
+    {
+      Value = value;
+      Blueprint = blueprint;
+    }
+  }
+
+  public class PasswordBlueprint
+  {
+    public int Length { get; set; }
+    public int X { get; set; }
+    public int Y { get; set; }
+    public string Direction { get; set; }
+    public BlueprintShape Shape { get; set; }
+
+    public override string ToString()
+    {
+      string shape;
+      switch (Shape)
+      {
+        case BlueprintShape.Straight: shape = ""; break;
+        case BlueprintShape.Stairs: shape = "/"; break;
+        case BlueprintShape.Spiral: shape = "@"; break;
+        case BlueprintShape.L: shape = "¬"; break;
+        default: throw new ArgumentException();
+      }
+      return $"{X},{Y}.{Direction}{shape}{Length}";
+    }
+  }
+
+  public class PasswordDecomposition
+  {
+    public string Prefix { get; }
+    public IEnumerable<PasswordBlueprint> BluePrints { get { return _blueprints.AsReadOnly(); } }
+    private List<PasswordBlueprint> _blueprints = new List<PasswordBlueprint>();
+
+    public PasswordDecomposition(string password)
+    {
+      Prefix = password;
+    }
+
+    public PasswordDecomposition(string password, IEnumerable<PasswordBlueprint> blueprints) : this(password)
+    {
+      _blueprints = blueprints.ToList();
+    }
+  }
+
+  public class StateFile
+  {
+    public string File { get; }
+    public StateHandlerFlags Flags { get; }
+
+    public StateFile(string file, StateHandlerFlags flags)
+    {
+      File = file;
+      Flags = flags;
+    }
   }
 }

@@ -7,30 +7,26 @@ using System.Threading.Tasks;
 
 namespace InputMaster
 {
-  internal interface IFactory
+  public interface INotifier
   {
-    T Create<T>() where T : class;
-  }
-
-  internal interface INotifier
-  {
-    void Write(string message);
-    void WriteWarning(string message);
-    void WriteError(string message);
+    void Info(string message);
+    void Warning(string message);
+    void Error(string message);
+    void LogError(string message);
     void SetPersistentText(string text);
     string GetLog();
     void CaptureForeground();
     ISynchronizeInvoke SynchronizingObject { get; }
   }
 
-  internal interface IInputHook
+  public interface IInputHook
   {
     void Handle(InputArgs e);
     void Reset();
     string GetStateInfo();
   }
 
-  internal interface IComboHook
+  public interface IComboHook
   {
     void Handle(ComboArgs e);
     void Reset();
@@ -38,38 +34,40 @@ namespace InputMaster
     bool Active { get; }
   }
 
-  internal interface IInjectorStream<out T>
+  public interface IInjectorStream<out T>
   {
     T Add(Input input, bool down);
     T Add(char c);
   }
 
-  internal interface IInjector<out T> : IInjectorStream<T>
+  public interface IInjector<out T> : IInjectorStream<T>
   {
     void Run();
     Action Compile();
     T CreateInjector();
   }
 
-  internal interface IInjector : IInjector<IInjector> { }
+  public interface IInjector : IInjector<IInjector> { }
 
-  internal interface IForegroundListener
+  public interface IForegroundListener
   {
     string ForegroundWindowTitle { get; }
     string ForegroundProcessName { get; }
     void Update();
   }
 
-  internal interface IFlagManager
+  public interface IFlagManager
   {
-    bool IsSet(string flag);
+    bool HasFlag(string flag);
     void ToggleFlag(string flag);
+    void SetFlag(string flag);
+    void ClearFlag(string flag);
     void ClearFlags();
     event Action FlagsChanged;
     IEnumerable<string> GetFlags();
   }
 
-  internal interface IParser
+  public interface IParser
   {
     void UpdateHotkeyFile(HotkeyFile hotkeyFile);
     void UpdateParseAction(string name, ParseAction action);
@@ -77,35 +75,45 @@ namespace InputMaster
     void GetAction(string name, out Action<IInjectorStream<object>> action);
     bool IsDynamicHotkey(string name);
     void FireNewParserOutput(ParserOutput parserOutput); // For unit tests.
-    void DisableOnce();
-    void EnableOnce();
     event Action<ParserOutput> NewParserOutput;
   }
 
-  internal interface IScheduler
+  public interface IScheduler
   {
-    void AddJob(string name, Action action, TimeSpan delay);
+    void AddJob(string name, Action action, TimeSpan delay, TimeSpan? retryDelay = null);
+    void AddJob(string name, Func<Task> action, TimeSpan delay, TimeSpan? retryDelay = null);
     void AddFileJob(string file, string arguments, TimeSpan delay);
   }
 
-  internal interface IProcessManager
+  public interface IProcessManager
   {
     void StartHiddenProcess(string file, string arguments = "", TimeSpan? timeout = null);
   }
 
-  internal interface ICommandCollection
+  public interface ICommandCollection
   {
     void AddActor(object actor);
     Command GetCommand(LocatedString locatedName);
   }
 
-  internal interface IApp
+  public interface IApp
   {
+    event Action Run;
+    event Action Save;
+    event Action Unhook;
     event Action Exiting;
-    event Action SaveTick;
+    void AddSaveAction(Func<Task> action);
+    void AddExitAction(Func<Task> action);
+    void TriggerRun();
+    /// <summary>
+    /// For debugging purposes.
+    /// </summary>
+    void TriggerUnhook();
+    Task TriggerSaveAsync();
+    Task TriggerExitAsync();
   }
 
-  internal interface IKeyboardLayout
+  public interface IKeyboardLayout
   {
     bool TryReadKeyboardMessage(WindowMessage message, IntPtr data, out InputArgs inputArgs);
     Combo GetCombo(char c);
@@ -113,15 +121,39 @@ namespace InputMaster
     bool IsCharacterKey(Input input);
   }
 
-  internal interface ICipher
+  /// <summary>
+  /// Thread-safety is required for all classes implementing this interface.
+  /// </summary>
+  public interface ICipher
   {
-    Task EncryptAsync(string file, string plaintext);
-    Task<string> DecryptAsync(string file);
+    byte[] Encrypt(byte[] data);
+    byte[] Decrypt(byte[] data);
   }
 
-  internal interface IValueProvider<out T>
+  public interface IValueProvider<out T>
   {
     void ExecuteOnce(Action<T> func);
     void ExecuteMany(Action<T> func);
+  }
+
+  public interface IStateHandler<T> : IStateHandler
+  {
+    Task<T> LoadAsync();
+  }
+
+  public interface IStateHandler
+  {
+    Task SaveAsync();
+  }
+
+  public interface IState
+  {
+    (bool, string message) Fix();
+  }
+
+  public interface IStateHandlerFactory
+  {
+    IStateHandler<T> Create<T>(T state, string file, StateHandlerFlags flags) where T : IState;
+    IEnumerable<StateFile> GetExportableStateFiles();
   }
 }

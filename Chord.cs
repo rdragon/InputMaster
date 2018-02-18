@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 namespace InputMaster
 {
   [JsonConverter(typeof(ChordJsonConverter))]
-  internal class Chord : IEquatable<Chord>, IEnumerable<Combo>
+  public class Chord : IEquatable<Chord>, IEnumerable<Combo>
   {
     private readonly List<Combo> CombosReversed;
     private int HashCode;
@@ -18,9 +18,7 @@ namespace InputMaster
     {
       CombosReversed = combos.Reverse().ToList();
       foreach (var combo in CombosReversed)
-      {
         HashCode = HashCode * 1000000007 + combo.GetHashCode();
-      }
     }
 
     public Chord(int capacity)
@@ -43,22 +41,15 @@ namespace InputMaster
     public bool HasPrefix(Chord other)
     {
       if (other.Length > Length)
-      {
         return false;
-      }
       for (var i = 0; i < other.Length; i++)
-      {
         if (other.CombosReversed[other.Length - 1 - i] != CombosReversed[Length - 1 - i])
-        {
           return false;
-        }
-      }
       return true;
     }
 
     public override int GetHashCode()
     {
-      // ReSharper disable once NonReadonlyMemberInGetHashCode
       return HashCode;
     }
 
@@ -70,34 +61,24 @@ namespace InputMaster
     public bool Equals(Chord other)
     {
       if (other == null || other.Length != Length)
-      {
         return false;
-      }
       for (var i = 0; i < Length; i++)
-      {
         if (CombosReversed[i] != other.CombosReversed[i])
-        {
           return false;
-        }
-      }
       return true;
     }
 
     public static bool operator ==(Chord chord1, Chord chord2)
     {
       if (ReferenceEquals(chord1, null) || ReferenceEquals(chord2, null))
-      {
         return ReferenceEquals(chord1, chord2);
-      }
       return chord1.Equals(chord2);
     }
 
     public static bool operator !=(Chord chord1, Chord chord2)
     {
       if (ReferenceEquals(chord1, null) || ReferenceEquals(chord2, null))
-      {
         return !ReferenceEquals(chord1, chord2);
-      }
       return !chord1.Equals(chord2);
     }
 
@@ -133,7 +114,7 @@ namespace InputMaster
     }
   }
 
-  internal class ChordJsonConverter : JsonConverter
+  public class ChordJsonConverter : JsonConverter
   {
     public override bool CanConvert(Type objectType)
     {

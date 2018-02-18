@@ -2,7 +2,7 @@
 
 namespace InputMaster
 {
-  internal class ValueProvider<T> : IValueProvider<T>
+  public class ValueProvider<T> : IValueProvider<T>
   {
     private T Value;
     private bool ValueSet;

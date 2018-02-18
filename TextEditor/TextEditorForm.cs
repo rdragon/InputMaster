@@ -4,34 +4,35 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using InputMaster.Hooks;
 using InputMaster.Forms;
 
 namespace InputMaster.TextEditor
 {
-  internal sealed class TextEditorForm : ThemeForm
+  public sealed class TextEditorForm : ThemeForm
   {
-    private readonly ModeHook ModeHook;
-    private readonly FileManager FileManager;
-    private readonly List<FileTab> FileTabs = new List<FileTab>();
-    private readonly Dictionary<string, RtbPosition> Positions = new Dictionary<string, RtbPosition>(StringComparer.OrdinalIgnoreCase);
-    private readonly MyState State;
-    private readonly TabControlPlus TabControl;
-    private bool IsClosing;
-    private bool PreventClose = true;
+    private readonly FileManager _fileManager;
+    private readonly List<FileTab> _fileTabs = new List<FileTab>();
+    private MyState _state;
+    private readonly TabControlPlus _tabControl;
+    /// <summary>
+    /// This gives us time to save all data before closing the form.
+    /// </summary>
+    private bool _preventClose = true;
 
-    public TextEditorForm(ModeHook modeHook, FileManager fileManager)
+    public TextEditorForm(FileManager fileManager)
     {
-      ModeHook = modeHook;
-      FileManager = fileManager;
-      FileManager.OpenFile = async (file) => await OpenFileAsync(file);
-      HideFirstInstant();
+      _fileManager = fileManager;
+      Env.CommandCollection.AddActor(this);
+      var stateHandler = Env.StateHandlerFactory.Create(new MyState(), nameof(TextEditorForm),
+        StateHandlerFlags.Exportable | StateHandlerFlags.UseCipher);
+      _fileManager.OpenFile = async (name) => await OpenFileAsync(name);
+      Opacity = 0;
       SuspendLayout();
-      TabControl = new TabControlPlus
+      _tabControl = new TabControlPlus
       {
         Dock = DockStyle.Fill
       };
-      Controls.Add(TabControl);
+      Controls.Add(_tabControl);
       FormBorderStyle = FormBorderStyle.None;
       KeyPreview = true;
       Text = Env.Config.TextEditorWindowTitle;
@@ -49,14 +50,9 @@ namespace InputMaster.TextEditor
       };
       updatePanelTimer.Tick += (s, e) =>
       {
-        foreach (var fileTab in FileTabs)
-        {
+        foreach (var fileTab in _fileTabs)
           fileTab.UpdatePanel();
-        }
       };
-      State = new MyState(this);
-      State.Load();
-      Env.App.SaveTick += async () => await SaveAllAsync();
       KeyDown += async (s, e) =>
       {
         switch (e.KeyData)
@@ -67,15 +63,7 @@ namespace InputMaster.TextEditor
             break;
           case Keys.Control | Keys.Shift | Keys.F:
             e.Handled = true;
-            await FileManager.FindAllAsync();
-            break;
-          case Keys.Control | Keys.Shift | Keys.I:
-            e.Handled = true;
-            await FileManager.ImportFromDirectoryAsync();
-            break;
-          case Keys.Control | Keys.Shift | Keys.E:
-            e.Handled = true;
-            await FileManager.ExportToDirectoryAsync();
+            await _fileManager.FindAllAsync();
             break;
           case Keys.Control | Keys.O:
             e.Handled = true;
@@ -85,160 +73,139 @@ namespace InputMaster.TextEditor
       };
       FormClosing += async (s, e) =>
       {
-        e.Cancel = PreventClose;
-        if (IsClosing)
-        {
+        if (!_preventClose)
           return;
-        }
-        IsClosing = true;
-        await Try.ExecuteAsync(SaveAllAsync);
-        await Try.ExecuteAsync(CloseAllAsync);
-        updatePanelTimer.Dispose();
-        PreventClose = false;
+        e.Cancel = true;
         await Task.Yield();
         Application.Exit();
       };
-      TabControl.SelectedIndexChanged += (s, e) =>
+      Env.App.Exiting += () =>
+       {
+         CloseAll();
+         updatePanelTimer.Dispose();
+         _preventClose = false;
+         Close();
+       };
+      _tabControl.SelectedIndexChanged += (s, e) =>
       {
-        var tab = TabControl.SelectedTab;
+        var tab = _tabControl.SelectedTab;
         var fileTab = (FileTab)tab?.Tag;
         fileTab?.SelectRtb();
       };
+      Env.App.AddSaveAction(async () =>
+      {
+        await Task.WhenAll(_fileTabs.Select(z => z.SaveAsync()));
+        await stateHandler.SaveAsync();
+      });
+      Env.App.Run += async () =>
+      {
+        _state = await stateHandler.LoadAsync();
+        Show();
+      };
     }
 
-    public bool TryGetPosition(string file, out RtbPosition position) => Positions.TryGetValue(file, out position);
+    public bool TryGetPosition(string name, out RtbPosition position) => _state.Positions.TryGetValue(name, out position);
 
-    public async void StartAsync()
+    public void UpdatePosition(string name, RtbPosition position)
     {
-      await Task.Yield();
-      Show();
-    }
-
-    public void UpdatePosition(string file, RtbPosition position)
-    {
-      if (!Positions.TryGetValue(file, out var oldPosition))
-      {
-        Positions.Add(file, position);
-        State.Changed = true;
-        return;
-      }
-      if (position == oldPosition)
-      {
-        return;
-      }
-      Positions[file] = position;
-      State.Changed = true;
+      _state.Positions[name] = position;
     }
 
     public void RemoveFileTab(FileTab fileTab)
     {
-      TabControl.TabPages.Remove(fileTab.TabPage);
-      FileTabs.Remove(fileTab);
+      _tabControl.TabPages.Remove(fileTab.TabPage);
+      _fileTabs.Remove(fileTab);
+      if (_fileTabs.Count == 0)
+        Opacity = 0;
     }
 
-    private void HideFirstInstant()
+    public void RemovePosition(string name)
     {
-      Opacity = 0;
-      Shown += async (s, e) =>
-      {
-        await Task.Delay(TimeSpan.FromSeconds(1));
-        Opacity = 1;
-      };
+      _state.Positions.Remove(name);
     }
 
     private async Task OpenCustomFileAsync()
     {
-      await Task.Yield();
-      if (!Helper.TryGetString("File path", out var file))
-      {
+      var name = await Helper.TryGetStringAsync("File name");
+      if (name == null)
         return;
-      }
-      Helper.RequireExistsFile(file);
-      await OpenFileAsync(file);
+      Helper.RequireExistsFile(FileManager.GetFile(name));
+      await OpenFileAsync(name);
     }
 
-    private async Task OpenFileAsync(string file)
+    private async Task OpenFileAsync(string name)
     {
-      var fileTab = FileTabs.FirstOrDefault(z => string.Equals(z.File, file, StringComparison.OrdinalIgnoreCase));
+      var fileTab = _fileTabs.FirstOrDefault(z => string.Equals(z.Name, name, StringComparison.OrdinalIgnoreCase));
       if (fileTab == null)
       {
         var tabPage = new TabPage();
         SuspendLayout();
-        TabControl.TabPages.Add(tabPage);
-        fileTab = new FileTab(file, this, ModeHook, FileManager, tabPage);
+        _tabControl.TabPages.Add(tabPage);
+        fileTab = new FileTab(name, this, _fileManager, tabPage);
         await fileTab.InitializeAsync();
-        FileTabs.Add(fileTab);
-        TabControl.SelectTab(tabPage);
+        _fileTabs.Add(fileTab);
+        _tabControl.SelectTab(tabPage);
         fileTab.SelectRtb();
         ResumeLayout();
+        Opacity = 1;
       }
       else
       {
-        TabControl.SelectTab(fileTab.TabPage);
+        _tabControl.SelectTab(fileTab.TabPage);
       }
-      if (FileTabs.Count > Env.Config.MaxTextEditorTabs)
-      {
-        await ((FileTab)TabControl.GetLastTabPageInOrder().Tag).CloseAsync();
-      }
+      if (_fileTabs.Count > Env.Config.MaxTextEditorTabs)
+        await ((FileTab)_tabControl.GetLastTabPageInOrder().Tag).SaveAndCloseAsync();
     }
 
     private async Task CreateNewFileAsync()
     {
-      if (!Helper.TryGetString("Title of new file", out var title))
-      {
+      var title = await Helper.TryGetLineAsync("Title of new file");
+      if (title == null)
         return;
-      }
-      var file = await FileManager.CreateNewFileAsync(title.Trim(), "");
-      await OpenFileAsync(file);
-      await FileManager.CompileTextEditorModeAsync();
+      var name = await Helper.TryGetLineAsync("Name of new file", Helper.GetRandomName(Env.Config.TextEditorFileNameLength));
+      if (name == null)
+        return;
+      await _fileManager.CreateNewFileAsync(title.Trim(), "", name);
+      await OpenFileAsync(name);
+      _fileManager.CompileTextEditorMode();
     }
 
-    public async Task SaveAllAsync()
+    public void CloseAll()
     {
-      foreach (var fileTab in FileTabs)
-      {
-        try
-        {
-          await fileTab.SaveAsync();
-        }
-        catch (Exception ex) when (!Helper.IsFatalException(ex))
-        {
-          Env.Notifier.WriteError(ex, "Failed to save a TextEditor text file" + Helper.GetBindingsSuffix(fileTab.Title, nameof(fileTab.Title)));
-        }
-      }
+      foreach (var fileTab in _fileTabs.ToList())
+        fileTab.Close();
     }
 
-    public async Task CloseAllAsync()
+    public async Task ExportToDirectoryAsync()
     {
-      foreach (var item in FileTabs.ToArray())
-      {
-        await item.CloseAsync();
-      }
+      await Env.App.TriggerSaveAsync();
+      await FileManager.ExportToDirectoryAsync();
     }
 
-    private class MyState : State<TextEditorForm>
+    [Command]
+    private void ToggleTextEditor()
     {
-      public MyState(TextEditorForm form) : base(nameof(TextEditorForm), form) { }
+      Visible = !Visible;
+    }
 
-      protected override void Load(BinaryReader reader)
-      {
-        var count = reader.ReadInt32();
-        for (var i = 0; i < count; i++)
-        {
-          var key = reader.ReadString();
-          var position = new RtbPosition(reader);
-          Parent.Positions.Add(key, position);
-        }
-      }
+    [Command]
+    private async Task ImportTextFilesAsync()
+    {
+      await Env.App.TriggerSaveAsync();
+      CloseAll();
+      await _fileManager.ImportFromDirectoryAsync();
+      Env.ShouldRestart = true;
+      Application.Exit();
+    }
 
-      protected override void Save(BinaryWriter writer)
+    private class MyState : IState
+    {
+      public Dictionary<string, RtbPosition> Positions;
+
+      public (bool, string message) Fix()
       {
-        writer.Write(Parent.Positions.Count);
-        foreach (var pair in Parent.Positions)
-        {
-          writer.Write(pair.Key);
-          pair.Value.Write(writer);
-        }
+        Positions = Positions ?? new Dictionary<string, RtbPosition>();
+        return (true, "");
       }
     }
   }

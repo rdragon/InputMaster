@@ -9,6 +9,8 @@ variables:
   comment: '√#'
 contexts:
   prototype:
+    - match: ' *{{comment}}!.*$'
+      scope: string.comment.im
     - match: ' *{{comment}}.*$'
       scope: comment.line.im
     - match: ' *√\((?={{ident}}\))'

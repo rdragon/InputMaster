@@ -4,7 +4,7 @@ using System.Text;
 
 namespace InputMaster.Hooks
 {
-  internal class ComboRelay : IComboHook
+  public class ComboRelay : IComboHook
   {
     /// <summary>
     /// All possible target hooks. Each time an event needs to be handled the first active hook in this list is chosen to handle the event.

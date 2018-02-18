@@ -8,7 +8,7 @@ namespace InputMaster.Hooks
   /// <summary>
   /// Installs a hook procedure into the two Windows hook chains that monitor low-level keyboard and mouse events.
   /// </summary>
-  internal class PrimaryHook
+  public class PrimaryHook
   {
     private readonly IInputHook TargetHook;
     private readonly HookProcedureFunction HookProcedureFunction;
@@ -19,9 +19,10 @@ namespace InputMaster.Hooks
     {
       HookProcedureFunction = HookProcedure; // So the garbage collector does not free the procedure.
       TargetHook = targetHook;
-      Env.App.Exiting += () =>
+      Env.App.Run += Register;
+      Env.App.Exiting += TargetHook.Reset;
+      Env.App.Unhook += () =>
       {
-        TargetHook.Reset();
         HookHandle?.Dispose();
         MouseHookHandle?.Dispose();
       };
@@ -94,6 +95,7 @@ namespace InputMaster.Hooks
     private IntPtr HookProcedure(int code, IntPtr wParam, IntPtr lParam)
     {
       var captured = false;
+
       try
       {
         if (code >= 0 && TryReadMessage((WindowMessage)wParam, lParam, out var e))
@@ -108,7 +110,7 @@ namespace InputMaster.Hooks
       }
       catch (Exception ex) // This is the last place to handle any exceptions thrown during the hook procedure.
       {
-        Helper.HandleException(ex);
+        Helper.AwaitTask(Helper.HandleExceptionAsync(ex));
       }
       return captured ? new IntPtr(-1) : NativeMethods.CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
     }

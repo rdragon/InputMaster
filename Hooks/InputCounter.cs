@@ -1,6 +1,6 @@
 ﻿namespace InputMaster.Hooks
 {
-  internal class InputCounter : IInjectorStream<InputCounter>
+  public class InputCounter : IInjectorStream<InputCounter>
   {
     private readonly bool IsInjectedInput;
 

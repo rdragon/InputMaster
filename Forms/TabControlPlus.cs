@@ -8,7 +8,7 @@ namespace InputMaster.Forms
   /// Adds Ctrl + Tab support.
   /// Also does not capture Ctrl + PgUp and Ctrl + PgDn.
   /// </summary>
-  internal class TabControlPlus : TabControl
+  public class TabControlPlus : TabControl
   {
     private readonly LinkedList<TabPage> TabOrder = new LinkedList<TabPage>();
 
@@ -17,31 +17,23 @@ namespace InputMaster.Forms
       ControlAdded += (s, e) =>
       {
         if (!(e.Control is TabPage tabPage))
-        {
           return;
-        }
         TabOrder.AddFirst(tabPage);
       };
 
       ControlRemoved += (s, e) =>
       {
         if (!(e.Control is TabPage tabPage))
-        {
           return;
-        }
         TabOrder.Remove(tabPage);
         if (tabPage == SelectedTab && TabOrder.Any())
-        {
           SelectedTab = TabOrder.First.Value;
-        }
       };
 
       Selected += (s, e) =>
       {
         if (e.TabPage == null)
-        {
           return;
-        }
         TabOrder.Remove(e.TabPage);
         TabOrder.AddFirst(e.TabPage);
       };
@@ -55,10 +47,7 @@ namespace InputMaster.Forms
     protected override bool ProcessCmdKey(ref Message msg, Keys key)
     {
       if (key != (Keys.Tab | Keys.Control) || TabOrder.Count < 2)
-      {
         return base.ProcessCmdKey(ref msg, key);
-      }
-      // ReSharper disable once PossibleNullReferenceException
       SelectedTab = TabOrder.First.Next.Value;
       return true;
     }
@@ -67,9 +56,7 @@ namespace InputMaster.Forms
     {
       // We do not want to capture these two hotkeys.
       if (e.KeyData != (Keys.Control | Keys.PageUp) && e.KeyData != (Keys.Control | Keys.PageDown))
-      {
         base.OnKeyDown(e);
-      }
     }
   }
 }
